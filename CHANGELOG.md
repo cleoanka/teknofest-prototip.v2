@@ -49,3 +49,11 @@ Format [Keep a Changelog](https://keepachangelog.com/tr/1.0.0/) temellidir.
 - Speed anomalisi → QoD optimize tetiği (LOW_LATENCY).
 - Uçtan-uca senaryo: 3 DETECTION + 3 DRIVER_STATE + 2 PLATE_CONFIRMED + 1 SPEED + 1 QOD_TRIGGER + 1 RISK_ALERT.
 - `tests/test_speed.py` → toplam 35 test geçti.
+
+### Milestone 7 — events + inference_api + qod_mock + nv_mock
+- `services/inference_api/` (FastAPI :8080): `StreamManager` (arka plan pipeline worker), tüm router'lar (system/cameras/stream/tracks/eval/config), MJPEG `GET /stream/video`, `WS /stream/annotations` + `WS /stream/events` — iki-kanal tasarım.
+- `services/qod_mock/` (:8081): CAMARA QoD sözleşmesi (sessions CRUD).
+- `services/nv_mock/` (:8082): Number Verification sessiz doğrulama.
+- `GET /cameras`: OpenCV enum + platform isim çözümleme (macOS AVFoundation), `AURA_CAMERA_PROBE=0` ile atlanır.
+- Canlı doğrulama: 3 servis kalktı, pipeline autostart (67 kare/3 track/1 QoD session), MJPEG 917KB aktı, mock'lar yanıt verdi, OpenAPI 15 endpoint.
+- `tests/test_events.py` + `tests/test_api_contracts.py` → toplam 46 test geçti.
