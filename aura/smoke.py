@@ -31,27 +31,27 @@ def _check_imports() -> list[str]:
 
 
 def run(frames: int) -> int:
-    print("▶ AURA smoke test")
+    print("> AURA smoke test")
     failures = [n for n in _check_imports() if n.startswith("ZORUNLU")]
     for n in _check_imports():
-        prefix = "  ✗" if n.startswith("ZORUNLU") else "  ·"
+        prefix = "  [X]" if n.startswith("ZORUNLU") else "  [ ]"
         print(f"{prefix} {n}")
     if failures:
-        print("  ✗ Zorunlu bağımlılıklar eksik.")
+        print("  [X] Zorunlu bagimliliklar eksik.")
         return 1
 
-    # Config yükle
+    # Config yukle
     from aura.config import load_config
 
     cfg = load_config()
-    print(f"  ✓ config yüklendi ({cfg.path})")
+    print(f"  [OK] config yuklendi ({cfg.path})")
 
-    # Örnek video okunabilir mi?
+    # Ornek video okunabilir mi?
     import cv2
 
     video = ROOT / cfg.get("runtime.source", "data/samples/ornek.mp4")
     if not video.exists():
-        print(f"  ✗ örnek video yok: {video} (önce: python -m aura.synthetic)")
+        print(f"  [X] ornek video yok: {video} (once: python -m aura.synthetic)")
         return 1
     cap = cv2.VideoCapture(str(video))
     read = 0
@@ -61,18 +61,18 @@ def run(frames: int) -> int:
             break
         read += 1
     cap.release()
-    print(f"  ✓ örnek videodan {read}/{frames} kare okundu")
+    print(f"  [OK] ornek videodan {read}/{frames} kare okundu")
 
-    # Pipeline mevcutsa uçtan-uca koş
+    # Pipeline mevcutsa uctan-uca kos
     try:
         from aura.pipeline import Pipeline  # type: ignore
     except Exception:
-        print("  · pipeline henüz mevcut değil (M2/M3) — kurulum smoke'u geçti")
+        print("  [ ] pipeline henuz mevcut degil (M2/M3) -- kurulum smoke'u gecti")
         return 0 if read > 0 else 1
 
     pipe = Pipeline(cfg)
     events = pipe.run_video(str(video), max_frames=frames)
-    print(f"  ✓ pipeline {frames} kare işledi, {len(events)} event üretti")
+    print(f"  [OK] pipeline {frames} kare isledi, {len(events)} event uretti")
     return 0
 
 
@@ -84,7 +84,7 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--frames", type=int, default=10, help="İşlenecek kare sayısı")
     args = p.parse_args(argv)
     rc = run(args.frames)
-    print("  ✓ SMOKE OK" if rc == 0 else "  ✗ SMOKE FAIL")
+    print("  [OK] SMOKE OK" if rc == 0 else "  [X] SMOKE FAIL")
     return rc
 
 
