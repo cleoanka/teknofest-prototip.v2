@@ -16,6 +16,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from aura.config import is_synthetic_source
 from aura.schema import DriverState
 
 if TYPE_CHECKING:
@@ -46,7 +47,11 @@ def resolve_driver_mode(cfg) -> str:
     weight = Path(cfg.get("models.driver_state.path", "weights/yolo26l.pt"))
     if not weight.is_absolute():
         weight = Path(__file__).resolve().parents[2] / weight
-    return "real" if (_ultralytics_available() and weight.exists()) else "mock"
+    if not (_ultralytics_available() and weight.exists()):
+        return "mock"
+    # auto + ağırlık var: sentetik örnekte gerçek YOLO26l anlamlı sürücü-durumu
+    # üretmez → mock (senaryo-bazlı zengin demo). Gerçek footage → gerçek model.
+    return "mock" if is_synthetic_source(cfg) else "real"
 
 
 def build_driver_classifier(cfg) -> DriverClassifier:
