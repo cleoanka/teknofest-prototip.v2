@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AURA — Akıllı Yol Güvenliği Dashboard</title>
+  <link rel="stylesheet" href="/assets/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">◈ AURA <small>5G &amp; YZ · Akıllı Yol Güvenliği</small></div>
+    <div class="chips">
+      <span id="chip-rec" class="chip rec">● REC</span>
+      <span id="chip-qod" class="chip">QoD: —</span>
+      <span id="chip-fps" class="chip">FPS: 0</span>
+      <span id="chip-tracks" class="chip">Araç: 0</span>
+      <button id="theme-toggle" class="chip btn" title="Tema değiştir">◐</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- SOL: Kaynak seçici -->
+    <aside class="panel source-panel">
+      <h3>Kaynak</h3>
+      <div id="source-list" class="source-list"></div>
+      <div class="controls">
+        <button id="bbox-toggle" class="ctl active">BBox: ON</button>
+        <button id="quality-btn" class="ctl">Kalite Talebi</button>
+      </div>
+      <p class="hint">RTSP/IP kamera: EpocCam, Camo, DroidCam uyumlu. iPhone Continuity
+      Camera standart webcam olarak listelenir.</p>
+    </aside>
+
+    <!-- ORTA: Video + event log -->
+    <section class="panel video-panel">
+      <div class="video-wrap">
+        <img id="video-feed" alt="Canlı akış" />
+        <canvas id="overlay"></canvas>
+        <div id="video-badge" class="video-badge">CANLI</div>
+      </div>
+      <div class="eventlog">
+        <h3>Event Log <small id="event-count">0</small></h3>
+        <ul id="event-list"></ul>
+      </div>
+    </section>
+
+    <!-- SAĞ: Track listesi -->
+    <aside class="panel track-panel">
+      <h3>Track Listesi</h3>
+      <div id="track-cards" class="track-cards"></div>
+    </aside>
+
+    <!-- ALT: QoD A/B paneli -->
+    <section class="panel qod-panel">
+      <div class="qod-head">
+        <h3>QoD A/B Karşılaştırma <small>— şartname kanıt paneli (%40)</small></h3>
+        <div class="qod-actions">
+          <span id="eval-label" class="hint">Son eval: —</span>
+          <button id="eval-run" class="ctl">Eval Çalıştır</button>
+        </div>
+      </div>
+      <div class="qod-body">
+        <canvas id="qod-chart"></canvas>
+        <div id="qod-empty" class="qod-empty">Henüz eval çalıştırılmadı — <b>Eval Çalıştır</b>'a basın.</div>
+      </div>
+    </section>
+  </main>
+
+  <div id="track-modal" class="modal hidden">
+    <div class="modal-card">
+      <button id="modal-close" class="modal-close">✕</button>
+      <pre id="modal-body"></pre>
+    </div>
+  </div>
+
+  <script type="module" src="/assets/app.js"></script>
+</body>
+</html>
