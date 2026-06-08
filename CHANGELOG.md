@@ -5,6 +5,9 @@ Format [Keep a Changelog](https://keepachangelog.com/tr/1.0.0/) temellidir.
 
 ## [Unreleased]
 
+### Düzeltmeler
+- Windows UTF-8 kodlama hatası: eval raporu (`report.md`/`report.json`) ve CLI A/B tablosu, varsayılan Windows kod sayfası (cp1254/cp1252) "Δ" karakterini kodlayamadığı için çöküyordu. `write_text(..., encoding="utf-8")` + CLI'de `stdout.reconfigure(utf-8)`. `synthetic.py`, `bootstrap.py`, `train/prepare_dataset.py` yazımları da UTF-8'e geçirildi (Türkçe metin / non-ASCII path güvenliği). 58 unit test artık Windows'ta da geçiyor.
+
 ### Milestone 1 — Repo iskeleti + bootstrap + config + weights + smoke
 - Tam monorepo dizin iskeleti oluşturuldu (`aura/`, `services/`, `dashboard/`, `train/`, `docs/`, `tests/`).
 - `bootstrap.py` (saf stdlib): venv, torch backend otomatik tespiti, paket kurulumu, model ağırlığı otomatik indirme (SHA256 trust-on-first-use), örnek video üretimi, smoke test.
