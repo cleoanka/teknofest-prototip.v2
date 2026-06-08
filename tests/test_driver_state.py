@@ -34,6 +34,9 @@ def test_mock_multilabel_confidence(cfg):
 
 
 def test_build_falls_back_to_mock_and_handles_none(cfg):
+    # auto + ağırlık yok → mock (yolo26l mevcut olsa da var olmayan yola işaret et)
+    cfg.data["runtime"]["ai_mode"] = "auto"
+    cfg.data["models"]["driver_state"]["path"] = "weights/__nonexistent__.pt"
     clf = build_driver_classifier(cfg)
     assert isinstance(clf, MockDriverClassifier)
     assert clf.infer(None).active_flags() == []

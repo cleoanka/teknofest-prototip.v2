@@ -8,6 +8,7 @@ from pathlib import Path
 
 os.environ.setdefault("AURA_AUTOSTART", "0")  # lifespan otomatik stream başlatmasın
 os.environ.setdefault("AURA_CAMERA_PROBE", "0")  # donanım kamerası taranmasın
+os.environ.setdefault("AI_MODE", "mock")  # sentetik örnekte deterministik mock tespit (ağırlık olsa da)
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
