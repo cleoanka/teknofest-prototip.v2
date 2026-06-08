@@ -51,6 +51,8 @@ plate:
 speed:
   mode: disabled                # tripwire | ipm | disabled
   calibration_file: null
+  relative_threshold: 0.012     # disabled modda anormal göreli hız bayrağı eşiği (ekran/kare)
+  window: 8                     # göreli hız için kayar pencere (kare)
   tripwire:
     line_a_y: 0.40              # normalize ekran konumu (0-1)
     line_b_y: 0.70
