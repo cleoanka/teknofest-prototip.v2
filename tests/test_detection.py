@@ -45,5 +45,8 @@ def test_crop_rois_split():
 
 
 def test_build_detector_falls_back_to_mock(cfg):
-    # ai_mode=auto + ağırlık yok → MockDetector
+    # ai_mode=auto + ağırlık yok → MockDetector (ağırlık mevcut olsa da deterministik:
+    # var olmayan yola işaret et ki auto-fallback dalı sınansın)
+    cfg.data["runtime"]["ai_mode"] = "auto"
+    cfg.data["models"]["detector"]["path"] = "weights/__nonexistent__.pt"
     assert isinstance(build_detector(cfg), MockDetector)

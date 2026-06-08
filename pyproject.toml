@@ -14,7 +14,7 @@ authors = [{ name = "AURA Team" }]
 # NOT: torch/torchvision burada YOK — bootstrap.py backend'e göre (MPS/CUDA/CPU)
 # doğru index'ten kurar. ultralytics/easyocr torch'u zaten kurulu bulur.
 dependencies = [
-  "ultralytics>=8.3.0",
+  "ultralytics>=8.4.0",  # YOLO26 mimarisi 8.4.x ile gelir; 8.3.x yolo26 ağırlığını yükler ama düzgün inference yapamaz
   "opencv-python>=4.9",
   "easyocr>=1.7",
   "fastapi>=0.110",

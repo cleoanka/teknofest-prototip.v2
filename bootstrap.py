@@ -44,11 +44,11 @@ MIN_PY = (3, 10)
 # weights/weights.lock.json'a yazılır; sonraki çalıştırmalar buna karşı doğrular.
 WEIGHTS: dict[str, dict] = {
     "yolo26s.pt": {
-        "url": "https://github.com/ultralytics/assets/releases/download/v9.0.0/yolo26s.pt",
+        "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26s.pt",
         "sha256": None,
     },
     "yolo26l.pt": {
-        "url": "https://github.com/ultralytics/assets/releases/download/v9.0.0/yolo26l.pt",
+        "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26l.pt",
         "sha256": None,
     },
 }
@@ -130,6 +130,26 @@ def ensure_venv(force: bool) -> None:
 
 
 # --- 3.3 Torch backend tespiti + kurulum ----------------------------------- #
+def _cuda_index() -> str:
+    """GPU compute capability'sine göre uygun PyTorch CUDA tekerlek index'ini seç.
+
+    Blackwell (sm_100/sm_120, ör. RTX 50xx) yalnızca cu128+ tekerleklerinde derlenmiş
+    kernel'lere sahiptir; eski mimariler (<= sm_90) için cu121 yeterlidir. nvidia-smi
+    compute_cap okunamazsa güvenli varsayılan cu121'dir.
+    """
+    try:
+        out = subprocess.run(
+            ["nvidia-smi", "--query-gpu=compute_cap", "--format=csv,noheader"],
+            capture_output=True, text=True, timeout=15,
+        ).stdout
+        caps = [float(line.strip()) for line in out.splitlines() if line.strip()]
+        if caps and max(caps) >= 10.0:  # sm_100+ (Blackwell) → cu128
+            return "https://download.pytorch.org/whl/cu128"
+    except (OSError, ValueError, subprocess.SubprocessError):
+        pass
+    return "https://download.pytorch.org/whl/cu121"
+
+
 def detect_backend() -> tuple[str, list[str]]:
     """(backend_adı, pip_index_args) döndür.
 

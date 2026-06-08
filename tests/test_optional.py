@@ -48,6 +48,7 @@ def test_zero_waste_enabled_imports_and_attaches(cfg):
     _ensure_sample()
     _purge()
     cfg.data["optional_modules"]["zero_waste_payload"] = True
+    cfg.data.setdefault("runtime", {})["ai_mode"] = "mock"  # sentetik karede deterministik tespit
     pipe = Pipeline(cfg)
     pipe.run_video(SAMPLE, max_frames=40)
     assert "aura.optional.zero_waste_payload" in sys.modules
