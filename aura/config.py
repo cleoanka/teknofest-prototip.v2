@@ -6,6 +6,7 @@ Belirli env değişkenleri (AI_MODE, AURA_DEVICE, port'lar) YAML'ı override ede
 
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,8 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG = ROOT / "config" / "default.yaml"
+
+log = logging.getLogger("aura.config")
 
 
 class Config:
@@ -78,3 +81,31 @@ def load_config(path: str | Path | None = None) -> Config:
         data = yaml.safe_load(f) or {}
     data = _apply_env_overrides(data)
     return Config(data, cfg_path)
+
+
+def resolve_source(cfg: Config) -> str | int:
+    """`runtime.source`'u açılabilir bir kaynağa çöz.
+
+    - Kamera indeksi (``"0"``) veya URL (``rtsp://...``) → olduğu gibi geçer.
+    - Dosya yolu mevcutsa mutlak yol döner.
+    - Dosya yolu YOKSA paketteki örnek videoya düşer: sessiz "ölü akış" yerine
+      net bir uyarı + çalışan demo. Yapılandırılan dosya sonradan eklenirse
+      otomatik olarak ona geri dönülür (config değişmez).
+    """
+    src = cfg.get("runtime.source", "data/samples/ornek.mp4")
+    if isinstance(src, int):
+        return src
+    s = str(src)
+    if s.isdigit() or "://" in s:  # kamera indeksi / akış URL'si → dokunma
+        return s
+    p = Path(s)
+    if not p.is_absolute():
+        p = ROOT / p
+    if p.exists():
+        return str(p)
+    fallback = ROOT / "data" / "samples" / "ornek.mp4"
+    if fallback.exists():
+        log.warning("Kaynak bulunamadı: %s → örnek videoya düşülüyor: %s", s, fallback)
+        return str(fallback)
+    log.error("Kaynak bulunamadı ve örnek video da yok: %s", s)
+    return s

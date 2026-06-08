@@ -14,10 +14,33 @@ $qodPort   = if ($env:AURA_QOD_MOCK_PORT)  { $env:AURA_QOD_MOCK_PORT }  else { 8
 $nvPort    = if ($env:AURA_NV_MOCK_PORT)   { $env:AURA_NV_MOCK_PORT }   else { 8082 }
 
 $procs = @()
+
+function Clear-Port($port) {
+  # Önceki çalıştırmadan kalıp bu portu hâlâ tutan dinleyiciyi serbest bırak;
+  # aksi halde uvicorn "[10048] yalnızca bir kullanıma izin veriliyor" ile çöker.
+  $owners = @()
+  try {
+    $owners = @(Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction Stop |
+                ForEach-Object { $_.OwningProcess } | Sort-Object -Unique)
+  } catch {
+    $owners = @(netstat -ano | Select-String ":$port\s" | Where-Object { $_ -match 'LISTENING' } |
+                ForEach-Object { ($_.ToString().Trim() -split '\s+')[-1] } | Sort-Object -Unique)
+  }
+  foreach ($procId in $owners) {
+    if ($procId -and $procId -ne 0) {
+      try {
+        Stop-Process -Id ([int]$procId) -Force -ErrorAction Stop
+        Write-Host "  ⚠ Port $port önceki süreçten (pid $procId) serbest bırakıldı"
+      } catch {}
+    }
+  }
+}
+
 function Start-Svc($name, $app, $port) {
   $mod = $app.Split(":")[0]
   & $PY -c "import importlib; importlib.import_module('$mod')" 2>$null
   if ($LASTEXITCODE -eq 0) {
+    Clear-Port $port
     $p = Start-Process -FilePath $PY -ArgumentList @("-m","uvicorn",$app,"--host","0.0.0.0","--port",$port) -PassThru -NoNewWindow
     $script:procs += $p
     Write-Host "  ✓ $name → http://localhost:$port  (pid $($p.Id))"
