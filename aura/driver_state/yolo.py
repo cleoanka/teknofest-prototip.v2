@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from aura.device import resolve_device
 from aura.driver_state.classifier import DriverClassifier
 from aura.schema import DriverState
 
@@ -17,10 +18,6 @@ if TYPE_CHECKING:
     import numpy as np
 
 log = logging.getLogger("aura.driver_state.yolo")
-
-
-def _resolve_device(device: str | None):
-    return None if device in (None, "auto", "") else device
 
 
 class YOLO26lDriverClassifier(DriverClassifier):
@@ -34,8 +31,8 @@ class YOLO26lDriverClassifier(DriverClassifier):
         self.classes = list(
             cfg.get("models.driver_state.classes", ["phone", "smoking", "no_seatbelt", "fatigue"])
         )
-        self.device = _resolve_device(cfg.get("runtime.device", "auto"))
-        log.info("YOLO26l yüklendi: %s (imgsz=%d)", self.path, self.imgsz)
+        self.device = resolve_device(cfg.get("runtime.device", "auto"))
+        log.info("YOLO26l yüklendi: %s (imgsz=%d, device=%s)", self.path, self.imgsz, self.device)
 
     def infer(self, cabin_roi: np.ndarray | None) -> DriverState:
         ds = DriverState()
