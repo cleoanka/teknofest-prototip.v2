@@ -142,9 +142,7 @@ def crop_rois(
     return cabin, plate
 
 
-def crop_person_roi(
-    frame: np.ndarray, bbox: BBox, pad_ratio: float = 0.15
-) -> np.ndarray | None:
+def crop_person_roi(frame: np.ndarray, bbox: BBox, pad_ratio: float = 0.15) -> np.ndarray | None:
     """Kilitli sürücünün kutusundan ROI kes (kenarlardan `pad_ratio` kadar pay bırakır).
 
     Geometrik 'üst %55 kabin' tahmini yerine, sürücü olarak kilitlenmiş kişinin

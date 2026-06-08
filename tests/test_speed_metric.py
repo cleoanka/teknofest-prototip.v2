@@ -122,7 +122,7 @@ def test_metric_ema_smooths_more_than_kalman_alone():
             s = est.update(1, _car(x), i, FRAME)
             if s.value_kmh is not None:
                 vals.append(s.value_kmh)
-        diffs = [abs(b - a) for a, b in zip(vals, vals[1:])]
+        diffs = [abs(b - a) for a, b in zip(vals, vals[1:], strict=False)]
         return sum(diffs) / len(diffs) if diffs else 0.0
 
     assert run(0.2) < run(1.0)  # düşük alpha (güçlü EMA) daha az dalgalanma

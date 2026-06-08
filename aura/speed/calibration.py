@@ -20,7 +20,6 @@ döndürür → çağıran metrik iddiada bulunmaz (is_calibrated=False).
 from __future__ import annotations
 
 from collections import deque
-from typing import Optional, Tuple
 
 import numpy as np
 
@@ -32,8 +31,8 @@ _PLATE_ASPECT = 520.0 / 120.0
 
 
 def plate_ppm(
-    plate_bbox: Optional[BBox], plate_width_m: float = 0.520, aspect_tolerance: float = 0.35
-) -> Optional[float]:
+    plate_bbox: BBox | None, plate_width_m: float = 0.520, aspect_tolerance: float = 0.35
+) -> float | None:
     """Plaka piksel genişliğinden yerel ölçeği (piksel/metre) döndür.
 
     Foreshortening koruması: en/boy oranı 4.33'ten `aspect_tolerance` bağıl payından
@@ -93,7 +92,7 @@ class SpeedTrack:
         self.foot_history: deque = deque(maxlen=maxlen)
         self.ts_history: deque = deque(maxlen=maxlen)
 
-    def update(self, foot: Tuple[float, float], ts: Optional[float]) -> None:
+    def update(self, foot: tuple[float, float], ts: float | None) -> None:
         self.foot_history.append((float(foot[0]), float(foot[1])))
         self.ts_history.append(ts)
 
@@ -116,7 +115,7 @@ class ScaleField:
         self._median_ppm: float = 0.0
         self._fitted: bool = False
 
-    def add(self, y: float, ppm: Optional[float], weight: float = 1.0) -> None:
+    def add(self, y: float, ppm: float | None, weight: float = 1.0) -> None:
         """Ölçüm ekle. weight = güven (1/sigma): plaka yüksek (1.0), araç-genişliği
         düşük (~0.25) — gürültülü kaynak az, kesin kaynak çok ağırlık alır."""
         if ppm is None or ppm <= 0 or not np.isfinite(ppm) or weight <= 0:
@@ -163,7 +162,7 @@ class ScaleField:
         self._fitted = True
         return True
 
-    def ppm_at(self, y: float) -> Optional[float]:
+    def ppm_at(self, y: float) -> float | None:
         """Verilen görüntü-y'sinde ppm. Uydurma yoksa veya tahmin fiziksel değilse
         (≤0) medyan ppm'e düşer."""
         if not self._fitted:
@@ -198,7 +197,7 @@ class MetricSpeedEstimator:
             return
         self.homography = homography
 
-    def observe_plate(self, plate_bbox: Optional[BBox]) -> None:
+    def observe_plate(self, plate_bbox: BBox | None) -> None:
         """Bir karede görülen plakadan yerel ppm örneği topla (varsa en kesin kaynak)."""
         ppm = plate_ppm(
             plate_bbox,
@@ -208,7 +207,7 @@ class MetricSpeedEstimator:
         if ppm is not None and plate_bbox is not None:
             self.scale.add(plate_bbox.y2, ppm, weight=1.0)
 
-    def observe_vehicle(self, vehicle_bbox: Optional[BBox], vtype: Optional[str]) -> None:
+    def observe_vehicle(self, vehicle_bbox: BBox | None, vtype: str | None) -> None:
         """Aşama 2 — araç bbox genişliğinden sınıf-bazlı ppm yedeği (§4.2).
 
         Tekil araç genişliği ±%15-20 oynar ⇒ DÜŞÜK ağırlık. Çok araçtan istatistiksel
@@ -230,7 +229,7 @@ class MetricSpeedEstimator:
         if self.scale.n_samples >= self.scale.min_samples:
             self.scale.fit()
 
-    def _step_meters(self, f0, f1) -> Optional[float]:
+    def _step_meters(self, f0, f1) -> float | None:
         """İki yer-temas noktası arası metrik yer değiştirme (m).
 
         Füzyon önceliği (§7.1): homografi varsa noktalar metrik yer düzlemine
@@ -269,7 +268,7 @@ class MetricSpeedEstimator:
             steps.append((dt, meters / dt))
         return steps
 
-    def estimate(self, track: Optional[SpeedTrack]) -> Tuple[Optional[float], bool]:
+    def estimate(self, track: SpeedTrack | None) -> tuple[float | None, bool]:
         """(km/h, is_calibrated) döndür. Ölçek hazır değilse (None, False).
 
         Aşama 3: pencere üzerinden medyan hız + fiziksel-olmayan ivme reddi (medyandan
