@@ -1,11 +1,12 @@
 """API sözleşmeleri — inference_api + qod_mock + nv_mock (TestClient, model gerektirmez)."""
+
 from __future__ import annotations
 
 import os
 import time
 from pathlib import Path
 
-os.environ.setdefault("AURA_AUTOSTART", "0")     # lifespan otomatik stream başlatmasın
+os.environ.setdefault("AURA_AUTOSTART", "0")  # lifespan otomatik stream başlatmasın
 os.environ.setdefault("AURA_CAMERA_PROBE", "0")  # donanım kamerası taranmasın
 
 import pytest  # noqa: E402
@@ -21,6 +22,7 @@ SAMPLE = Path("data/samples/ornek.mp4")
 def _ensure_sample():
     if not SAMPLE.exists():
         from aura.synthetic import generate
+
         generate(SAMPLE.parent, 90, 30, 640, 360)
 
 

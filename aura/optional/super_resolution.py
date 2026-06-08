@@ -6,6 +6,7 @@ kullanır; yoksa yüksek kaliteli bicubic upscale'e düşer (yer tutucu, OCR iç
 de okunabilirliği artırır).
 `config.optional_modules.super_resolution: true` ile etkin.
 """
+
 from __future__ import annotations
 
 import logging

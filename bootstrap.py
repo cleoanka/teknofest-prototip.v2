@@ -9,6 +9,7 @@ Bu dosya hiçbir üçüncü-parti modüle bağımlı DEĞİLDİR (sistem python'
 OpenCV/numpy gerektiren işler (örnek video üretimi, smoke) venv python'una
 subprocess ile devredilir.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -22,6 +23,7 @@ import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
+from typing import NoReturn
 
 ROOT = Path(__file__).resolve().parent
 VENV = ROOT / ".venv"
@@ -69,7 +71,7 @@ def fail(msg: str) -> None:
     print(_c("1;31", f"  ✗ {msg}"))
 
 
-def die(msg: str, hint: str = "") -> "NoReturn":  # type: ignore[name-defined]
+def die(msg: str, hint: str = "") -> NoReturn:
     fail(msg)
     if hint:
         print(f"    → {hint}")
@@ -341,8 +343,10 @@ def ensure_node(skip: bool) -> None:
         warn("node kurulumu atlandı (--skip-node)")
         return
     if shutil.which("node") is None:
-        warn("node bulunamadı — Python servisleri yine de tam çalışır. "
-             "Mobil için: https://nodejs.org")
+        warn(
+            "node bulunamadı — Python servisleri yine de tam çalışır. "
+            "Mobil için: https://nodejs.org"
+        )
         return
     mobile = ROOT / "mobile"
     if (mobile / "package.json").exists():
@@ -384,11 +388,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--skip-weights", action="store_true", help="Model ağırlığı indirmeyi atla")
     p.add_argument("--skip-node", action="store_true", help="Node.js/mobil kurulumunu atla")
-    p.add_argument("--skip-deps", action="store_true",
-                   help="pip kurulumlarını atla (yalnızca yapı/config/ağırlık)")
+    p.add_argument(
+        "--skip-deps",
+        action="store_true",
+        help="pip kurulumlarını atla (yalnızca yapı/config/ağırlık)",
+    )
     p.add_argument("--force", action="store_true", help="Mevcut .venv'i sil ve sıfırdan kur")
-    p.add_argument("--dev", action="store_true",
-                   help="Dev bağımlılıklarını da kur (pytest, ruff, black)")
+    p.add_argument(
+        "--dev", action="store_true", help="Dev bağımlılıklarını da kur (pytest, ruff, black)"
+    )
     return p
 
 

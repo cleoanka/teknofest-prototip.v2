@@ -6,6 +6,7 @@ Akış (plan.md §6.5):
   → ret: PLATE_REJECTED + QoD kalite tetiği + yeniden okuma döngüsü
 Yetersiz piksel (min_pixel_height altı) → QoD kalite tetiği.
 """
+
 from __future__ import annotations
 
 import re
@@ -25,8 +26,10 @@ class PlateReader:
         self.cfg = cfg
         ss = cfg.get("plate.sweet_spot", {}) or {}
         self.sweet_spot = {
-            "x1": float(ss.get("x1", 0.0)), "y1": float(ss.get("y1", 0.0)),
-            "x2": float(ss.get("x2", 1.0)), "y2": float(ss.get("y2", 1.0)),
+            "x1": float(ss.get("x1", 0.0)),
+            "y1": float(ss.get("y1", 0.0)),
+            "x2": float(ss.get("x2", 1.0)),
+            "y2": float(ss.get("y2", 1.0)),
         }
         self.buffer_size = int(cfg.get("plate.voting_buffer_size", 7))
         self.consensus_ratio = float(cfg.get("plate.consensus_ratio", 0.6))
@@ -46,13 +49,19 @@ class PlateReader:
         return (s["x1"] * w <= cx <= s["x2"] * w) and (s["y1"] * h <= cy <= s["y2"] * h)
 
     # --- ana giriş --------------------------------------------------------- #
-    def update(self, track_id: int, plate_roi: "np.ndarray | None", vehicle_bbox: BBox,
-               frame_shape: tuple[int, ...], frame: "np.ndarray | None" = None) -> PlateState:
+    def update(
+        self,
+        track_id: int,
+        plate_roi: np.ndarray | None,
+        vehicle_bbox: BBox,
+        frame_shape: tuple[int, ...],
+        frame: np.ndarray | None = None,
+    ) -> PlateState:
         st = self._state.setdefault(track_id, PlateState())
         if st.status == "confirmed":
-            return st                       # erken çıkış (OCR kapalı)
+            return st  # erken çıkış (OCR kapalı)
         if st.status == "rejected":
-            st.status = "pending"           # yeniden okuma döngüsü
+            st.status = "pending"  # yeniden okuma döngüsü
 
         # Sweet spot: araç netlik bölgesine girene kadar OCR pasif
         if not self.in_sweet_spot(vehicle_bbox, frame_shape):
@@ -93,7 +102,7 @@ class PlateReader:
                 st.confidence = round(frac, 2)
                 if self.qod:
                     self.qod.request_quality(track_id, reason="consensus_fail")
-                buf.clear()                  # yeniden okuma için tamponu boşalt
+                buf.clear()  # yeniden okuma için tamponu boşalt
         return st
 
     def get(self, track_id: int) -> PlateState | None:

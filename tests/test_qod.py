@@ -1,4 +1,5 @@
 """QoD histerezisi: tetik/bırak, çift-tetik önleme, cooldown (model gerektirmez)."""
+
 from __future__ import annotations
 
 from aura.qod import QoDController
@@ -29,7 +30,7 @@ def test_release_after_min_active(cfg):
     q.drain_events()
     q.set_now(1.0)
     q.tick()
-    assert q.state(1)[0] is True            # 1s < 3s → hâlâ aktif
+    assert q.state(1)[0] is True  # 1s < 3s → hâlâ aktif
     q.set_now(3.0)
     q.tick()
     ev = q.drain_events()
@@ -43,12 +44,12 @@ def test_cooldown_blocks_retrigger(cfg):
     q.drain_events()
     q.set_now(3.0)
     q.tick()
-    q.drain_events()                         # 3.0'da bırakıldı
+    q.drain_events()  # 3.0'da bırakıldı
     q.set_now(5.0)
-    q.request_quality(1, "r")                # 5-3=2 < 5 → engellenir
+    q.request_quality(1, "r")  # 5-3=2 < 5 → engellenir
     assert q.state(1)[0] is False and not q.drain_events()
     q.set_now(8.5)
-    q.request_quality(1, "r")                # 8.5-3=5.5 ≥ 5 → izin verilir
+    q.request_quality(1, "r")  # 8.5-3=5.5 ≥ 5 → izin verilir
     assert q.state(1)[0] is True
 
 

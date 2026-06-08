@@ -4,14 +4,23 @@ Downstream'e tam çözünürlüklü kare gönderilmez; yalnızca küçük ROI g�
 ID'ye bağlı yapısal metin iletilir. 5G bant genişliğini gereksiz tüketmez.
 `config.optional_modules.zero_waste_payload: true` ile etkin.
 """
+
 from __future__ import annotations
 
 import base64
 
 import cv2
 
-_STRUCT_KEYS = ("cls", "plate", "plate_status", "driver", "speed_kmh",
-                "relative_velocity_flag", "risk_flags", "qod_active")
+_STRUCT_KEYS = (
+    "cls",
+    "plate",
+    "plate_status",
+    "driver",
+    "speed_kmh",
+    "relative_velocity_flag",
+    "risk_flags",
+    "qod_active",
+)
 
 
 def build_payload(track_dict: dict, plate_roi=None, jpeg_quality: int = 70) -> dict:

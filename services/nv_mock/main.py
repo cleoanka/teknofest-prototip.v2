@@ -5,6 +5,7 @@ sim_token + Türk numarası → verified. Final ortamında endpoint operatör NV
 
 Çalıştır: uvicorn services.nv_mock.main:app --port 8082
 """
+
 from __future__ import annotations
 
 from fastapi import FastAPI

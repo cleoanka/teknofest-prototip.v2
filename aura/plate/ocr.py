@@ -5,6 +5,7 @@
 - `MockOCR`: EasyOCR/torch yokken araç renginden senaryo plakasını üretir
   (track başına kararlı → voting konsensüsü oluşur).
 """
+
 from __future__ import annotations
 
 import logging

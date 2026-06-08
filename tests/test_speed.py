@@ -1,4 +1,5 @@
 """Hız: disabled relative_velocity_flag (hızlı/yavaş) + tripwire (model gerektirmez)."""
+
 from __future__ import annotations
 
 from aura.config import load_config
@@ -23,7 +24,7 @@ def test_relative_flag_fast(cfg):
     est.fps = 30
     s = None
     for i in range(8):
-        s = est.update(1, _bbox_at(0.10 + 0.05 * i), i, FRAME)   # 0.05/kare ≫ 0.012
+        s = est.update(1, _bbox_at(0.10 + 0.05 * i), i, FRAME)  # 0.05/kare ≫ 0.012
     assert s.relative_velocity_flag is True
 
 
@@ -43,11 +44,11 @@ def test_tripwire_produces_speed_and_latches():
     est.fps = 30
     val = None
     for i in range(21):
-        cy = 0.35 + 0.02 * i                    # line_a(0.40) ve line_b(0.70) geçişi
+        cy = 0.35 + 0.02 * i  # line_a(0.40) ve line_b(0.70) geçişi
         s = est.update(1, _bbox_at(min(cy, 0.99)), i, FRAME)
         val = s.value_kmh
         assert s.mode == "tripwire"
-    assert val is not None and val > 0          # hız hesaplandı
+    assert val is not None and val > 0  # hız hesaplandı
     # latched: sonraki kare aynı değeri döndürür
     again = est.update(1, _bbox_at(0.99), 30, FRAME).value_kmh
     assert again == val

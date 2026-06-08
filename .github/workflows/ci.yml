@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # Hafif kurulum: torch/ultralytics/easyocr HARİÇ (integration testler CI'da skip).
+      # Unit testler mock modda çalışır; YZ ağırlığı gerektirmez.
+      - name: Install (lightweight)
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy "opencv-python-headless>=4.9" pyyaml "pydantic>=2.6" \
+            fastapi "uvicorn[standard]" httpx sse-starlette shapely rich python-multipart \
+            pytest pytest-asyncio ruff black
+          pip install -e . --no-deps
+
+      - name: Ruff (lint)
+        run: ruff check .
+
+      - name: Black (format check)
+        run: black --check .
+
+      - name: Pytest (unit — integration skip)
+        run: pytest -m "not integration"

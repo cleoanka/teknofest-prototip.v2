@@ -11,6 +11,7 @@ Tetikleyiciler:
 `backend: mock` → in-process session yönetimi (M7'de qod_mock HTTP servisine bağlanır).
 `backend: camara` → gerçek Turkcell endpoint (final ortam).
 """
+
 from __future__ import annotations
 
 import logging
@@ -28,8 +29,8 @@ class QoDController:
         self.min_active = float(cfg.get("qod.histeresis.min_active_seconds", 3))
         self.cooldown = float(cfg.get("qod.histeresis.cooldown_seconds", 5))
         self._now = 0.0
-        self._sessions: dict[int, dict] = {}        # track_id -> {profile,kind,since,reason}
-        self._last_release: dict[int, float] = {}   # track_id -> release zamanı
+        self._sessions: dict[int, dict] = {}  # track_id -> {profile,kind,since,reason}
+        self._last_release: dict[int, float] = {}  # track_id -> release zamanı
         self._pending: list[AuraEvent] = []
 
     # --- zaman ------------------------------------------------------------- #
@@ -49,11 +50,22 @@ class QoDController:
             return  # cooldown içinde — yeniden tetikleme
         profile = self._profile_for(kind)
         self._sessions[track_id] = {
-            "profile": profile, "kind": kind, "since": self._now, "reason": reason,
+            "profile": profile,
+            "kind": kind,
+            "since": self._now,
+            "reason": reason,
         }
-        self._pending.append(make_event(track_id, "QOD_TRIGGER", {
-            "profile": profile, "kind": kind, "reason": reason,
-        }))
+        self._pending.append(
+            make_event(
+                track_id,
+                "QOD_TRIGGER",
+                {
+                    "profile": profile,
+                    "kind": kind,
+                    "reason": reason,
+                },
+            )
+        )
         log.debug("QoD TRIGGER track=%s %s (%s)", track_id, profile, reason)
 
     def request_quality(self, track_id: int, reason: str) -> None:

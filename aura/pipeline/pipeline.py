@@ -7,10 +7,12 @@ Akış (plan.md §6.9):
 İki-kanal çıktı: `AnnotationFrame` (kare başına bbox, dashboard canvas için) ve
 `AuraEvent` (durum değişimleri). Pipeline upstream/downstream'i bilmez.
 """
+
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Iterator
+from collections.abc import Iterator
+from typing import TYPE_CHECKING
 
 from aura.accumulator.accumulator import Accumulator
 from aura.detection.detector import build_detector, crop_rois
@@ -68,8 +70,9 @@ class Pipeline:
         self.zwp = get_optional(cfg, "zero_waste_payload")
 
     # --- tek kare ---------------------------------------------------------- #
-    def process_frame(self, frame: "np.ndarray", frame_idx: int | None = None
-                      ) -> tuple[AnnotationFrame, list[AuraEvent]]:
+    def process_frame(
+        self, frame: np.ndarray, frame_idx: int | None = None
+    ) -> tuple[AnnotationFrame, list[AuraEvent]]:
         idx = self.frame_idx if frame_idx is None else frame_idx
         self.qod.set_now(idx / max(self.fps, 1e-6))
         frame = self.pre.process(frame)
@@ -103,9 +106,15 @@ class Pipeline:
 
             qod_active, qod_profile = self.qod.state(tid)
             rec, ev = self.acc.update_track(
-                tid, frame_idx=idx, bbox=det.bbox, vehicle_class=det.bbox.cls,
-                plate=plate, driver=driver, speed=speed,
-                qod_active=qod_active, qod_profile=qod_profile,
+                tid,
+                frame_idx=idx,
+                bbox=det.bbox,
+                vehicle_class=det.bbox.cls,
+                plate=plate,
+                driver=driver,
+                speed=speed,
+                qod_active=qod_active,
+                qod_profile=qod_profile,
             )
             events.extend(ev)
             adict = record_to_annotation(rec)
@@ -124,8 +133,9 @@ class Pipeline:
         return anno, events
 
     # --- video / kamera ---------------------------------------------------- #
-    def frames(self, source, max_frames: int | None = None
-               ) -> Iterator[tuple["np.ndarray", AnnotationFrame, list[AuraEvent]]]:
+    def frames(
+        self, source, max_frames: int | None = None
+    ) -> Iterator[tuple[np.ndarray, AnnotationFrame, list[AuraEvent]]]:
         """Kaynağı aç ve (frame, annotation, events) üret. Kaynak: path | index | URL."""
         import cv2
 

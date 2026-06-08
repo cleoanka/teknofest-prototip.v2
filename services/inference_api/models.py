@@ -1,4 +1,5 @@
 """inference_api istek/yanıt DTO'ları (pydantic v2)."""
+
 from __future__ import annotations
 
 from pydantic import BaseModel, Field

@@ -2,6 +2,7 @@
 
 plan.md §4.1 argparse şablonu.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -23,18 +24,36 @@ def build_parser() -> argparse.ArgumentParser:
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p.add_argument("--config", metavar="PATH", default=None,
-                   help="Config dosyası (varsayılan: config/default.yaml)")
-    p.add_argument("--source", metavar="SOURCE", default=None,
-                   help="Video dosyası, kamera index (0,1,2...) veya RTSP/HTTP URL")
-    p.add_argument("--device", choices=["auto", "cpu", "cuda", "mps"], default=None,
-                   help="İşlem birimi (varsayılan: config'ten / auto)")
-    p.add_argument("--no-bbox", action="store_true",
-                   help="Ham video akışı (annotation overlay olmadan)")
-    p.add_argument("--max-frames", type=int, default=None,
-                   help="En fazla bu kadar kare işle (test/demo için)")
-    p.add_argument("--log-level", choices=["DEBUG", "INFO", "WARNING"], default="INFO",
-                   help="Log seviyesi (varsayılan: INFO)")
+    p.add_argument(
+        "--config",
+        metavar="PATH",
+        default=None,
+        help="Config dosyası (varsayılan: config/default.yaml)",
+    )
+    p.add_argument(
+        "--source",
+        metavar="SOURCE",
+        default=None,
+        help="Video dosyası, kamera index (0,1,2...) veya RTSP/HTTP URL",
+    )
+    p.add_argument(
+        "--device",
+        choices=["auto", "cpu", "cuda", "mps"],
+        default=None,
+        help="İşlem birimi (varsayılan: config'ten / auto)",
+    )
+    p.add_argument(
+        "--no-bbox", action="store_true", help="Ham video akışı (annotation overlay olmadan)"
+    )
+    p.add_argument(
+        "--max-frames", type=int, default=None, help="En fazla bu kadar kare işle (test/demo için)"
+    )
+    p.add_argument(
+        "--log-level",
+        choices=["DEBUG", "INFO", "WARNING"],
+        default="INFO",
+        help="Log seviyesi (varsayılan: INFO)",
+    )
     return p
 
 
@@ -57,12 +76,14 @@ def main(argv: list[str] | None = None) -> int:
     from aura.pipeline.pipeline import Pipeline
 
     pipe = Pipeline(cfg)
-    pipe.emitter.on_event(
-        lambda e: log.info("EVENT %s track=%s %s", e.type, e.track_id, e.payload)
-    )
+    pipe.emitter.on_event(lambda e: log.info("EVENT %s track=%s %s", e.type, e.track_id, e.payload))
 
-    log.info("Kaynak: %s | device: %s | ai_mode: %s",
-             source, cfg.get("runtime.device"), cfg.get("runtime.ai_mode"))
+    log.info(
+        "Kaynak: %s | device: %s | ai_mode: %s",
+        source,
+        cfg.get("runtime.device"),
+        cfg.get("runtime.ai_mode"),
+    )
     try:
         events = pipe.run_video(source, max_frames=args.max_frames)
     except KeyboardInterrupt:
@@ -74,8 +95,9 @@ def main(argv: list[str] | None = None) -> int:
     finally:
         pipe.close()
 
-    log.info("Tamamlandı: %d event üretildi, %d aktif track.",
-             len(events), len(pipe.acc.active_tracks()))
+    log.info(
+        "Tamamlandı: %d event üretildi, %d aktif track.", len(events), len(pipe.acc.active_tracks())
+    )
     return 0
 
 

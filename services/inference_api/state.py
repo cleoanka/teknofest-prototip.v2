@@ -4,6 +4,7 @@
 ayrı yayılır. Pipeline arka plan thread'inde çalışır; WS push'ları event loop'a
 `call_soon_threadsafe` ile güvenli aktarılır.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -80,10 +81,10 @@ class StreamManager:
         if device:
             self.cfg.data.setdefault("runtime", {})["device"] = device
         self.pipeline = Pipeline(self.cfg)
-        self.pipeline.emitter.on_event(
-            lambda e: self._push(self._event_queues, e.model_dump()))
+        self.pipeline.emitter.on_event(lambda e: self._push(self._event_queues, e.model_dump()))
         self.pipeline.emitter.on_annotation(
-            lambda a: self._push(self._annot_queues, a.model_dump()))
+            lambda a: self._push(self._annot_queues, a.model_dump())
+        )
         self._running = True
         self.started_at = time.time()
         self._thread = threading.Thread(target=self._worker, daemon=True)
@@ -150,8 +151,16 @@ class StreamManager:
             label = f"ID{t['track_id']}"
             if t.get("plate"):
                 label += f" {t['plate']}"
-            cv2.putText(img, label, (x1, max(12, y1 - 5)),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 1, cv2.LINE_AA)
+            cv2.putText(
+                img,
+                label,
+                (x1, max(12, y1 - 5)),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                color,
+                1,
+                cv2.LINE_AA,
+            )
         return img
 
     # --- okuma ------------------------------------------------------------- #
@@ -170,5 +179,6 @@ class StreamManager:
             "uptime_s": round(time.time() - self.started_at, 1) if self.started_at else 0.0,
             "active_tracks": len(self.pipeline.acc.active_tracks()) if self.pipeline else 0,
             "qod_active_sessions": (
-                len(self.pipeline.qod.active_sessions()) if self.pipeline else 0),
+                len(self.pipeline.qod.active_sessions()) if self.pipeline else 0
+            ),
         }

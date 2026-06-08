@@ -1,4 +1,5 @@
 """Sistem router'ı — /health, /info."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Request

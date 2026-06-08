@@ -1,4 +1,5 @@
 """Mock dedektör + IoU takipçi + ROI geometri (model gerektirmez, CI-uyumlu)."""
+
 from __future__ import annotations
 
 import cv2
