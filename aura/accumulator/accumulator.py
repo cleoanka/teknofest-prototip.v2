@@ -47,7 +47,9 @@ class Accumulator:
 
         if plate is not None:
             prev_status = rec.plate.status
-            rec.plate = plate
+            # PlateReader aynı nesneyi yerinde mutasyona uğratır → snapshot al,
+            # yoksa prev_status zaten güncellenmiş olur ve geçiş event'i kaçar.
+            rec.plate = plate.model_copy(deep=True)
             if plate.status == "confirmed" and prev_status != "confirmed":
                 events.append(make_event(track_id, "PLATE_CONFIRMED", {
                     "value": plate.value, "confidence": plate.confidence,

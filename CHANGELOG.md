@@ -33,3 +33,12 @@ Format [Keep a Changelog](https://keepachangelog.com/tr/1.0.0/) temellidir.
 - `aura/driver_state/mock.py`: `MockDriverClassifier` — cabin baskın rengini senaryo durumuna eşler (phone / smoking+no_seatbelt / fatigue).
 - Uçtan-uca: 3 DRIVER_STATE event + 1 RISK_ALERT (unbelted), 16/8 süzgecinden geçerek.
 - `tests/test_stability.py` (7/16→ret, 8/16→kabul, flicker), `tests/test_driver_state.py` → toplam 20 test geçti.
+
+### Milestone 5 — plate (sweet spot + voting + OCR) + QoD kalite tetiği
+- `aura/plate/ocr.py`: `RealOCR` (EasyOCR) + `MockOCR` (renk→senaryo plakası); `build_ocr` çözümlemesi.
+- `aura/plate/voting.py`: `VotingBuffer` (konsensüs/ret).
+- `aura/plate/reader.py` (gerçek): sweet-spot gating → voting → Türk plaka regex → konsensüs (PLATE_CONFIRMED + erken çıkış) / ret (PLATE_REJECTED + QoD kalite tetiği + yeniden okuma); yetersiz piksel → QoD.
+- `aura/qod/client.py`: `QoDController` — histerezis (min_active + cooldown), QOD_TRIGGER/RELEASE; pipeline'a entegre.
+- accumulator plaka snapshot fix'i (aliasing → geçiş event'leri).
+- Uçtan-uca: sweet-spot içi 2 PLATE_CONFIRMED, sağ-şerit araç gating ile pending.
+- `tests/test_plate.py` + `tests/test_qod.py` → toplam 31 test geçti.
