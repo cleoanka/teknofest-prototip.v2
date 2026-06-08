@@ -58,6 +58,7 @@ class Pipeline:
         self.qod = QoDController(cfg)
         self.plate = PlateReader(cfg, qod=self.qod)
         self.speed = SpeedEstimator(cfg)
+        self.high_speed = float(cfg.get("risk.high_speed_kmh", 90))
         self.acc = Accumulator(cfg)
         self.emitter = EventEmitter()
         self.frame_idx = 0
@@ -87,7 +88,15 @@ class Pipeline:
                 setattr(driver, f, bool(stable))
 
             plate = self.plate.update(tid, plate_roi, det.bbox, frame.shape, frame=frame)
-            speed = self.speed.update(tid, det.bbox, idx)
+            speed = self.speed.update(tid, det.bbox, idx, frame.shape)
+            # göreli hız bayrağını da 16/8 süzgecinden geçir (eşik civarı salınımı önle)
+            speed.relative_velocity_flag = bool(
+                self.stability.update(f"{tid}:speed.rel", speed.relative_velocity_flag)
+            )
+            if speed.relative_velocity_flag or (
+                speed.value_kmh is not None and speed.value_kmh >= self.high_speed
+            ):
+                self.qod.request_optimize(tid, "speed_anomaly")
 
             qod_active, qod_profile = self.qod.state(tid)
             rec, ev = self.acc.update_track(
@@ -120,6 +129,7 @@ class Pipeline:
             raise RuntimeError(f"Kaynak açılamadı: {source}")
         fps = cap.get(cv2.CAP_PROP_FPS)
         self.fps = fps if fps and fps > 0 else 30.0
+        self.speed.fps = self.fps
         i = 0
         try:
             while True:

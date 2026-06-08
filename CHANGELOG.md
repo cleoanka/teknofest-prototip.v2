@@ -42,3 +42,10 @@ Format [Keep a Changelog](https://keepachangelog.com/tr/1.0.0/) temellidir.
 - accumulator plaka snapshot fix'i (aliasing → geçiş event'leri).
 - Uçtan-uca: sweet-spot içi 2 PLATE_CONFIRMED, sağ-şerit araç gating ile pending.
 - `tests/test_plate.py` + `tests/test_qod.py` → toplam 31 test geçti.
+
+### Milestone 6 — speed (disabled + relative flag, tripwire, ipm fallback)
+- `aura/speed/estimator.py` (gerçek): `disabled` (relative_velocity_flag), `tripwire` (iki çizgi × gerçek mesafe / frame-delta), `ipm` (M12 opsiyonel modüle güvenli düşüş).
+- Göreli hız bayrağı 16/8 süzgecinden geçirildi (eşik civarı salınım önlendi).
+- Speed anomalisi → QoD optimize tetiği (LOW_LATENCY).
+- Uçtan-uca senaryo: 3 DETECTION + 3 DRIVER_STATE + 2 PLATE_CONFIRMED + 1 SPEED + 1 QOD_TRIGGER + 1 RISK_ALERT.
+- `tests/test_speed.py` → toplam 35 test geçti.
