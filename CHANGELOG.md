@@ -26,3 +26,10 @@ Format [Keep a Changelog](https://keepachangelog.com/tr/1.0.0/) temellidir.
 - `build_detector` + `resolve_ai_mode`: real/mock/auto çözümlemesi (lazy import).
 - Uçtan-uca doğrulandı: sentetik videoda 3 araç kalıcı ID ile takip, DETECTION_UPDATE event'leri, 90 annotation karesi.
 - `tests/test_detection.py`: mock dedektör + IoU + ROI testleri (CI-uyumlu).
+
+### Milestone 4 — stability (16/8) + driver_state
+- `aura/stability/state_machine.py` (gerçek): per `track×alan` kayar pencere (16), ≥8 tutarlılıkta commit; flicker'da önceki yüksek-güvenli değer korunur.
+- `aura/driver_state/yolo.py`: `YOLO26lDriverClassifier` (gerçek) — cabin ROI çoklu-etiket detection.
+- `aura/driver_state/mock.py`: `MockDriverClassifier` — cabin baskın rengini senaryo durumuna eşler (phone / smoking+no_seatbelt / fatigue).
+- Uçtan-uca: 3 DRIVER_STATE event + 1 RISK_ALERT (unbelted), 16/8 süzgecinden geçerek.
+- `tests/test_stability.py` (7/16→ret, 8/16→kabul, flicker), `tests/test_driver_state.py` → toplam 20 test geçti.
