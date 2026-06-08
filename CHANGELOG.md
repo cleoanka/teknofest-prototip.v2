@@ -72,3 +72,10 @@ Format [Keep a Changelog](https://keepachangelog.com/tr/1.0.0/) temellidir.
 - `python -m aura.eval` CLI (§4.3) + `/eval/run`/`/eval/results`/`/eval/results/export` bağlandı; dashboard Chart.js paneli tüketir.
 - Ölçülen delta (şartname %40 kanıtı): Plaka +33pp, Küçük nesne +51pp, Tespit +25pp.
 - `tests/test_eval.py` → toplam 50 test geçti.
+
+### Milestone 10 — train modülü + egitim/veri_seti dokümanları
+- `python -m train` (§4.2): `detector` (YOLO26s) / `driver-state` (YOLO26l 320px) / `dataset` subcommand'ları; ultralytics lazy import (`--help` torch gerektirmez).
+- `train/prepare_dataset.py` (gerçek): train/val/test split + `data.yaml` üretimi (deterministik).
+- `train/roboflow_pull.py` (ROBOFLOW_API_KEY), `train/utils.py` (custom ağırlık swap), `configs/` data.yaml örnekleri.
+- `docs/egitim.md` + `docs/veri_seti.md`.
+- `tests/test_train.py` → toplam 53 test geçti.
