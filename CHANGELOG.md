@@ -79,3 +79,9 @@ Format [Keep a Changelog](https://keepachangelog.com/tr/1.0.0/) temellidir.
 - `train/roboflow_pull.py` (ROBOFLOW_API_KEY), `train/utils.py` (custom ağırlık swap), `configs/` data.yaml örnekleri.
 - `docs/egitim.md` + `docs/veri_seti.md`.
 - `tests/test_train.py` → toplam 53 test geçti.
+
+### Milestone 11 — mobil Expo iskeleti
+- `mobile/` (Expo SDK 51 + React Native + TypeScript): NV sessiz giriş, canlı `WS /stream/events` listesi, QoD rozeti.
+- `src/api/client.ts` (verifyNumber + connectEvents + setSource), `LoginScreen`/`DashboardScreen`, `src/config.ts` (EXPO_PUBLIC_API_URL/NV_URL).
+- `mobile/README.md`: `npx expo start`, mock↔gerçek geçişi (yalnızca adres), Android emülatör notu.
+- Doğrulandı: JSON config'ler valid, TS import yolları tutarlı (Expo build emülatör gerektirir).
