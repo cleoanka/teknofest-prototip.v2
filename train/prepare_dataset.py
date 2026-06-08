@@ -4,6 +4,7 @@ Augmentasyon (mozaik, flip, renk jitter, karartma) eğitim sırasında ultralyti
 tarafından uygulanır; bu modül split + dizin yapısı + data.yaml üretir. Torch
 gerektirmez (saf dosya işlemi).
 """
+
 from __future__ import annotations
 
 import logging
@@ -25,9 +26,11 @@ def _find_images(inp: Path) -> list[Path]:
 
 
 def _label_for(img: Path) -> Path | None:
-    for c in (img.parent / f"{img.stem}.txt",
-              img.parent.parent / "labels" / f"{img.stem}.txt",
-              img.parent / "labels" / f"{img.stem}.txt"):
+    for c in (
+        img.parent / f"{img.stem}.txt",
+        img.parent.parent / "labels" / f"{img.stem}.txt",
+        img.parent / "labels" / f"{img.stem}.txt",
+    ):
         if c.exists():
             return c
     return None
@@ -40,7 +43,7 @@ def split_items(images: list[Path], train_r: float, val_r: float, seed: int = 42
     n = len(items)
     nt = int(n * train_r)
     nv = int(n * val_r)
-    return {"train": items[:nt], "val": items[nt:nt + nv], "test": items[nt + nv:]}
+    return {"train": items[:nt], "val": items[nt : nt + nv], "test": items[nt + nv :]}
 
 
 def _read_classes(inp: Path, classes_arg: str | None) -> list[str]:
@@ -53,8 +56,15 @@ def _read_classes(inp: Path, classes_arg: str | None) -> list[str]:
 
 
 def write_data_yaml(out: Path, classes: list[str]) -> Path:
-    lines = [f"path: {out.resolve()}", "train: train/images", "val: val/images",
-             "test: test/images", "", f"nc: {len(classes)}", "names:"]
+    lines = [
+        f"path: {out.resolve()}",
+        "train: train/images",
+        "val: val/images",
+        "test: test/images",
+        "",
+        f"nc: {len(classes)}",
+        "names:",
+    ]
     lines += [f"  {i}: {c}" for i, c in enumerate(classes)]
     p = out / "data.yaml"
     p.write_text("\n".join(lines) + "\n")
@@ -78,6 +88,12 @@ def prepare_dataset(args) -> int:
                 shutil.copy(lbl, out / name / "labels" / f"{img.stem}.txt")
     classes = _read_classes(inp, args.classes)
     yaml_path = write_data_yaml(out, classes)
-    log.info("Dataset hazır: train=%d val=%d test=%d, sınıflar=%s → %s",
-             len(split["train"]), len(split["val"]), len(split["test"]), classes, yaml_path)
+    log.info(
+        "Dataset hazır: train=%d val=%d test=%d, sınıflar=%s → %s",
+        len(split["train"]),
+        len(split["val"]),
+        len(split["test"]),
+        classes,
+        yaml_path,
+    )
     return 0

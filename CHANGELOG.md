@@ -102,3 +102,10 @@ Format [Keep a Changelog](https://keepachangelog.com/tr/1.0.0/) temellidir.
 ### Milestone 15 — docs/mimari.md v2.0 + doküman tamamlama
 - `docs/mimari.md`: v1.1 YZ katmanı (§1–7) korundu + sistem katmanı (§8: topoloji, event/annotation sözleşmesi, NV/QoD akışı, mock↔gerçek sınırı), yorgunluk/MediaPipe gerekçesi (§9), kamera enumerasyonu (§10).
 - `docs/kurulum.md`, `docs/calistirma.md`, `docs/kalibrasyon.md`, `docs/degerlendirme.md`, `docs/README.md` eklendi.
+
+### Milestone 16 — testler + CI + DoD + izlenebilirlik
+- `.github/workflows/ci.yml`: ruff + black + pytest (`-m "not integration"`); hafif kurulum (torch/ultralytics hariç).
+- `tests/test_integration.py` (`@pytest.mark.integration`, CI'da skip), `tests/README.md`.
+- `docs/sartname_izlenebilirlik.md`: her şartname maddesi → modül eşlemesi.
+- `ruff` + `black` tüm kod tabanında temiz; 58 unit test geçti, 2 integration skip.
+- README.md gözden geçirildi (öne çıkanlar, tam doküman tablosu, test & kalite).

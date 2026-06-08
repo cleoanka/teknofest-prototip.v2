@@ -8,6 +8,7 @@
 `ai_mode` çözümlemesi: real | mock | auto (ultralytics+ağırlık varsa real, yoksa mock).
 Tasarım kuralı: downstream'e asla tam kare gönderilmez; yalnızca ROI crop'lar.
 """
+
 from __future__ import annotations
 
 import logging
@@ -30,26 +31,26 @@ class Detection:
 
     bbox: BBox
     track_id: int | None = None
-    cabin_roi: "np.ndarray | None" = field(default=None, repr=False)
-    plate_roi: "np.ndarray | None" = field(default=None, repr=False)
+    cabin_roi: np.ndarray | None = field(default=None, repr=False)
+    plate_roi: np.ndarray | None = field(default=None, repr=False)
 
 
 class Detector(ABC):
     """Tespit motoru soyut arayüzü (gerçek/mock implementasyonlar bunu uygular)."""
 
     @abstractmethod
-    def detect(self, frame: "np.ndarray") -> list[Detection]:
+    def detect(self, frame: np.ndarray) -> list[Detection]:
         """Kareyi işle → araç tespitleri (track_id atanmış olabilir)."""
         raise NotImplementedError
 
-    def close(self) -> None:  # pragma: no cover - opsiyonel kaynak temizliği
-        pass
+    def close(self) -> None:  # noqa: B027 - opsiyonel hook (alt sınıflar override edebilir)
+        """Opsiyonel kaynak temizliği (gerçek dedektörler override eder)."""
 
 
 class StubDetector(Detector):
     """Tespit üretmez (iskelet/test)."""
 
-    def detect(self, frame: "np.ndarray") -> list[Detection]:
+    def detect(self, frame: np.ndarray) -> list[Detection]:
         return []
 
 
@@ -98,8 +99,9 @@ def build_detector(cfg) -> Detector:
 # --------------------------------------------------------------------------- #
 # ROI geometri (modelden bağımsız, saf hesap)
 # --------------------------------------------------------------------------- #
-def crop_rois(frame: "np.ndarray", bbox: BBox, cabin_ratio: float = 0.55
-              ) -> tuple["np.ndarray | None", "np.ndarray | None"]:
+def crop_rois(
+    frame: np.ndarray, bbox: BBox, cabin_ratio: float = 0.55
+) -> tuple[np.ndarray | None, np.ndarray | None]:
     """Araç bbox'ından iki ROI üret: (sürücü kabini=üst, plaka bölgesi=alt).
 
     YOLO26l ve OCR yalnızca bu küçük crop'lar üzerinde çalışır (zero-waste prensibi).

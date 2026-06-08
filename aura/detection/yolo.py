@@ -4,6 +4,7 @@
 mode ultralytics'e dahildir (`tracker="bytetrack.yaml"`). Yalnızca config'teki
 araç sınıfları geçirilir; her tespit için ROI crop'lar üretilir.
 """
+
 from __future__ import annotations
 
 import logging
@@ -38,13 +39,18 @@ class YOLO26Detector(Detector):
         vc = cfg.get("models.detector.vehicle_classes", [])
         self.vehicle_classes = set(vc) if vc else set()
         self.device = _resolve_device(cfg.get("runtime.device", "auto"))
-        log.info("YOLO26 yüklendi: %s (imgsz=%d, tracker=%s)",
-                 self.path, self.imgsz, self.tracker)
+        log.info("YOLO26 yüklendi: %s (imgsz=%d, tracker=%s)", self.path, self.imgsz, self.tracker)
 
-    def detect(self, frame: "np.ndarray") -> list[Detection]:
+    def detect(self, frame: np.ndarray) -> list[Detection]:
         results = self.model.track(
-            frame, persist=True, conf=self.conf, iou=self.iou, imgsz=self.imgsz,
-            tracker=f"{self.tracker}.yaml", device=self.device, verbose=False,
+            frame,
+            persist=True,
+            conf=self.conf,
+            iou=self.iou,
+            imgsz=self.imgsz,
+            tracker=f"{self.tracker}.yaml",
+            device=self.device,
+            verbose=False,
         )
         dets: list[Detection] = []
         if not results:
@@ -56,13 +62,23 @@ class YOLO26Detector(Detector):
             return dets
         for b in boxes:
             cls_idx = int(b.cls.item())
-            cls_name = names[cls_idx] if isinstance(names, (list, tuple)) else names.get(cls_idx, str(cls_idx))
+            cls_name = (
+                names[cls_idx]
+                if isinstance(names, (list, tuple))
+                else names.get(cls_idx, str(cls_idx))
+            )
             if self.vehicle_classes and cls_name not in self.vehicle_classes:
                 continue
             xyxy = b.xyxy[0].tolist()
             tid = int(b.id.item()) if getattr(b, "id", None) is not None else None
-            bbox = BBox(x1=xyxy[0], y1=xyxy[1], x2=xyxy[2], y2=xyxy[3],
-                        conf=float(b.conf.item()), cls=cls_name)
+            bbox = BBox(
+                x1=xyxy[0],
+                y1=xyxy[1],
+                x2=xyxy[2],
+                y2=xyxy[3],
+                conf=float(b.conf.item()),
+                cls=cls_name,
+            )
             d = Detection(bbox=bbox, track_id=tid)
             d.cabin_roi, d.plate_roi = crop_rois(frame, bbox)
             dets.append(d)

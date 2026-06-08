@@ -1,4 +1,5 @@
 """Config router'ı — /config (GET/PATCH). Çalışma zamanı ayarları."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, Request

@@ -1,4 +1,5 @@
 """§6.0 sözleşmeleri + accumulator/risk mantığı (model gerektirmez)."""
+
 from __future__ import annotations
 
 from aura.accumulator import Accumulator
@@ -45,7 +46,7 @@ def test_accumulator_driver_change_and_risk(cfg):
     rec, ev = acc.update_track(1, frame_idx=1, bbox=b, driver=DriverState(no_seatbelt=True))
     types = {e.type for e in ev}
     assert "DRIVER_STATE" in types
-    assert "RISK_ALERT" in types          # config'teki 'unbelted' kuralı
+    assert "RISK_ALERT" in types  # config'teki 'unbelted' kuralı
     assert "unbelted" in rec.risk_flags
 
 

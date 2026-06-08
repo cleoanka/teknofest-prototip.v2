@@ -4,6 +4,7 @@ Cabin ROI'nin baskın rengini sentetik senaryo sürücü davranışına eşler. 
 olmadan anlamlı DRIVER_STATE event'leri + risk tetikleri üretir (gerçek YOLO26l
 yerine demo/CI fallback'i).
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -13,9 +14,9 @@ from aura.schema import DriverState
 
 # Sentetik araç renkleri (BGR) → sürücü durum bayrakları
 _REFS: list[tuple[tuple[int, int, int], set[str]]] = [
-    ((90, 200, 255), {"phone"}),                    # araç 1 (sarı/turuncu)
+    ((90, 200, 255), {"phone"}),  # araç 1 (sarı/turuncu)
     ((120, 255, 120), {"smoking", "no_seatbelt"}),  # araç 2 (yeşil)
-    ((200, 150, 255), {"fatigue"}),                 # araç 3 (pembe)
+    ((200, 150, 255), {"fatigue"}),  # araç 3 (pembe)
 ]
 
 
@@ -24,7 +25,7 @@ class MockDriverClassifier(DriverClassifier):
         self.cfg = cfg
         self.max_dist = 160.0  # bundan uzaksa "durum yok" (arka plan)
 
-    def infer(self, cabin_roi: "np.ndarray | None") -> DriverState:
+    def infer(self, cabin_roi: np.ndarray | None) -> DriverState:
         if cabin_roi is None or cabin_roi.size == 0:
             return DriverState()
         mean = cabin_roi.reshape(-1, cabin_roi.shape[-1])[:, :3].mean(axis=0)

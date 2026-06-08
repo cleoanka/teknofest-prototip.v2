@@ -1,4 +1,5 @@
 """AURA model eğitimi CLI — `python -m train` (plan.md §4.2)."""
+
 from __future__ import annotations
 
 import argparse
@@ -18,8 +19,7 @@ def build_parser() -> argparse.ArgumentParser:
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    sub = p.add_subparsers(dest="command", required=True,
-                           metavar="{detector,driver-state,dataset}")
+    sub = p.add_subparsers(dest="command", required=True, metavar="{detector,driver-state,dataset}")
 
     d = sub.add_parser("detector", help="Stage-1 araç tespit modelini eğit (YOLO26s fine-tune)")
     d.add_argument("--data", required=True, help="data.yaml yolu")
@@ -31,8 +31,9 @@ def build_parser() -> argparse.ArgumentParser:
     d.add_argument("--project", default="runs/detector")
     d.add_argument("--name", default="aura")
 
-    ds = sub.add_parser("driver-state",
-                        help="Stage-2 sürücü durumu modelini eğit (YOLO26l fine-tune)")
+    ds = sub.add_parser(
+        "driver-state", help="Stage-2 sürücü durumu modelini eğit (YOLO26l fine-tune)"
+    )
     ds.add_argument("--data", required=True, help="data.yaml yolu")
     ds.add_argument("--epochs", type=int, default=100)
     ds.add_argument("--imgsz", type=int, default=320, help="Cabin ROI küçük → 320 önerilir")
@@ -57,12 +58,15 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     if args.command == "detector":
         from train.train_detector import train_detector
+
         return train_detector(args)
     if args.command == "driver-state":
         from train.train_driver_state import train_driver_state
+
         return train_driver_state(args)
     if args.command == "dataset":
         from train.prepare_dataset import prepare_dataset
+
         return prepare_dataset(args)
     return 1
 

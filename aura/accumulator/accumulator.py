@@ -3,6 +3,7 @@
 Tüm modül çıktılarını `TrackRecord`'a yazar, durum değişimlerinde `AuraEvent` üretir
 ve config'ten gelen risk kurallarını uygular. Kare-merkezli değil, ID-merkezli çalışır.
 """
+
 from __future__ import annotations
 
 from aura.schema import BBox, DriverState, PlateState, SpeedState, TrackRecord, make_event
@@ -17,21 +18,43 @@ class Accumulator:
         self.long_lived = int(cfg.get("risk.long_lived_frames", 90))
 
     # --- ana giriş noktası ------------------------------------------------- #
-    def update_track(self, track_id: int, *, frame_idx: int, bbox: BBox,
-                     vehicle_class: str = "", plate: PlateState | None = None,
-                     driver: DriverState | None = None, speed: SpeedState | None = None,
-                     qod_active: bool = False, qod_profile: str | None = None):
+    def update_track(
+        self,
+        track_id: int,
+        *,
+        frame_idx: int,
+        bbox: BBox,
+        vehicle_class: str = "",
+        plate: PlateState | None = None,
+        driver: DriverState | None = None,
+        speed: SpeedState | None = None,
+        qod_active: bool = False,
+        qod_profile: str | None = None,
+    ):
         events = []
         rec = self.tracks.get(track_id)
         is_new = rec is None
         if is_new:
-            rec = TrackRecord(track_id=track_id, vehicle_class=vehicle_class,
-                              first_frame=frame_idx, last_frame=frame_idx, bbox=bbox)
+            rec = TrackRecord(
+                track_id=track_id,
+                vehicle_class=vehicle_class,
+                first_frame=frame_idx,
+                last_frame=frame_idx,
+                bbox=bbox,
+            )
             self.tracks[track_id] = rec
-            events.append(make_event(track_id, "DETECTION_UPDATE", {
-                "bbox": [bbox.x1, bbox.y1, bbox.x2, bbox.y2],
-                "cls": vehicle_class, "conf": bbox.conf, "new": True,
-            }))
+            events.append(
+                make_event(
+                    track_id,
+                    "DETECTION_UPDATE",
+                    {
+                        "bbox": [bbox.x1, bbox.y1, bbox.x2, bbox.y2],
+                        "cls": vehicle_class,
+                        "conf": bbox.conf,
+                        "new": True,
+                    },
+                )
+            )
 
         rec.bbox = bbox
         rec.last_frame = frame_idx
@@ -40,9 +63,16 @@ class Accumulator:
 
         if driver is not None:
             if driver.active_flags() != rec.driver.active_flags():
-                events.append(make_event(track_id, "DRIVER_STATE", {
-                    "flags": driver.active_flags(), "confidence": driver.confidence,
-                }))
+                events.append(
+                    make_event(
+                        track_id,
+                        "DRIVER_STATE",
+                        {
+                            "flags": driver.active_flags(),
+                            "confidence": driver.confidence,
+                        },
+                    )
+                )
             rec.driver = driver
 
         if plate is not None:
@@ -51,23 +81,46 @@ class Accumulator:
             # yoksa prev_status zaten güncellenmiş olur ve geçiş event'i kaçar.
             rec.plate = plate.model_copy(deep=True)
             if plate.status == "confirmed" and prev_status != "confirmed":
-                events.append(make_event(track_id, "PLATE_CONFIRMED", {
-                    "value": plate.value, "confidence": plate.confidence,
-                }))
+                events.append(
+                    make_event(
+                        track_id,
+                        "PLATE_CONFIRMED",
+                        {
+                            "value": plate.value,
+                            "confidence": plate.confidence,
+                        },
+                    )
+                )
             elif plate.status == "rejected" and prev_status != "rejected":
-                events.append(make_event(track_id, "PLATE_REJECTED", {
-                    "reason": "consensus_fail", "votes": plate.votes,
-                }))
+                events.append(
+                    make_event(
+                        track_id,
+                        "PLATE_REJECTED",
+                        {
+                            "reason": "consensus_fail",
+                            "votes": plate.votes,
+                        },
+                    )
+                )
 
         if speed is not None:
             prev = rec.speed
             rec.speed = speed
-            if (speed.value_kmh != prev.value_kmh
-                    or speed.relative_velocity_flag != prev.relative_velocity_flag):
-                events.append(make_event(track_id, "SPEED", {
-                    "value_kmh": speed.value_kmh, "mode": speed.mode,
-                    "relative_velocity_flag": speed.relative_velocity_flag,
-                }))
+            if (
+                speed.value_kmh != prev.value_kmh
+                or speed.relative_velocity_flag != prev.relative_velocity_flag
+            ):
+                events.append(
+                    make_event(
+                        track_id,
+                        "SPEED",
+                        {
+                            "value_kmh": speed.value_kmh,
+                            "mode": speed.mode,
+                            "relative_velocity_flag": speed.relative_velocity_flag,
+                        },
+                    )
+                )
 
         rec.qod_active = qod_active
         rec.qod_profile = qod_profile

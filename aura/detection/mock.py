@@ -5,6 +5,7 @@ basit IoU tabanlı bir takipçi ile ID atar (ByteTrack'in mock muadili). Bu saye
 tüm pipeline, dashboard ve testler gerçek ağırlık olmadan da çalışır. `ai_mode=mock`
 veya `auto` (ağırlık yok) iken devreye girer.
 """
+
 from __future__ import annotations
 
 import cv2
@@ -95,8 +96,9 @@ class MockDetector(Detector):
 
         dets = []
         for tid, (x1, y1, x2, y2) in self.tracker.update(boxes):
-            bbox = BBox(x1=float(x1), y1=float(y1), x2=float(x2), y2=float(y2),
-                        conf=0.9, cls=self.cls0)
+            bbox = BBox(
+                x1=float(x1), y1=float(y1), x2=float(x2), y2=float(y2), conf=0.9, cls=self.cls0
+            )
             d = Detection(bbox=bbox, track_id=tid)
             d.cabin_roi, d.plate_roi = crop_rois(frame, bbox)
             dets.append(d)

@@ -4,6 +4,7 @@ OpenCV ile 0–N indekslerini dener; platforma göre isim çözer (macOS AVFound
 Windows DirectShow). iPhone Continuity Camera standart webcam olarak listelenir.
 `AURA_CAMERA_PROBE=0` ile donanım taraması atlanır (CI/başsız ortam).
 """
+
 from __future__ import annotations
 
 import logging
@@ -24,7 +25,9 @@ def _macos_camera_names() -> list[str]:
     try:
         out = subprocess.run(
             ["system_profiler", "SPCameraDataType"],
-            capture_output=True, text=True, timeout=3.0,
+            capture_output=True,
+            text=True,
+            timeout=3.0,
         ).stdout
         names = []
         for line in out.splitlines():

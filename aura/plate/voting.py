@@ -3,6 +3,7 @@
 Sweet spot içindeyken yapılan ardışık OCR okumaları toplanır; tampon dolunca en sık
 okuma `consensus_ratio` eşiğini geçerse konsensüs sağlanır.
 """
+
 from __future__ import annotations
 
 from collections import Counter

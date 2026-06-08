@@ -4,6 +4,7 @@ Sınıflar: phone, smoking, no_seatbelt, fatigue. 320px imgsz (cabin ROI küçü
 Yorgunluk bir detection sınıfıdır — MediaPipe/landmark KULLANILMAZ.
 Çıktı `weights/custom_driver.pt` → config'te `models.driver_state.path` swap.
 """
+
 from __future__ import annotations
 
 import logging

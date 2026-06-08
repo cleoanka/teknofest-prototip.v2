@@ -8,6 +8,7 @@ Modlar:
 
 Sistem kendi sınırlarını tanır: kalibrasyon yoksa hız uydurmaz.
 """
+
 from __future__ import annotations
 
 import logging
@@ -30,13 +31,14 @@ class SpeedEstimator:
         self.real_distance = float(tw.get("real_distance_m", 20.0))
         self.rel_threshold = float(cfg.get("speed.relative_threshold", 0.012))
         self.window = int(cfg.get("speed.window", 8))
-        self._hist: dict[int, deque] = {}            # track_id -> (frame_idx, cy_norm)
-        self._tw: dict[int, dict] = {}               # tripwire durum makinesi
+        self._hist: dict[int, deque] = {}  # track_id -> (frame_idx, cy_norm)
+        self._tw: dict[int, dict] = {}  # tripwire durum makinesi
         self._ipm_warned = False
 
     # --- ana giriş --------------------------------------------------------- #
-    def update(self, track_id: int, bbox: BBox, frame_idx: int,
-               frame_shape: tuple[int, ...] | None = None) -> SpeedState:
+    def update(
+        self, track_id: int, bbox: BBox, frame_idx: int, frame_shape: tuple[int, ...] | None = None
+    ) -> SpeedState:
         h = frame_shape[0] if frame_shape else 1.0
         cy_norm = bbox.center[1] / h if h else 0.0
         hist = self._hist.setdefault(track_id, deque(maxlen=self.window))
@@ -59,7 +61,7 @@ class SpeedEstimator:
         df = f1 - f0
         if df <= 0:
             return False
-        v_norm = abs(y1 - y0) / df                  # normalize dikey hız (ekran/kare)
+        v_norm = abs(y1 - y0) / df  # normalize dikey hız (ekran/kare)
         return v_norm > self.rel_threshold
 
     # --- tripwire ---------------------------------------------------------- #
@@ -82,8 +84,9 @@ class SpeedEstimator:
         return s["kmh"]
 
     # --- ipm (opsiyonel modül) -------------------------------------------- #
-    def _ipm(self, track_id: int, bbox: BBox, frame_idx: int, rel_flag: bool,
-             frame_shape=None) -> SpeedState:
+    def _ipm(
+        self, track_id: int, bbox: BBox, frame_idx: int, rel_flag: bool, frame_shape=None
+    ) -> SpeedState:
         enabled = self.cfg.get("optional_modules.homography_ipm", False)
         if enabled:
             try:

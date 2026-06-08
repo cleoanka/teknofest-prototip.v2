@@ -7,6 +7,7 @@ araçlar koyu yol üzerinde parlak renkli bloklar olarak çizilir.
 
     python -m aura.synthetic --out data/samples
 """
+
 from __future__ import annotations
 
 import argparse
@@ -20,19 +21,31 @@ import numpy as np
 # (id, renk BGR, şerit_x_norm, giriş_frame, plaka, sürücü_durumu)
 SCENARIO = [
     {
-        "id": 1, "color": (90, 200, 255), "lane_x": 0.33, "enter": 0,
-        "plate": "34ABC123", "vehicle_class": "car",
+        "id": 1,
+        "color": (90, 200, 255),
+        "lane_x": 0.33,
+        "enter": 0,
+        "plate": "34ABC123",
+        "vehicle_class": "car",
         "driver": {"phone": True, "smoking": False, "no_seatbelt": False, "fatigue": False},
     },
     {
-        "id": 2, "color": (120, 255, 120), "lane_x": 0.55, "enter": 15,
-        "plate": "06FY4571", "vehicle_class": "truck",
+        "id": 2,
+        "color": (120, 255, 120),
+        "lane_x": 0.55,
+        "enter": 15,
+        "plate": "06FY4571",
+        "vehicle_class": "truck",
         "driver": {"phone": False, "smoking": True, "no_seatbelt": True, "fatigue": False},
     },
     {
         # Sağ şerit: sweet-spot (x:0.30–0.70) DIŞINDA → OCR gating'i gösterir (plaka okunmaz)
-        "id": 3, "color": (200, 150, 255), "lane_x": 0.78, "enter": 35,
-        "plate": "35TR07", "vehicle_class": "car",
+        "id": 3,
+        "color": (200, 150, 255),
+        "lane_x": 0.78,
+        "enter": 35,
+        "plate": "35TR07",
+        "vehicle_class": "car",
         "driver": {"phone": False, "smoking": False, "no_seatbelt": False, "fatigue": True},
     },
 ]
@@ -95,16 +108,26 @@ def generate(out_dir: Path, frames: int, fps: int, W: int, H: int) -> tuple[Path
             py1 = y2 - ph - 2
             cv2.rectangle(frame, (px1, py1), (px1 + pw, py1 + ph), (235, 235, 235), -1)
             fs = max(0.3, ph / 22.0)
-            cv2.putText(frame, spec["plate"], (px1 + 2, py1 + ph - 2),
-                        cv2.FONT_HERSHEY_SIMPLEX, fs, (10, 10, 10), 1, cv2.LINE_AA)
-            frame_objs.append({
-                "id": spec["id"],
-                "bbox": [x1, y1, x2, y2],
-                "vehicle_class": spec["vehicle_class"],
-                "plate": spec["plate"],
-                "driver": spec["driver"],
-                "speed_kmh": round(40 + 50 * t, 1),
-            })
+            cv2.putText(
+                frame,
+                spec["plate"],
+                (px1 + 2, py1 + ph - 2),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                fs,
+                (10, 10, 10),
+                1,
+                cv2.LINE_AA,
+            )
+            frame_objs.append(
+                {
+                    "id": spec["id"],
+                    "bbox": [x1, y1, x2, y2],
+                    "vehicle_class": spec["vehicle_class"],
+                    "plate": spec["plate"],
+                    "driver": spec["driver"],
+                    "speed_kmh": round(40 + 50 * t, 1),
+                }
+            )
         gt["frames"].append({"frame": fi, "objects": frame_objs})
         writer.write(frame)
 

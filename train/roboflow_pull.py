@@ -1,7 +1,8 @@
 """Roboflow'dan veri seti çek (ROBOFLOW_API_KEY). Yoksa local veriyle çalışın.
 
-    python -m train.roboflow_pull --workspace W --project P --version 1
+python -m train.roboflow_pull --workspace W --project P --version 1
 """
+
 from __future__ import annotations
 
 import argparse
@@ -15,8 +16,10 @@ log = logging.getLogger("aura.train.roboflow")
 def roboflow_pull(args) -> int:
     key = os.environ.get("ROBOFLOW_API_KEY")
     if not key:
-        log.error("ROBOFLOW_API_KEY tanımlı değil. .env'e ekleyin veya local veri kullanın "
-                  "(docs/veri_seti.md).")
+        log.error(
+            "ROBOFLOW_API_KEY tanımlı değil. .env'e ekleyin veya local veri kullanın "
+            "(docs/veri_seti.md)."
+        )
         return 1
     from roboflow import Roboflow  # lazy
 

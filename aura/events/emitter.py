@@ -4,10 +4,11 @@ Pipeline `AuraEvent` (durum değişimleri) ve `AnnotationFrame` (kare başına b
 üretir. M2: in-memory halka tampon + callback kayıt defteri. M7: WS/SSE köprüsü
 bu callback'lere abone olur (iki-kanal tasarımı: events ayrı, annotations ayrı).
 """
+
 from __future__ import annotations
 
 from collections import deque
-from typing import Callable
+from collections.abc import Callable
 
 from aura.schema import AnnotationFrame, AuraEvent
 

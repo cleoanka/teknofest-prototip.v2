@@ -3,6 +3,7 @@
 Downstream'in tamamı (accumulator, events, API, dashboard, eval) yalnızca bu
 sözleşmeleri bilir. Bu modül değişmeden hiçbir katman sözleşme dışı veri beklemez.
 """
+
 from __future__ import annotations
 
 import time
@@ -112,8 +113,9 @@ class AnnotationFrame(BaseModel):
     tracks: list[dict] = Field(default_factory=list)  # bbox + label + track_id + risk_flags
 
 
-def make_event(track_id: int, type: EventType, payload: dict | None = None,
-               ts: float | None = None) -> AuraEvent:
+def make_event(
+    track_id: int, type: EventType, payload: dict | None = None, ts: float | None = None
+) -> AuraEvent:
     """AuraEvent kısa-yolu (ts verilmezse şimdi)."""
     return AuraEvent(
         track_id=track_id,

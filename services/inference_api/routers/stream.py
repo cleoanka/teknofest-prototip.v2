@@ -4,6 +4,7 @@
 kare başına bbox; `WS /stream/events` AuraEvent stream'i. Dashboard bbox toggle'ı
 client-side (canvas) yapar — sunucuya gidiş-geliş yok.
 """
+
 from __future__ import annotations
 
 import logging
@@ -38,7 +39,9 @@ def stream_config(patch: StreamConfigPatch, request: Request):
     if patch.bbox_overlay is not None:
         sm.bbox_overlay = patch.bbox_overlay
     if patch.conf_threshold is not None:
-        sm.cfg.data.setdefault("models", {}).setdefault("detector", {})["conf"] = patch.conf_threshold
+        sm.cfg.data.setdefault("models", {}).setdefault("detector", {})[
+            "conf"
+        ] = patch.conf_threshold
     return sm.status()
 
 
@@ -58,8 +61,10 @@ def stream_video(request: Request, bbox: bool = Query(False)):
             jpg = sm.latest_jpeg(bbox)
             if jpg:
                 idle = 0
-                yield (b"--" + _BOUNDARY.encode() + b"\r\n"
-                       b"Content-Type: image/jpeg\r\n\r\n" + jpg + b"\r\n")
+                yield (
+                    b"--" + _BOUNDARY.encode() + b"\r\n"
+                    b"Content-Type: image/jpeg\r\n\r\n" + jpg + b"\r\n"
+                )
             else:
                 idle += 1
                 if not sm.running and idle > 20:

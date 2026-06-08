@@ -3,6 +3,7 @@
 Araç sınıfları (car, truck, bus, minibus). ultralytics `model.train()`.
 Çıktı `weights/custom_detector.pt` → config'te `models.detector.path` swap.
 """
+
 from __future__ import annotations
 
 import logging

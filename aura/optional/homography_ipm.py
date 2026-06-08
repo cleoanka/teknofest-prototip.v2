@@ -7,6 +7,7 @@ yörünge hesabı için. Her kamera açısı uygun olmadığından toggle edileb
 Kalibrasyon `speed.calibration_file` (ornek_kamera.yaml) ipm bölümünden okunur:
 `src_points` (normalize ekran köşeleri) → `dst_points_m` (gerçek dünya metreleri).
 """
+
 from __future__ import annotations
 
 import logging
@@ -19,15 +20,14 @@ import yaml
 log = logging.getLogger("aura.optional.homography_ipm")
 
 _state: dict[int, dict] = {}
-_ipm_cache: dict[str, "IPM"] = {}
+_ipm_cache: dict[str, IPM] = {}
 
 
 class IPM:
     def __init__(self, src_points, dst_points_m):
         import cv2
 
-        self.H = cv2.getPerspectiveTransform(
-            np.float32(src_points), np.float32(dst_points_m))
+        self.H = cv2.getPerspectiveTransform(np.float32(src_points), np.float32(dst_points_m))
 
     def to_world(self, x: float, y: float) -> tuple[float, float]:
         import cv2
@@ -56,8 +56,9 @@ def _get_ipm(calib: dict, key: str) -> IPM:
     return ipm
 
 
-def ipm_speed(cfg, track_id: int, bbox, frame_idx: int, fps: float,
-              frame_shape=None) -> float | None:
+def ipm_speed(
+    cfg, track_id: int, bbox, frame_idx: int, fps: float, frame_shape=None
+) -> float | None:
     """IPM ile track hızı (km/h). Kalibrasyon yoksa None."""
     calib = _load_calib(cfg)
     if not calib or "src_points" not in calib or "dst_points_m" not in calib:
@@ -65,7 +66,7 @@ def ipm_speed(cfg, track_id: int, bbox, frame_idx: int, fps: float,
     ipm = _get_ipm(calib, str(cfg.get("speed.calibration_file")))
     H = frame_shape[0] if frame_shape else 1.0
     W = frame_shape[1] if frame_shape else 1.0
-    nx = ((bbox.x1 + bbox.x2) / 2) / W      # alt-orta nokta, normalize
+    nx = ((bbox.x1 + bbox.x2) / 2) / W  # alt-orta nokta, normalize
     ny = bbox.y2 / H
     wx, wy = ipm.to_world(nx, ny)
     st = _state.setdefault(track_id, {})

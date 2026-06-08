@@ -3,6 +3,7 @@
 `config/default.yaml` tek doğruluk kaynağıdır. Hiçbir eşik/flag koda gömülmez.
 Belirli env değişkenleri (AI_MODE, AURA_DEVICE, port'lar) YAML'ı override eder.
 """
+
 from __future__ import annotations
 
 import os

@@ -1,4 +1,5 @@
 """Sürücü-durum mock sınıflandırıcı (renk→durum eşlemesi, CI-uyumlu)."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -15,14 +16,14 @@ def _cabin(color) -> np.ndarray:
 
 def test_mock_maps_scenario_colors(cfg):
     clf = MockDriverClassifier(cfg)
-    assert clf.infer(_cabin((90, 200, 255))).phone is True            # araç 1
-    ds = clf.infer(_cabin((120, 255, 120)))                           # araç 2
+    assert clf.infer(_cabin((90, 200, 255))).phone is True  # araç 1
+    ds = clf.infer(_cabin((120, 255, 120)))  # araç 2
     assert ds.smoking is True and ds.no_seatbelt is True
-    assert clf.infer(_cabin((200, 150, 255))).fatigue is True         # araç 3
+    assert clf.infer(_cabin((200, 150, 255))).fatigue is True  # araç 3
 
 
 def test_mock_background_no_state(cfg):
-    ds = MockDriverClassifier(cfg).infer(_cabin((40, 40, 40)))        # asfalt
+    ds = MockDriverClassifier(cfg).infer(_cabin((40, 40, 40)))  # asfalt
     assert ds.active_flags() == []
 
 
