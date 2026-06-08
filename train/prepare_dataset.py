@@ -67,7 +67,7 @@ def write_data_yaml(out: Path, classes: list[str]) -> Path:
     ]
     lines += [f"  {i}: {c}" for i, c in enumerate(classes)]
     p = out / "data.yaml"
-    p.write_text("\n".join(lines) + "\n")
+    p.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return p
 
 

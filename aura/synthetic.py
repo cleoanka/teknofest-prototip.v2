@@ -139,7 +139,7 @@ def generate(out_dir: Path, frames: int, fps: int, W: int, H: int) -> tuple[Path
         writer.write(frame)
 
     writer.release()
-    gt_path.write_text(json.dumps(gt, indent=2, ensure_ascii=False))
+    gt_path.write_text(json.dumps(gt, indent=2, ensure_ascii=False), encoding="utf-8")
     return video_path, gt_path
 
 
