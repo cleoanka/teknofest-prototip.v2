@@ -1,0 +1,17 @@
+# Örnek kamera kalibrasyon dosyası (tripwire modu).
+# speed.calibration_file bu dosyayı işaret ederse tripwire hız ölçümü etkinleşir.
+# Gerçek sahada: iki yol işaretini ölçüp aralarındaki gerçek mesafeyi (metre) girin.
+
+camera_id: ornek_kamera
+mount:
+  height_m: 6.0
+  pitch_deg: 18.0
+tripwire:
+  line_a_y: 0.40          # üst çizgi (normalize ekran y, 0-1)
+  line_b_y: 0.70          # alt çizgi
+  real_distance_m: 20.0   # iki çizgi arası yol üzerindeki gerçek mesafe (metre)
+  fps: 30                 # kaynak FPS (frame-delta → saniye dönüşümü için)
+# IPM (opsiyonel homography_ipm modülü etkinse kullanılır):
+ipm:
+  src_points: [[0.30, 0.45], [0.70, 0.45], [0.95, 0.95], [0.05, 0.95]]
+  dst_points_m: [[0, 0], [3.5, 0], [3.5, 20], [0, 20]]
