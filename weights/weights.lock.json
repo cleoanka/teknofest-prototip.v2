@@ -1,10 +1,10 @@
 {
   "yolo26s.pt": {
     "sha256": "646f8bc3fe0a656803d95c294f7852321748cb29d13466a1af8862e2db384a1b",
-    "url": "https://github.com/ultralytics/assets/releases/download/v9.0.0/yolo26s.pt"
+    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26s.pt"
   },
   "yolo26l.pt": {
     "sha256": "9fe3c544f2b19bebad7ea41e76d7ad3d88b7c2f10d11d24430c5311f6b32db26",
-    "url": "https://github.com/ultralytics/assets/releases/download/v9.0.0/yolo26l.pt"
+    "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26l.pt"
   }
 }

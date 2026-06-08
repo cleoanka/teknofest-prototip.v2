@@ -9,6 +9,9 @@ data/raw/
 data/samples/*.mp4
 data/samples/*.avi
 eval_results/
+output/
+video_*.mp4
+_run_on_video.py
 
 # Python
 .venv/
