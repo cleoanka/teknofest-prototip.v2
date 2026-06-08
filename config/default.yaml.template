@@ -18,6 +18,8 @@ models:
     iou: 0.45
     imgsz: 640
     vehicle_classes: [car, truck, bus, minibus, motorcycle]
+    mock_bright_threshold: 90     # mock dedektör (ağırlık yokken) parlaklık eşiği
+    mock_min_area: 300            # mock dedektör min blob alanı (şerit gürültüsünü eler)
   driver_state:
     path: weights/yolo26l.pt
     conf: 0.40

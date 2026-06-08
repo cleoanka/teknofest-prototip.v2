@@ -19,3 +19,10 @@ Format [Keep a Changelog](https://keepachangelog.com/tr/1.0.0/) temellidir.
 - `events.EventEmitter` (gerçek): event/annotation halka tamponu + callback kayıt defteri (M7 WS köprüsü için).
 - `python -m aura` CLI (§4.1 argparse) + `Pipeline.run_video/frames`.
 - `tests/test_contracts.py`: sözleşme + accumulator + risk testleri (5 geçti).
+
+### Milestone 3 — detection + ByteTrack + ROI crop → accumulator (en kısa uçtan-uca)
+- `aura/detection/yolo.py`: `YOLO26Detector` (gerçek) — ultralytics YOLO26 + ByteTrack, araç sınıf filtresi, ROI crop.
+- `aura/detection/mock.py`: `MockDetector` (deterministik) — parlak araç bloklarını eşikler + `SimpleIoUTracker` ile kalıcı ID; ağırlık olmadan tüm hat çalışır.
+- `build_detector` + `resolve_ai_mode`: real/mock/auto çözümlemesi (lazy import).
+- Uçtan-uca doğrulandı: sentetik videoda 3 araç kalıcı ID ile takip, DETECTION_UPDATE event'leri, 90 annotation karesi.
+- `tests/test_detection.py`: mock dedektör + IoU + ROI testleri (CI-uyumlu).
