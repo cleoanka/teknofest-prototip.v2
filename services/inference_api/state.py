@@ -14,7 +14,7 @@ import time
 
 import cv2
 
-from aura.config import load_config
+from aura.config import load_config, resolve_source
 from aura.pipeline import Pipeline
 
 log = logging.getLogger("aura.api.stream")
@@ -75,7 +75,7 @@ class StreamManager:
 
     def start(self, source=None, device=None, bbox_overlay=True) -> None:
         self.stop()
-        self.source = source if source not in (None, "") else self.cfg.get("runtime.source")
+        self.source = source if source not in (None, "") else resolve_source(self.cfg)
         self.device = device or self.cfg.get("runtime.device")
         self.bbox_overlay = bbox_overlay
         if device:

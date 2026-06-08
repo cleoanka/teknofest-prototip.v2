@@ -48,15 +48,15 @@ def run(frames: int) -> int:
         return 1
 
     # Config yükle
-    from aura.config import load_config
+    from aura.config import load_config, resolve_source
 
     cfg = load_config()
     print(f"  ✓ config yüklendi ({cfg.path})")
 
-    # Örnek video okunabilir mi?
+    # Örnek video okunabilir mi? (kaynak yoksa resolve_source örnek videoya düşer)
     import cv2
 
-    video = ROOT / cfg.get("runtime.source", "data/samples/ornek.mp4")
+    video = Path(str(resolve_source(cfg)))
     if not video.exists():
         print(f"  ✗ örnek video yok: {video} (önce: python -m aura.synthetic)")
         return 1
