@@ -92,3 +92,13 @@ Format [Keep a Changelog](https://keepachangelog.com/tr/1.0.0/) temellidir.
 - Pipeline/PlateReader/SpeedEstimator'a lazy hook'lar; kapalıyken davranış değişmez.
 - `docs/mimari_ek_moduller.md` (ana mimari yalnızca referans verir).
 - `tests/test_optional.py`: kapalıyken `sys.modules`'te yok + işlevsellik → toplam 58 test geçti.
+
+### Milestone 13 — CLI --help her yerde + docs/cli_referans.md
+- Tüm entry point'ler argparse `--help` (§4 şablonları); `docs/cli_referans.md` gerçek çıktılardan (10 komut).
+
+### Milestone 14 — docs/api_referans.md
+- Tüm endpoint'ler (inference_api + mock'lar): curl + httpx + canlı response örnekleri.
+
+### Milestone 15 — docs/mimari.md v2.0 + doküman tamamlama
+- `docs/mimari.md`: v1.1 YZ katmanı (§1–7) korundu + sistem katmanı (§8: topoloji, event/annotation sözleşmesi, NV/QoD akışı, mock↔gerçek sınırı), yorgunluk/MediaPipe gerekçesi (§9), kamera enumerasyonu (§10).
+- `docs/kurulum.md`, `docs/calistirma.md`, `docs/kalibrasyon.md`, `docs/degerlendirme.md`, `docs/README.md` eklendi.
