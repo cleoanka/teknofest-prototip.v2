@@ -33,9 +33,14 @@ class RealOCR(OCREngine):
     def __init__(self, cfg):
         import easyocr
 
+        from aura.device import cuda_is_usable
+
         langs = list(cfg.get("plate.ocr_lang", ["tr"]))
-        self.reader = easyocr.Reader(langs, gpu=False, verbose=False)
-        log.info("EasyOCR yüklendi (langs=%s)", langs)
+        # GPU varsa (ve doğrulanmış torch derlemesiyle çalışıyorsa) OCR'ı da
+        # hızlandır; aksi halde CPU. cuda_is_usable() önbellekli probe kullanır.
+        use_gpu = bool(cfg.get("plate.ocr_gpu", True)) and cuda_is_usable()
+        self.reader = easyocr.Reader(langs, gpu=use_gpu, verbose=False)
+        log.info("EasyOCR yüklendi (langs=%s, gpu=%s)", langs, use_gpu)
 
     def read(self, plate_roi, vehicle_crop=None) -> tuple[str | None, float]:
         if plate_roi is None or getattr(plate_roi, "size", 0) == 0:
