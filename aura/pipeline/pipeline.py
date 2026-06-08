@@ -16,6 +16,7 @@ from aura.accumulator.accumulator import Accumulator
 from aura.detection.detector import build_detector, crop_rois
 from aura.driver_state.classifier import build_driver_classifier
 from aura.events.emitter import EventEmitter
+from aura.optional.loader import get_optional
 from aura.plate.reader import PlateReader
 from aura.preprocessing.preprocess import Preprocessor
 from aura.qod.client import QoDController
@@ -63,6 +64,8 @@ class Pipeline:
         self.emitter = EventEmitter()
         self.frame_idx = 0
         self.fps = 30.0
+        # §8 opsiyonel: kapalıysa None döner, import bile yapılmaz (lazy)
+        self.zwp = get_optional(cfg, "zero_waste_payload")
 
     # --- tek kare ---------------------------------------------------------- #
     def process_frame(self, frame: "np.ndarray", frame_idx: int | None = None
@@ -105,7 +108,10 @@ class Pipeline:
                 qod_active=qod_active, qod_profile=qod_profile,
             )
             events.extend(ev)
-            track_dicts.append(record_to_annotation(rec))
+            adict = record_to_annotation(rec)
+            if self.zwp is not None:  # §8.1 sıfır-atık payload
+                adict["zwp"] = self.zwp.build_payload(adict, plate_roi)
+            track_dicts.append(adict)
 
         self.qod.tick()
         events.extend(self.qod.drain_events())
