@@ -1,20 +1,27 @@
-"""Stage-1 tespit + ROI kırpma arayüzü.
+"""Stage-1 tespit + ROI kırpma arayüzü ve dedektör fabrikası.
 
-M2: arayüz + ROI geometri + StubDetector (boş çıktı; akış doğru).
-M3: YOLO26Detector (gerçek) + MockDetector (numpy deterministik) + ByteTrack.
+- `YOLO26Detector` (gerçek): ultralytics YOLO + ByteTrack (lazy: aura/detection/yolo.py)
+- `MockDetector` (deterministik numpy): parlak araç bloklarını eşikler, IoU-takip eder
+  (lazy: aura/detection/mock.py) → model/ağırlık olmadan tüm hat uçtan-uca çalışır
+- `StubDetector`: boş çıktı (test/iskelet)
 
+`ai_mode` çözümlemesi: real | mock | auto (ultralytics+ağırlık varsa real, yoksa mock).
 Tasarım kuralı: downstream'e asla tam kare gönderilmez; yalnızca ROI crop'lar.
 """
 from __future__ import annotations
 
+import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from aura.schema import BBox
 
 if TYPE_CHECKING:
     import numpy as np
+
+log = logging.getLogger("aura.detection")
 
 
 @dataclass
@@ -40,22 +47,56 @@ class Detector(ABC):
 
 
 class StubDetector(Detector):
-    """M2 yer tutucusu: tespit üretmez. Akışı bozmadan pipeline'ı çalıştırır."""
+    """Tespit üretmez (iskelet/test)."""
 
     def detect(self, frame: "np.ndarray") -> list[Detection]:
         return []
 
 
-def build_detector(cfg) -> Detector:
-    """Config'e göre dedektör kur.
+# --------------------------------------------------------------------------- #
+# Fabrika + ai_mode çözümleme
+# --------------------------------------------------------------------------- #
+def _ultralytics_available() -> bool:
+    try:
+        import ultralytics  # noqa: F401
 
-    M2: her zaman StubDetector. M3'te ai_mode (real|mock|auto) çözümlemesi eklenir.
-    """
-    return StubDetector()
+        return True
+    except Exception:
+        return False
+
+
+def resolve_ai_mode(cfg) -> str:
+    """real | mock — config.runtime.ai_mode'a ('auto' dahil) göre."""
+    mode = str(cfg.get("runtime.ai_mode", "auto")).lower()
+    if mode == "real":
+        return "real"
+    if mode == "mock":
+        return "mock"
+    # auto: ultralytics kurulu VE detector ağırlığı mevcutsa real, aksi halde mock
+    weight = Path(cfg.get("models.detector.path", "weights/yolo26s.pt"))
+    if not weight.is_absolute():
+        weight = Path(__file__).resolve().parents[2] / weight
+    if _ultralytics_available() and weight.exists():
+        return "real"
+    return "mock"
+
+
+def build_detector(cfg) -> Detector:
+    """Config'e göre dedektör kur (ağır backend'ler lazy import edilir)."""
+    mode = resolve_ai_mode(cfg)
+    if mode == "real":
+        from aura.detection.yolo import YOLO26Detector
+
+        log.info("Detector: YOLO26 (gerçek) + %s", cfg.get("tracking.tracker", "bytetrack"))
+        return YOLO26Detector(cfg)
+    from aura.detection.mock import MockDetector
+
+    log.info("Detector: deterministik MOCK (ağırlık yok / ai_mode=mock)")
+    return MockDetector(cfg)
 
 
 # --------------------------------------------------------------------------- #
-# ROI geometri (modelden bağımsız, saf hesap) — M3'te dedektör çıktısına uygulanır.
+# ROI geometri (modelden bağımsız, saf hesap)
 # --------------------------------------------------------------------------- #
 def crop_rois(frame: "np.ndarray", bbox: BBox, cabin_ratio: float = 0.55
               ) -> tuple["np.ndarray | None", "np.ndarray | None"]:
