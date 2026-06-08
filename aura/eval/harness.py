@@ -114,8 +114,10 @@ def run_eval(
     }
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
-    (out / "report.json").write_text(json.dumps(result, indent=2, ensure_ascii=False))
-    (out / "report.md").write_text(report_md)
+    (out / "report.json").write_text(
+        json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    (out / "report.md").write_text(report_md, encoding="utf-8")
     log.info("Eval raporu yazıldı: %s", out / "report.md")
     return result
 

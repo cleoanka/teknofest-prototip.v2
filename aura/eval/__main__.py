@@ -36,6 +36,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Windows konsolu varsayılan kod sayfası (cp1254/cp1252) "Δ" gibi karakterleri
+    # kodlayamaz; UTF-8'e geç ki A/B tablosu platform bağımsız basılsın.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     args = build_parser().parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
     cfg = load_config(args.config)
