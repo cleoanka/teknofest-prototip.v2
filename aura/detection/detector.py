@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from aura.config import is_synthetic_source
 from aura.schema import BBox
 
 if TYPE_CHECKING:
@@ -93,9 +94,13 @@ def resolve_ai_mode(cfg) -> str:
     weight = Path(cfg.get("models.detector.path", "weights/yolo26s.pt"))
     if not weight.is_absolute():
         weight = Path(__file__).resolve().parents[2] / weight
-    if _ultralytics_available() and weight.exists():
-        return "real"
-    return "mock"
+    if not (_ultralytics_available() and weight.exists()):
+        return "mock"
+    # auto + ağırlık var: gömülü sentetik örnekte (renkli bloklar) COCO-YOLO araç
+    # göremez → mock (zengin, çalışan demo). Gerçek footage/kamera → gerçek YOLO.
+    if is_synthetic_source(cfg):
+        return "mock"
+    return "real"
 
 
 def build_detector(cfg) -> Detector:

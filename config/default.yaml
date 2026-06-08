@@ -5,11 +5,15 @@
 # =============================================================================
 
 runtime:
-  device: cuda                  # auto | cpu | cuda | mps
-  source: data/samples/video_3.mp4
+  device: auto                  # auto | cpu | cuda | mps  (auto: CUDA→MPS→CPU otomatik seçer; sabit 'cuda' CUDA'sız makinede/macOS'ta kırılır)
+  source: data/samples/ornek.mp4   # pakete gömülü sentetik demo; gerçek footage için kendi yolunuzu/kamera indeksini verin
   log_level: INFO               # DEBUG | INFO | WARNING
-  # AI çalışma modu: real (gerçek YOLO), mock (numpy deterministik), auto (ultralytics+ağırlık varsa real)
-  ai_mode: real                 # real | mock | auto
+  # AI çalışma modu:
+  #   real → her zaman gerçek YOLO (gerçek trafik footage'ı için)
+  #   mock → numpy deterministik (ağırlıksız, her makinede çalışan demo)
+  #   auto → ağırlık+ultralytics varsa gerçek YOLO; ANCAK gömülü sentetik örnekte mock
+  #          (COCO-YOLO renkli blokları araç olarak göremez → 0 bbox olurdu)
+  ai_mode: auto                 # real | mock | auto
 
 models:
   detector:

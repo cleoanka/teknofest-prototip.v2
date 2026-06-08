@@ -80,16 +80,13 @@ class StreamManager:
         self.bbox_overlay = bbox_overlay
         if device:
             self.cfg.data.setdefault("runtime", {})["device"] = device
-        self.pipeline = Pipeline(self.cfg)
-        self.pipeline.emitter.on_event(lambda e: self._push(self._event_queues, e.model_dump()))
-        self.pipeline.emitter.on_annotation(
-            lambda a: self._push(self._annot_queues, a.model_dump())
-        )
         self._running = True
         self.started_at = time.time()
+        # Pipeline (ağır model yüklemeleri: YOLO/EasyOCR ısınması) worker thread'inde
+        # kurulur → sunucu başlangıcını ve /stream/start isteğini BLOKLAMAZ.
         self._thread = threading.Thread(target=self._worker, daemon=True)
         self._thread.start()
-        log.info("Stream başladı: source=%s device=%s", self.source, self.device)
+        log.info("Stream başlatılıyor: source=%s device=%s", self.source, self.device)
 
     def stop(self) -> None:
         self._running = False
@@ -101,6 +98,20 @@ class StreamManager:
 
     # --- arka plan worker -------------------------------------------------- #
     def _worker(self) -> None:
+        # Ağır model yüklemeleri burada (arka planda) yapılır → başlangıcı bloklamaz.
+        try:
+            self.pipeline = Pipeline(self.cfg)
+            self.pipeline.emitter.on_event(
+                lambda e: self._push(self._event_queues, e.model_dump())
+            )
+            self.pipeline.emitter.on_annotation(
+                lambda a: self._push(self._annot_queues, a.model_dump())
+            )
+        except Exception:  # noqa: BLE001 - model/ağırlık hatası → akışı temiz durdur
+            log.exception("Pipeline kurulamadı — stream durduruluyor")
+            self._running = False
+            return
+
         src = self.source
         src = int(src) if isinstance(src, str) and src.isdigit() else src
         cap = cv2.VideoCapture(src)
@@ -113,33 +124,48 @@ class StreamManager:
         self.pipeline.speed.fps = fps
         is_file = isinstance(src, str)
         delay = 1.0 / fps if fps > 0 else 0.033
-        i, t0 = 0, time.time()
-        while self._running:
-            ok, frame = cap.read()
-            if not ok:
-                if is_file:
-                    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
-                    i = 0
-                    continue
-                break
-            anno, _events = self.pipeline.process_frame(frame, i)
-            ok1, raw = cv2.imencode(".jpg", frame)
-            ok2, annot = cv2.imencode(".jpg", self._draw(frame, anno))
-            with self._lock:
-                if ok1:
-                    self._raw_jpeg = raw.tobytes()
-                if ok2:
-                    self._annot_jpeg = annot.tobytes()
-                self.frame_count = i
-            i += 1
-            if i % 30 == 0:
-                dt = time.time() - t0
-                self.fps_actual = round(30.0 / dt, 1) if dt > 0 else 0.0
-                t0 = time.time()
-            time.sleep(delay)
-        cap.release()
-        self._running = False
-        log.info("Stream worker durdu (%d kare)", i)
+        i, t0, errors = 0, time.time(), 0
+        try:
+            while self._running:
+                ok, frame = cap.read()
+                if not ok:
+                    if is_file:  # dosya bitti → başa sar (sürekli demo döngüsü)
+                        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                        i = 0
+                        continue
+                    break
+                # Ham kareyi HEMEN yayınla: video akışı, (yavaş olabilen) tespitten
+                # bağımsız akıcı kalsın. Annotated kanal tespit bitince güncellenir.
+                ok_raw, raw = cv2.imencode(".jpg", frame)
+                if ok_raw:
+                    with self._lock:
+                        self._raw_jpeg = raw.tobytes()
+                # Tek bir karenin hatası tüm akışı düşürmesin (robustluk).
+                try:
+                    anno, _events = self.pipeline.process_frame(frame, i)
+                    ok_an, annot = cv2.imencode(".jpg", self._draw(frame, anno))
+                    if ok_an:
+                        with self._lock:
+                            self._annot_jpeg = annot.tobytes()
+                    errors = 0
+                except Exception:  # noqa: BLE001
+                    errors += 1
+                    log.exception("Kare işleme hatası (#%d, kare %d)", errors, i)
+                    if errors >= 30:
+                        log.error("Ardışık 30 kare işleme hatası — stream durduruluyor")
+                        break
+                with self._lock:
+                    self.frame_count = i
+                i += 1
+                if i % 30 == 0:
+                    dt = time.time() - t0
+                    self.fps_actual = round(30.0 / dt, 1) if dt > 0 else 0.0
+                    t0 = time.time()
+                time.sleep(delay)
+        finally:
+            cap.release()
+            self._running = False
+            log.info("Stream worker durdu (%d kare)", i)
 
     @staticmethod
     def _draw(frame, anno):

@@ -15,6 +15,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG = ROOT / "config" / "default.yaml"
+SAMPLE_VIDEO = ROOT / "data" / "samples" / "ornek.mp4"  # pakete gömülü sentetik demo
 
 log = logging.getLogger("aura.config")
 
@@ -109,3 +110,17 @@ def resolve_source(cfg: Config) -> str | int:
         return str(fallback)
     log.error("Kaynak bulunamadı ve örnek video da yok: %s", s)
     return s
+
+
+def is_synthetic_source(cfg: Config) -> bool:
+    """Çözülen kaynak, pakete gömülü sentetik örnek video mu?
+
+    Sentetik örnek (koyu asfalt üzerinde renkli bloklar) yalnızca mock dedektörle
+    anlamlı tespit üretir; COCO-eğitimli gerçek YOLO bu blokları araç olarak
+    GÖRMEZ (0 tespit). `ai_mode=auto` bu durumu algılayıp mock'a düşer — gerçek
+    footage/kamera kaynağında ise gerçek YOLO kullanılır.
+    """
+    try:
+        return Path(str(resolve_source(cfg))).resolve() == SAMPLE_VIDEO.resolve()
+    except OSError:
+        return False
