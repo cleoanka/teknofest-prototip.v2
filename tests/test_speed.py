@@ -15,6 +15,7 @@ def _bbox_at(cy_norm: float) -> BBox:
 
 
 def test_disabled_no_value(cfg):
+    cfg.data["speed"]["mode"] = "disabled"
     s = SpeedEstimator(cfg).update(1, _bbox_at(0.3), 0, FRAME)
     assert s.mode == "disabled" and s.value_kmh is None
 
