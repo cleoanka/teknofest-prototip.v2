@@ -5,6 +5,7 @@ yalnızca endpoint/credential Turkcell gateway'e çevrilir; sözleşme aynı kal
 
 Çalıştır: uvicorn services.qod_mock.main:app --port 8081
 """
+
 from __future__ import annotations
 
 import time
@@ -41,8 +42,11 @@ def health():
 def create_session(req: SessionRequest):
     sid = uuid.uuid4().hex
     session = {
-        "session_id": sid, "status": "ACTIVE", "granted_profile": req.profile,
-        "device_id": req.device_id, "created_at": time.time(),
+        "session_id": sid,
+        "status": "ACTIVE",
+        "granted_profile": req.profile,
+        "device_id": req.device_id,
+        "created_at": time.time(),
         "duration_seconds": req.duration_seconds,
     }
     _sessions[sid] = session

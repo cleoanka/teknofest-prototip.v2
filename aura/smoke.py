@@ -6,10 +6,10 @@ doğrular. Her durumda ne yaptığını açıkça raporlar. Başarıda exit 0.
 
     python -m aura.smoke --frames 10
 """
+
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent

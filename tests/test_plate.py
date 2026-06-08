@@ -1,4 +1,5 @@
 """Plaka: voting buffer, sweet-spot gating, regex, ret→QoD tetiği (model gerektirmez)."""
+
 from __future__ import annotations
 
 import numpy as np
@@ -61,7 +62,7 @@ def test_voting_reject_no_consensus():
 def test_sweet_spot_gates_ocr(cfg):
     r = PlateReader(cfg, ocr=FakeOCR([("34ABC123", 0.9)]))
     st = r.update(1, _roi(), _outside_bbox(), FRAME_SHAPE)
-    assert st.status == "pending" and st.value is None     # OCR pasif
+    assert st.status == "pending" and st.value is None  # OCR pasif
 
 
 def test_plate_confirm_and_early_exit(cfg):
@@ -88,4 +89,4 @@ def test_regex_rejects_invalid_plate(cfg):
     st = None
     for _ in range(cfg.get("plate.voting_buffer_size")):
         st = r.update(1, _roi(), bbox, FRAME_SHAPE)
-    assert st.status == "rejected"            # konsensüs var ama regex geçmez
+    assert st.status == "rejected"  # konsensüs var ama regex geçmez

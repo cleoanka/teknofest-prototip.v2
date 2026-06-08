@@ -5,6 +5,7 @@ serve eder. Mock'lar (qod_mock :8081, nv_mock :8082) ayrı servislerdir.
 
 Çalıştır: uvicorn services.inference_api.main:app --port 8080
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -45,11 +46,14 @@ def create_app(cfg=None) -> FastAPI:
         title="AURA Inference API",
         version=__version__,
         description="5G & YZ Akıllı Yol Güvenliği — gerçek YZ mikroservisi "
-                    "(araç/plaka/sürücü/hız + QoD). MJPEG + WS iki-kanal akış.",
+        "(araç/plaka/sürücü/hız + QoD). MJPEG + WS iki-kanal akış.",
         lifespan=lifespan,
     )
     app.add_middleware(
-        CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
     app.state.stream = StreamManager(cfg)
 
@@ -65,8 +69,12 @@ def create_app(cfg=None) -> FastAPI:
         idx = DASHBOARD_DIR / "index.html"
         if idx.exists():
             return FileResponse(str(idx))
-        return {"service": "AURA Inference API", "version": __version__,
-                "docs": "/docs", "dashboard": "M8'de eklenir"}
+        return {
+            "service": "AURA Inference API",
+            "version": __version__,
+            "docs": "/docs",
+            "dashboard": "M8'de eklenir",
+        }
 
     return app
 

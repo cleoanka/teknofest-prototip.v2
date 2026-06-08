@@ -1,4 +1,5 @@
 """Eğitim yardımcıları — cihaz çözümleme, custom ağırlık swap."""
+
 from __future__ import annotations
 
 import logging

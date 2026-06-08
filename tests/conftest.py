@@ -1,4 +1,5 @@
 """Pytest ortak fixture'ları + repo kökünü sys.path'e ekler."""
+
 from __future__ import annotations
 
 import sys

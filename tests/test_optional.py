@@ -1,4 +1,5 @@
 """§8 opsiyonel modüller — lazy import (kapalıyken import yok) + işlevsellik."""
+
 from __future__ import annotations
 
 import sys
@@ -18,6 +19,7 @@ _MODULES = ("zero_waste_payload", "super_resolution", "homography_ipm")
 def _ensure_sample():
     if not Path(SAMPLE).exists():
         from aura.synthetic import generate
+
         generate(Path("data/samples"), 90, 30, 640, 360)
 
 
@@ -33,7 +35,7 @@ def test_disabled_modules_not_imported(cfg):
     assert not is_enabled(cfg, "zero_waste_payload")
     Pipeline(cfg).run_video(SAMPLE, max_frames=20)
     for m in ("zero_waste_payload", "super_resolution"):
-        assert f"aura.optional.{m}" not in sys.modules   # kapalıyken import YOK
+        assert f"aura.optional.{m}" not in sys.modules  # kapalıyken import YOK
 
 
 def test_get_optional_none_when_off(cfg):
@@ -68,9 +70,10 @@ def test_homography_ipm_speed():
     cfg.data["optional_modules"]["homography_ipm"] = True
     cfg.data["speed"]["calibration_file"] = "config/calibration/ornek_kamera.yaml"
     from aura.optional.homography_ipm import _state, ipm_speed
+
     _state.clear()
     fs = (360, 640, 3)
     v1 = ipm_speed(cfg, 1, BBox(x1=300, y1=200, x2=340, y2=250), 0, 30, fs)
     v2 = ipm_speed(cfg, 1, BBox(x1=300, y1=230, x2=340, y2=300), 1, 30, fs)
-    assert v1 is None              # ilk kare → referans yok
-    assert v2 is not None and v2 >= 0   # IPM ile hız hesaplandı
+    assert v1 is None  # ilk kare → referans yok
+    assert v2 is not None and v2 >= 0  # IPM ile hız hesaplandı

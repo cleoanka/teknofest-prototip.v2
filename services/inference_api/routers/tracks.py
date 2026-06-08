@@ -1,4 +1,5 @@
 """Track router'ı — /tracks, /tracks/{id}, /tracks/{id}/history."""
+
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request

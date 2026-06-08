@@ -1,4 +1,5 @@
 """Değerlendirme metrikleri — plaka doğruluğu/CER, tespit oranı, sürücü F1."""
+
 from __future__ import annotations
 
 
@@ -46,8 +47,13 @@ def plate_accuracy(confirmed: dict[int, str], gt: dict) -> dict:
         best = min((cer(p, t) for t in truth), default=1.0)
         cers.append(best)
     mean_cer = round(sum(cers) / len(cers), 3) if cers else 1.0
-    return {"accuracy": round(acc, 1), "cer": mean_cer,
-            "confirmed": len(preds), "correct": len(correct), "gt_total": len(truth)}
+    return {
+        "accuracy": round(acc, 1),
+        "cer": mean_cer,
+        "confirmed": len(preds),
+        "correct": len(correct),
+        "gt_total": len(truth),
+    }
 
 
 def detection_rate(per_frame_detected: list[int], gt: dict) -> float:
@@ -62,7 +68,9 @@ def detection_rate(per_frame_detected: list[int], gt: dict) -> float:
     return round(100.0 * num / den, 1) if den else 0.0
 
 
-def small_object_rate(per_frame_small_detected: list[int], gt: dict, area_frac: float = 0.02) -> float:
+def small_object_rate(
+    per_frame_small_detected: list[int], gt: dict, area_frac: float = 0.02
+) -> float:
     """Küçük (uzak) nesneler için tespit oranı — GT bbox alanı kare alanının %2'sinden küçük."""
     frames = gt.get("frames", [])
     W, H = gt.get("width", 640), gt.get("height", 360)

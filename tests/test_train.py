@@ -1,4 +1,5 @@
 """Eğitim: dataset split + data.yaml (torch gerektirmez, CI-uyumlu)."""
+
 from __future__ import annotations
 
 import types
@@ -29,8 +30,9 @@ def test_prepare_dataset_end_to_end(tmp_path):
         cv2.imwrite(str(inp / "images" / f"img{i}.jpg"), np.zeros((20, 20, 3), np.uint8))
         (inp / "images" / f"img{i}.txt").write_text("0 0.5 0.5 0.2 0.2\n")
     out = tmp_path / "proc"
-    args = types.SimpleNamespace(input=str(inp), output=str(out),
-                                 train=0.8, val=0.1, classes="car,truck", seed=42)
+    args = types.SimpleNamespace(
+        input=str(inp), output=str(out), train=0.8, val=0.1, classes="car,truck", seed=42
+    )
     assert prepare_dataset(args) == 0
     assert (out / "data.yaml").exists()
     total = sum(len(list((out / s / "images").glob("*.jpg"))) for s in ("train", "val", "test"))

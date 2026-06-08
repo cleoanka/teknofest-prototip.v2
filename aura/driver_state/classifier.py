@@ -8,6 +8,7 @@
 
 Girdi yalnızca sürücü kabini ROI'sidir (asla tam kare).
 """
+
 from __future__ import annotations
 
 import logging
@@ -25,7 +26,7 @@ log = logging.getLogger("aura.driver_state")
 
 class DriverClassifier(ABC):
     @abstractmethod
-    def infer(self, cabin_roi: "np.ndarray | None") -> DriverState:
+    def infer(self, cabin_roi: np.ndarray | None) -> DriverState:
         raise NotImplementedError
 
 

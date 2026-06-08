@@ -5,6 +5,7 @@ ancak son `window` karenin en az `min_consistent`'ında tutarlı tespit edilirse
 "commit" edilir; aksi halde yüksek güvenli önceki değer korunur (override yok).
 Bu, flickering / geçici gürültünün sistemi yanlış alarma sürüklemesini engeller.
 """
+
 from __future__ import annotations
 
 from collections import deque
