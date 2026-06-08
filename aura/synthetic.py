@@ -151,8 +151,8 @@ def main(argv: list[str] | None = None) -> int:
     args = p.parse_args(argv)
 
     video, gt = generate(Path(args.out), args.frames, args.fps, args.width, args.height)
-    print(f"✓ video: {video}")
-    print(f"✓ ground-truth: {gt}")
+    print(f"[OK] video: {video}")
+    print(f"[OK] ground-truth: {gt}")
     return 0
 
 

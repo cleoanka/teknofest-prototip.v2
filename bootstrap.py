@@ -95,7 +95,8 @@ def venv_python() -> Path:
 
 def run(cmd: list[str], **kw) -> subprocess.CompletedProcess:
     """Komutu çalıştır; çıktıyı akıt. check=True ile hata fırlatır."""
-    return subprocess.run([str(c) for c in cmd], cwd=ROOT, check=True, **kw)
+    kw.setdefault("cwd", ROOT)
+    return subprocess.run([str(c) for c in cmd], check=True, **kw)
 
 
 # --- 3.1 Sistem doğrulama ------------------------------------------------- #
