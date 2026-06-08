@@ -6,7 +6,7 @@
 
 runtime:
   device: cuda                  # auto | cpu | cuda | mps
-  source: data/samples/ornek.mp4
+  source: data/samples/test_video3.mp4
   log_level: INFO               # DEBUG | INFO | WARNING
   # AI çalışma modu: real (gerçek YOLO), mock (numpy deterministik), auto (ultralytics+ağırlık varsa real)
   ai_mode: real                 # real | mock | auto
@@ -25,6 +25,18 @@ models:
     conf: 0.40
     imgsz: 320
     classes: [phone, smoking, no_seatbelt, fatigue]
+
+# Sürücü kimlik kilidi: araç kabininde sağ-alttaki kişiyi sürücü kabul et,
+# confirm_frames boyunca aynı kişi sürücüyse o kişinin takip ID'sini araca KİLİTLE.
+# Kilitlendikten sonra başka kişi o aracın sürücüsü olamaz.
+driver_lock:
+  enabled: true
+  confirm_frames: 5             # kaç ardışık karede aynı aday → kilit
+  corner: bottom_right          # sürücü konumu: bottom_right | bottom_left | top_right | top_left
+  person_classes: [person]      # Stage-1'de kişi olarak sayılan sınıf adları
+  min_containment: 0.5          # kişi kutusunun araç kutusuyla min örtüşme oranı
+  max_age: 30                   # araç bu kadar kare görünmezse kilit unutulur
+  mock_synthetic_person: false  # mock dedektörde demo için sentetik sürücü üret (test/sunum)
 
 tracking:
   tracker: bytetrack            # bytetrack | botsort
