@@ -25,6 +25,14 @@ import urllib.request
 from pathlib import Path
 from typing import NoReturn
 
+# Windows konsolu cp1254/cp437 gibi olabilir; UTF-8'e geç ki kutu çizimi ve
+# sembol çıktısı (╔ ▶ ✓ ⚠ █) UnicodeEncodeError ile çökmesin.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+    except (AttributeError, ValueError):
+        pass
+
 ROOT = Path(__file__).resolve().parent
 VENV = ROOT / ".venv"
 WEIGHTS_DIR = ROOT / "weights"
@@ -211,7 +219,7 @@ def _load_lock() -> dict:
 
 
 def _save_lock(data: dict) -> None:
-    (WEIGHTS_DIR / "weights.lock.json").write_text(json.dumps(data, indent=2))
+    (WEIGHTS_DIR / "weights.lock.json").write_text(json.dumps(data, indent=2), encoding="utf-8")
 
 
 def fetch_weights(skip: bool) -> dict[str, str]:
@@ -297,7 +305,7 @@ def _write_weights_readme(status: dict[str, str], lock: dict) -> None:
         "`models.detector.path` değerini güncelleyin. Inference yeniden başladığında yeni",
         "ağırlık yüklenir. Detay: `docs/egitim.md`.",
     ]
-    (WEIGHTS_DIR / "README.md").write_text("\n".join(lines) + "\n")
+    (WEIGHTS_DIR / "README.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 # --- 3.6 Config + env ------------------------------------------------------ #
