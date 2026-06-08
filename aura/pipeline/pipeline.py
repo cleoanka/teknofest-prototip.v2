@@ -18,6 +18,7 @@ from aura.driver_state.classifier import build_driver_classifier
 from aura.events.emitter import EventEmitter
 from aura.plate.reader import PlateReader
 from aura.preprocessing.preprocess import Preprocessor
+from aura.qod.client import QoDController
 from aura.schema import AnnotationFrame, AuraEvent, TrackRecord
 from aura.speed.estimator import SpeedEstimator
 from aura.stability.state_machine import StabilityTracker
@@ -54,16 +55,19 @@ class Pipeline:
         self.detector = build_detector(cfg)
         self.stability = StabilityTracker(cfg)
         self.driver = build_driver_classifier(cfg)
-        self.plate = PlateReader(cfg)
+        self.qod = QoDController(cfg)
+        self.plate = PlateReader(cfg, qod=self.qod)
         self.speed = SpeedEstimator(cfg)
         self.acc = Accumulator(cfg)
         self.emitter = EventEmitter()
         self.frame_idx = 0
+        self.fps = 30.0
 
     # --- tek kare ---------------------------------------------------------- #
     def process_frame(self, frame: "np.ndarray", frame_idx: int | None = None
                       ) -> tuple[AnnotationFrame, list[AuraEvent]]:
         idx = self.frame_idx if frame_idx is None else frame_idx
+        self.qod.set_now(idx / max(self.fps, 1e-6))
         frame = self.pre.process(frame)
         detections = self.detector.detect(frame)
 
@@ -85,12 +89,17 @@ class Pipeline:
             plate = self.plate.update(tid, plate_roi, det.bbox, frame.shape, frame=frame)
             speed = self.speed.update(tid, det.bbox, idx)
 
+            qod_active, qod_profile = self.qod.state(tid)
             rec, ev = self.acc.update_track(
                 tid, frame_idx=idx, bbox=det.bbox, vehicle_class=det.bbox.cls,
                 plate=plate, driver=driver, speed=speed,
+                qod_active=qod_active, qod_profile=qod_profile,
             )
             events.extend(ev)
             track_dicts.append(record_to_annotation(rec))
+
+        self.qod.tick()
+        events.extend(self.qod.drain_events())
 
         anno = AnnotationFrame(frame_id=idx, tracks=track_dicts)
         for e in events:
@@ -109,6 +118,8 @@ class Pipeline:
         cap = cv2.VideoCapture(src)
         if not cap.isOpened():
             raise RuntimeError(f"Kaynak açılamadı: {source}")
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        self.fps = fps if fps and fps > 0 else 30.0
         i = 0
         try:
             while True:
