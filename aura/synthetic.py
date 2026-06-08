@@ -21,8 +21,8 @@ for _s in (sys.stdout, sys.stderr):
     except (AttributeError, ValueError):
         pass
 
-import cv2
-import numpy as np
+import cv2  # noqa: E402  (UTF-8 reconfigure ağır importlardan önce yapılmalı)
+import numpy as np  # noqa: E402
 
 # Deterministik senaryo: her araç bir şeritte, farklı zamanda sahneye girer.
 # (id, renk BGR, şerit_x_norm, giriş_frame, plaka, sürücü_durumu)
