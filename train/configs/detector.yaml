@@ -1,0 +1,12 @@
+# YOLO26s araç tespit — data.yaml örneği (prepare_dataset çıktısını işaret eder)
+path: ../data/processed
+train: train/images
+val: val/images
+test: test/images
+
+nc: 4
+names:
+  0: car
+  1: truck
+  2: bus
+  3: minibus

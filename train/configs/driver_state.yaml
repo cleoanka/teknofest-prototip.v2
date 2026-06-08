@@ -1,0 +1,13 @@
+# YOLO26l sürücü durumu — data.yaml örneği. Yorgunluk bir detection sınıfıdır
+# (kapalı göz / esneme / baş düşmesi olarak etiketlenir). MediaPipe/landmark KULLANILMAZ.
+path: ../data/processed_driver
+train: train/images
+val: val/images
+test: test/images
+
+nc: 4
+names:
+  0: phone
+  1: smoking
+  2: no_seatbelt
+  3: fatigue
