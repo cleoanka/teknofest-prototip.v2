@@ -20,7 +20,7 @@ import numpy as np
 # (id, renk BGR, şerit_x_norm, giriş_frame, plaka, sürücü_durumu)
 SCENARIO = [
     {
-        "id": 1, "color": (90, 200, 255), "lane_x": 0.30, "enter": 0,
+        "id": 1, "color": (90, 200, 255), "lane_x": 0.33, "enter": 0,
         "plate": "34ABC123", "vehicle_class": "car",
         "driver": {"phone": True, "smoking": False, "no_seatbelt": False, "fatigue": False},
     },
@@ -30,7 +30,8 @@ SCENARIO = [
         "driver": {"phone": False, "smoking": True, "no_seatbelt": True, "fatigue": False},
     },
     {
-        "id": 3, "color": (200, 150, 255), "lane_x": 0.75, "enter": 35,
+        # Sağ şerit: sweet-spot (x:0.30–0.70) DIŞINDA → OCR gating'i gösterir (plaka okunmaz)
+        "id": 3, "color": (200, 150, 255), "lane_x": 0.78, "enter": 35,
         "plate": "35TR07", "vehicle_class": "car",
         "driver": {"phone": False, "smoking": False, "no_seatbelt": False, "fatigue": True},
     },
@@ -45,7 +46,7 @@ def _vehicle_box(spec: dict, t: float, W: int, H: int) -> tuple[int, int, int, i
     cy = 0.15 + 0.75 * t
     if cy > 1.05:
         return None
-    scale = 0.05 + 0.18 * t  # yakınlaştıkça büyür
+    scale = 0.05 + 0.15 * t  # yakınlaştıkça büyür (şerit çakışmasını önlemek için ölçülü)
     w = scale * W
     h = scale * H * 1.3
     cx = spec["lane_x"] * W
