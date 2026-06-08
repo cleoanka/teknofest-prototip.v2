@@ -5,6 +5,15 @@ Format [Keep a Changelog](https://keepachangelog.com/tr/1.0.0/) temellidir.
 
 ## [Unreleased]
 
+### Eklenenler
+- **Metrik hız (`speed.mode: metric`) — kalibrasyonsuz oto-kalibrasyon** (`aura/speed/calibration.py`, eski prototip `ai/calibration.py` portu): araç-genişliği (varsa plaka 520 mm) → `ppm(y)` ölçek-alanı (aykırı-dayanıklı regresyon) → yer düzlemi metrik yer değiştirme → pencere-medyan + ivme aykırı reddi + **Kalman + EMA** → gerçek km/h. Isınma bitene dek `is_calibrated=False` (km/h iddia edilmez). Mevcut yenilikler korundu: QoD tetiği, stability 16/8, accumulator risk + `SPEED` event'leri, annotation stream artık km/h ile beslenir.
+- **Ölü bölge (`speed.frame_margin_px`, 50px):** araç kadraj kenarına değince yeni hız hesaplanmaz; sınıra girmeden önceki son geçerli hız tutulur (kadrajdan çıkarken bbox kırpılıp hız aniden düşmesin).
+- `tests/test_speed_metric.py`: sentetik doğruluk (bilinen ppm → 45 km/h ±2), ısınma, ölü bölge tutma, EMA yumuşatma.
+
+### Değişiklikler
+- yolo26 ağırlıkları `ultralytics>=8.4.0` gerektirir (8.3.x yükler ama inference bozuk) — `pyproject.toml` pin + `bootstrap.py` v8.4.0 URL'leri + `weights/weights.lock.json` (SHA256 trust-on-first-use).
+- Mock-fallback testleri ortam-bağımsız hale getirildi (ağırlık mevcutken de geçer).
+
 ### Düzeltmeler
 - Windows UTF-8 kodlama hatası: eval raporu (`report.md`/`report.json`) ve CLI A/B tablosu, varsayılan Windows kod sayfası (cp1254/cp1252) "Δ" karakterini kodlayamadığı için çöküyordu. `write_text(..., encoding="utf-8")` + CLI'de `stdout.reconfigure(utf-8)`. `synthetic.py`, `bootstrap.py`, `train/prepare_dataset.py` yazımları da UTF-8'e geçirildi (Türkçe metin / non-ASCII path güvenliği). 58 unit test artık Windows'ta da geçiyor.
 

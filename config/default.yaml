@@ -62,14 +62,32 @@ plate:
   min_pixel_height: 16          # bu yükseklik altındaki plaka ROI'leri kalite tetikler
 
 speed:
-  mode: disabled                # tripwire | ipm | disabled
+  mode: metric                  # metric | tripwire | ipm | disabled
   calibration_file: null
-  relative_threshold: 0.012     # disabled modda anormal göreli hız bayrağı eşiği (ekran/kare)
+  relative_threshold: 0.012     # anormal göreli hız bayrağı eşiği (ekran/kare) — her modda
   window: 8                     # göreli hız için kayar pencere (kare)
   tripwire:
     line_a_y: 0.40              # normalize ekran konumu (0-1)
     line_b_y: 0.70
     real_distance_m: 20.0       # iki çizgi arası gerçek mesafe (metre)
+  # --- metric (oto-kalibrasyon, kalibrasyonsuz km/h) — aura/speed/calibration.py ---
+  plate_width_m: 0.520          # TR Tip-1 plaka standardı (520 mm) — varsa en kesin ppm kaynağı
+  plate_aspect_tolerance: 0.35  # 520/120≈4.33'ten sapma toleransı (foreshortening koruması)
+  vehicle_width_m:              # sınıf-bazlı tipik genişlik (m) — araç ppm yedeği
+    car: 1.80
+    minibus: 2.00
+    truck: 2.50
+    bus: 2.50
+    motorcycle: 0.80
+  vehicle_ppm_weight: 0.25      # araç-genişliği ppm örnek ağırlığı (plaka=1.0)
+  calib_min_samples: 6          # ppm(y) regresyonu için min ölçüm (ısınma)
+  speed_window_frames: 8        # hız pencere-medyan regresyon penceresi (kare) — uzun = düz
+  speed_max_accel_mps2: 8.0     # fiziksel-olmayan ivme aykırı reddi eşiği
+  speed_kalman_q: 2.0           # Kalman süreç gürültüsü (küçük = daha düz)
+  speed_kalman_r: 12.0          # Kalman ölçüm gürültüsü (büyük = ölçüme az güven, daha düz)
+  speed_ema_alpha: 0.25         # Kalman üstü EMA yumuşatma (küçük = daha düz; 0 = kapalı)
+  speed_metric_max_kmh: 200.0   # akıl sağlığı üst sınırı
+  frame_margin_px: 50           # ölü bölge: kadraj kenarı şeridi (px) — bu şeritte hız dondurulur
 
 qod:
   backend: mock                 # mock | camara
