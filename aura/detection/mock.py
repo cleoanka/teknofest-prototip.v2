@@ -117,7 +117,5 @@ class MockDetector(Detector):
         cx = v.x1 + v.width * 0.70
         cy = v.y1 + v.height * 0.70
         hw, hh = v.width * 0.12, v.height * 0.12
-        pbox = BBox(
-            x1=cx - hw, y1=cy - hh, x2=cx + hw, y2=cy + hh, conf=0.9, cls="person"
-        )
+        pbox = BBox(x1=cx - hw, y1=cy - hh, x2=cx + hw, y2=cy + hh, conf=0.9, cls="person")
         return Person(bbox=pbox, track_id=100000 + vehicle_tid)
