@@ -1,0 +1,57 @@
+"""Değerlendirme router'ı — /eval/run, /eval/results, /eval/results/export.
+
+M7: endpoint iskeleti + son sonuçları sunma. M9: gerçek QoD A/B harness bağlanır
+(aura.eval.harness). Dashboard QoD A/B paneli bu endpoint'leri tüketir.
+"""
+from __future__ import annotations
+
+import json
+import logging
+
+from fastapi import APIRouter, BackgroundTasks, Request
+from fastapi.responses import PlainTextResponse
+
+from services.inference_api.models import EvalRunRequest
+
+router = APIRouter(tags=["eval"])
+log = logging.getLogger("aura.api.eval")
+
+
+@router.get("/eval/results")
+def eval_results(request: Request):
+    res = getattr(request.app.state, "eval_results", None)
+    if not res:
+        return {"status": "no_results",
+                "message": "Henüz eval çalıştırılmadı. POST /eval/run ile başlatın."}
+    return res
+
+
+@router.post("/eval/run")
+def eval_run(req: EvalRunRequest, request: Request, background: BackgroundTasks):
+    sm = request.app.state.stream
+    source = req.source or sm.cfg.get("runtime.source")
+    gt = req.ground_truth or "data/samples/ornek_gt.json"
+
+    def _job():
+        try:
+            from aura.eval.harness import run_eval  # M9
+
+            request.app.state.eval_results = run_eval(
+                sm.cfg, source, gt, qod_comparison=req.qod_comparison)
+            log.info("Eval tamamlandı.")
+        except Exception as e:  # noqa: BLE001
+            log.warning("Eval harness henüz yok/başarısız: %s", e)
+            request.app.state.eval_results = {"status": "error", "error": str(e)}
+
+    background.add_task(_job)
+    return {"status": "queued", "source": source, "ground_truth": gt,
+            "qod_comparison": req.qod_comparison}
+
+
+@router.get("/eval/results/export")
+def eval_export(request: Request):
+    res = getattr(request.app.state, "eval_results", None)
+    if not res or res.get("status") in ("no_results", "error"):
+        return PlainTextResponse("# Eval sonucu yok\n", media_type="text/markdown")
+    md = res.get("report_md") or "```json\n" + json.dumps(res, indent=2, ensure_ascii=False) + "\n```"
+    return PlainTextResponse(md, media_type="text/markdown")
