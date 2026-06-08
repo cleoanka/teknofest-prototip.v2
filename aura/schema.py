@@ -76,6 +76,10 @@ class TrackRecord(BaseModel):
     bbox: BBox
     plate: PlateState = Field(default_factory=PlateState)
     driver: DriverState = Field(default_factory=DriverState)
+    # Sürücü kimlik kilidi: araca eşlenen kişinin takip ID'si ve kilit durumu.
+    # driver_locked=True olunca bu ID araca kalıcı bağlanır; başka kişi sürücü olamaz.
+    driver_id: int | None = None
+    driver_locked: bool = False
     speed: SpeedState = Field(default_factory=SpeedState)
     qod_active: bool = False
     qod_profile: str | None = None
@@ -91,6 +95,7 @@ EventType = Literal[
     "PLATE_CONFIRMED",
     "PLATE_REJECTED",
     "DRIVER_STATE",
+    "DRIVER_LOCKED",
     "SPEED",
     "QOD_TRIGGER",
     "QOD_RELEASE",
