@@ -35,8 +35,24 @@ class Detection:
     plate_roi: np.ndarray | None = field(default=None, repr=False)
 
 
+@dataclass
+class Person:
+    """Bir kişi tespiti + ByteTrack takip ID'si (sürücü kilidi için kullanılır)."""
+
+    bbox: BBox
+    track_id: int | None = None
+
+
 class Detector(ABC):
-    """Tespit motoru soyut arayüzü (gerçek/mock implementasyonlar bunu uygular)."""
+    """Tespit motoru soyut arayüzü (gerçek/mock implementasyonlar bunu uygular).
+
+    Alt sınıflar her ``detect()`` çağrısından sonra o karede bulunan kişileri
+    ``last_persons`` listesine yazar (sürücü kilidi bunları tüketir). Araç tespiti
+    yapmayan/kişi üretmeyen implementasyonlar bunu boş bırakır.
+    """
+
+    #: Son karede tespit edilen kişiler (her detect() çağrısında güncellenir)
+    last_persons: list[Person] = []
 
     @abstractmethod
     def detect(self, frame: np.ndarray) -> list[Detection]:
@@ -119,3 +135,24 @@ def crop_rois(
     cabin = cabin if cabin.size else None
     plate = plate if plate.size else None
     return cabin, plate
+
+
+def crop_person_roi(
+    frame: np.ndarray, bbox: BBox, pad_ratio: float = 0.15
+) -> np.ndarray | None:
+    """Kilitli sürücünün kutusundan ROI kes (kenarlardan `pad_ratio` kadar pay bırakır).
+
+    Geometrik 'üst %55 kabin' tahmini yerine, sürücü olarak kilitlenmiş kişinin
+    gerçek kutusundan kırpar; Stage-2 (YOLO26l driver_state) yalnızca bu crop'ta çalışır.
+    """
+    h, w = frame.shape[:2]
+    pad_x = bbox.width * pad_ratio
+    pad_y = bbox.height * pad_ratio
+    x1 = max(0, int(bbox.x1 - pad_x))
+    y1 = max(0, int(bbox.y1 - pad_y))
+    x2 = min(w, int(bbox.x2 + pad_x))
+    y2 = min(h, int(bbox.y2 + pad_y))
+    if x2 <= x1 or y2 <= y1:
+        return None
+    roi = frame[y1:y2, x1:x2].copy()
+    return roi if roi.size else None

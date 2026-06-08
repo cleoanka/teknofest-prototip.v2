@@ -11,7 +11,7 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
-from aura.detection.detector import Detection, Detector, crop_rois
+from aura.detection.detector import Detection, Detector, Person, crop_rois
 from aura.schema import BBox
 
 
@@ -76,6 +76,9 @@ class MockDetector(Detector):
         self.bright_thr = int(cfg.get("models.detector.mock_bright_threshold", 90))
         self.min_area = int(cfg.get("models.detector.mock_min_area", 300))
         self.tracker = SimpleIoUTracker()
+        # Mock'ta gerçek kişi tespiti yok; demo/sunum için sentetik sürücü üretilebilir.
+        self.synthetic_person = bool(cfg.get("driver_lock.mock_synthetic_person", False))
+        self.last_persons: list[Person] = []
 
     def detect(self, frame: np.ndarray) -> list[Detection]:
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -95,6 +98,7 @@ class MockDetector(Detector):
             boxes.append((x, y, x + w, y + h))
 
         dets = []
+        self.last_persons = []
         for tid, (x1, y1, x2, y2) in self.tracker.update(boxes):
             bbox = BBox(
                 x1=float(x1), y1=float(y1), x2=float(x2), y2=float(y2), conf=0.9, cls=self.cls0
@@ -102,4 +106,18 @@ class MockDetector(Detector):
             d = Detection(bbox=bbox, track_id=tid)
             d.cabin_roi, d.plate_roi = crop_rois(frame, bbox)
             dets.append(d)
+            if self.synthetic_person:
+                # Kabinin sağ-alt çeyreğine deterministik bir sürücü yerleştir;
+                # kişi ID'si araç ID'sine bağlı sabit → 5 kare sonra kilit gözlemlenir.
+                self.last_persons.append(self._synthetic_driver(bbox, tid))
         return dets
+
+    def _synthetic_driver(self, v: BBox, vehicle_tid: int) -> Person:
+        """Araç kutusunun sağ-alt çeyreğinde deterministik sentetik sürücü (mock demo)."""
+        cx = v.x1 + v.width * 0.70
+        cy = v.y1 + v.height * 0.70
+        hw, hh = v.width * 0.12, v.height * 0.12
+        pbox = BBox(
+            x1=cx - hw, y1=cy - hh, x2=cx + hw, y2=cy + hh, conf=0.9, cls="person"
+        )
+        return Person(bbox=pbox, track_id=100000 + vehicle_tid)

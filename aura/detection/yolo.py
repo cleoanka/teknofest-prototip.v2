@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from aura.detection.detector import Detection, Detector, crop_rois
+from aura.detection.detector import Detection, Detector, Person, crop_rois
 from aura.device import resolve_device
 from aura.schema import BBox
 
@@ -32,6 +32,10 @@ class YOLO26Detector(Detector):
         self.tracker = str(cfg.get("tracking.tracker", "bytetrack"))
         vc = cfg.get("models.detector.vehicle_classes", [])
         self.vehicle_classes = set(vc) if vc else set()
+        # Sürücü kilidi için kişi sınıfları (aynı ByteTrack geçişinde toplanır)
+        pc = cfg.get("driver_lock.person_classes", ["person"])
+        self.person_classes = set(pc) if pc else set()
+        self.last_persons: list[Person] = []
         self.device = resolve_device(cfg.get("runtime.device", "auto"))
         log.info(
             "YOLO26 yüklendi: %s (imgsz=%d, tracker=%s, device=%s)",
@@ -53,6 +57,7 @@ class YOLO26Detector(Detector):
             verbose=False,
         )
         dets: list[Detection] = []
+        self.last_persons = []
         if not results:
             return dets
         r = results[0]
@@ -67,7 +72,9 @@ class YOLO26Detector(Detector):
                 if isinstance(names, (list, tuple))
                 else names.get(cls_idx, str(cls_idx))
             )
-            if self.vehicle_classes and cls_name not in self.vehicle_classes:
+            is_vehicle = (not self.vehicle_classes) or cls_name in self.vehicle_classes
+            is_person = cls_name in self.person_classes
+            if not (is_vehicle or is_person):
                 continue
             xyxy = b.xyxy[0].tolist()
             tid = int(b.id.item()) if getattr(b, "id", None) is not None else None
@@ -79,6 +86,10 @@ class YOLO26Detector(Detector):
                 conf=float(b.conf.item()),
                 cls=cls_name,
             )
+            # Kişi sınıfı → sürücü kilidine; (araç sınıfıyla çakışmaz, COCO'da ayrık)
+            if is_person:
+                self.last_persons.append(Person(bbox=bbox, track_id=tid))
+                continue
             d = Detection(bbox=bbox, track_id=tid)
             d.cabin_roi, d.plate_roi = crop_rois(frame, bbox)
             dets.append(d)

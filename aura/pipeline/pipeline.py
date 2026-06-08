@@ -15,14 +15,15 @@ from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
 from aura.accumulator.accumulator import Accumulator
-from aura.detection.detector import build_detector, crop_rois
+from aura.detection.detector import build_detector, crop_person_roi, crop_rois
 from aura.driver_state.classifier import build_driver_classifier
 from aura.events.emitter import EventEmitter
+from aura.identity.driver_lock import DriverLock
 from aura.optional.loader import get_optional
 from aura.plate.reader import PlateReader
 from aura.preprocessing.preprocess import Preprocessor
 from aura.qod.client import QoDController
-from aura.schema import AnnotationFrame, AuraEvent, TrackRecord
+from aura.schema import AnnotationFrame, AuraEvent, TrackRecord, make_event
 from aura.speed.estimator import SpeedEstimator
 from aura.stability.state_machine import StabilityTracker
 
@@ -44,6 +45,8 @@ def record_to_annotation(rec: TrackRecord) -> dict:
         "plate": rec.plate.value,
         "plate_status": rec.plate.status,
         "driver": rec.driver.active_flags(),
+        "driver_id": rec.driver_id,
+        "driver_locked": rec.driver_locked,
         "speed_kmh": rec.speed.value_kmh,
         "relative_velocity_flag": rec.speed.relative_velocity_flag,
         "risk_flags": rec.risk_flags,
@@ -58,6 +61,8 @@ class Pipeline:
         self.detector = build_detector(cfg)
         self.stability = StabilityTracker(cfg)
         self.driver = build_driver_classifier(cfg)
+        self.driver_lock = DriverLock(cfg)
+        self.driver_roi_pad = float(cfg.get("driver_lock.roi_pad", 0.15))
         self.qod = QoDController(cfg)
         self.plate = PlateReader(cfg, qod=self.qod)
         self.speed = SpeedEstimator(cfg)
@@ -77,6 +82,8 @@ class Pipeline:
         self.qod.set_now(idx / max(self.fps, 1e-6))
         frame = self.pre.process(frame)
         detections = self.detector.detect(frame)
+        # Sürücü kilidi için aynı karede tespit edilen kişiler (YOLO; mock'ta boş olabilir)
+        persons = getattr(self.detector, "last_persons", [])
 
         events: list[AuraEvent] = []
         track_dicts: list[dict] = []
@@ -85,8 +92,20 @@ class Pipeline:
             tid = det.track_id if det.track_id is not None else -1
             cabin, plate_roi = crop_rois(frame, det.bbox)
 
+            # Sürücü kimlik kilidi: sağ-alt aday → 5 kare tutarlıysa araca kilitle
+            assign = self.driver_lock.update(tid, det.bbox, persons, idx)
+
+            # Sürücü ROI: kilitli/aday sürücünün kutusundan kes (kesin);
+            # kişi yoksa geometrik kabin crop'una düş (geriye dönük uyumluluk).
+            if assign.driver_bbox is not None:
+                driver_roi = crop_person_roi(frame, assign.driver_bbox, self.driver_roi_pad)
+                if driver_roi is None:
+                    driver_roi = cabin
+            else:
+                driver_roi = cabin
+
             # Stage-2 sürücü durumu → 16/8 kararlılık süzgeci (alan-bazında)
-            driver = self.driver.infer(cabin)
+            driver = self.driver.infer(driver_roi)
             for f in _DRIVER_FIELDS:
                 stable = self.stability.update(
                     f"{tid}:driver.{f}", getattr(driver, f), driver.confidence.get(f, 1.0)
@@ -117,11 +136,25 @@ class Pipeline:
                 qod_profile=qod_profile,
             )
             events.extend(ev)
+
+            # Sürücü kimliğini kayda yaz; yeni kilitlendiyse event üret
+            rec.driver_id = assign.driver_id
+            rec.driver_locked = assign.locked
+            if assign.newly_locked:
+                events.append(
+                    make_event(
+                        tid,
+                        "DRIVER_LOCKED",
+                        {"driver_id": assign.driver_id, "confirm_frames": assign.streak},
+                    )
+                )
+
             adict = record_to_annotation(rec)
             if self.zwp is not None:  # §8.1 sıfır-atık payload
                 adict["zwp"] = self.zwp.build_payload(adict, plate_roi)
             track_dicts.append(adict)
 
+        self.driver_lock.prune(idx)
         self.qod.tick()
         events.extend(self.qod.drain_events())
 
