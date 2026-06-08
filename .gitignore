@@ -1,0 +1,38 @@
+# --- AURA .gitignore ---
+# Model ağırlıkları (bootstrap tarafından indirilir)
+weights/*.pt
+weights/*.onnx
+weights/*.engine
+
+# Ham veri / büyük örnekler
+data/raw/
+data/samples/*.mp4
+data/samples/*.avi
+eval_results/
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+build/
+dist/
+
+# Ortam / sırlar
+.env
+
+# Node / mobil
+node_modules/
+mobile/.expo/
+mobile/dist/
+
+# OS / editör
+.DS_Store
+.idea/
+.vscode/
+*.log
+.server.pid
