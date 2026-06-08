@@ -38,8 +38,9 @@ class DriverState(BaseModel):
 
 class SpeedState(BaseModel):
     value_kmh: float | None = None
-    mode: Literal["tripwire", "ipm", "disabled"] = "disabled"
+    mode: Literal["tripwire", "ipm", "disabled", "metric"] = "disabled"
     relative_velocity_flag: bool = False
+    is_calibrated: bool = False  # metric mod: ppm(y) ölçek-alanı hazır mı (km/h gerçek mi)
 
 
 class BBox(BaseModel):
