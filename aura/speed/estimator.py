@@ -48,7 +48,7 @@ class SpeedEstimator:
             value = self._tripwire(track_id, cy_norm, frame_idx)
             return SpeedState(mode="tripwire", value_kmh=value, relative_velocity_flag=rel_flag)
         if self.mode == "ipm":
-            return self._ipm(track_id, bbox, frame_idx, rel_flag)
+            return self._ipm(track_id, bbox, frame_idx, rel_flag, frame_shape)
         return SpeedState(mode="disabled", value_kmh=None, relative_velocity_flag=rel_flag)
 
     # --- göreli hız anomalisi (kalibrasyon gerektirmez) ------------------- #
@@ -82,13 +82,14 @@ class SpeedEstimator:
         return s["kmh"]
 
     # --- ipm (opsiyonel modül) -------------------------------------------- #
-    def _ipm(self, track_id: int, bbox: BBox, frame_idx: int, rel_flag: bool) -> SpeedState:
+    def _ipm(self, track_id: int, bbox: BBox, frame_idx: int, rel_flag: bool,
+             frame_shape=None) -> SpeedState:
         enabled = self.cfg.get("optional_modules.homography_ipm", False)
         if enabled:
             try:
                 from aura.optional.homography_ipm import ipm_speed  # M12
 
-                value = ipm_speed(self.cfg, track_id, bbox, frame_idx, self.fps)
+                value = ipm_speed(self.cfg, track_id, bbox, frame_idx, self.fps, frame_shape)
                 return SpeedState(mode="ipm", value_kmh=value, relative_velocity_flag=rel_flag)
             except Exception as e:  # noqa: BLE001
                 if not self._ipm_warned:
