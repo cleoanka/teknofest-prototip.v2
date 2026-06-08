@@ -1,13 +1,18 @@
-"""Stage-2 sürücü durumu sınıflandırıcı (YOLO26l).
+"""Stage-2 sürücü durumu sınıflandırıcı arayüzü + fabrika.
 
-M2: arayüz + stub (tüm bayraklar False). M4: YOLO26l ile çoklu-etiket detection
-(phone/smoking/no_seatbelt/fatigue). MediaPipe/landmark KESİNLİKLE kullanılmaz —
-yorgunluk (kapalı göz/esneme/baş düşmesi) bir detection sınıfı olarak öğrenilir.
+- `YOLO26lDriverClassifier` (gerçek): cabin ROI üzerinde çoklu-etiket detection
+  (phone/smoking/no_seatbelt/fatigue). MediaPipe/landmark KESİNLİKLE kullanılmaz —
+  yorgunluk dahil tüm durumlar detection sınıfı olarak öğrenilir.
+- `MockDriverClassifier` (deterministik): cabin ROI baskın rengini senaryo sürücü
+  durumuna eşler → ağırlık olmadan anlamlı sürücü-durum event'leri üretilir.
 
 Girdi yalnızca sürücü kabini ROI'sidir (asla tam kare).
 """
 from __future__ import annotations
 
+import logging
+from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from aura.schema import DriverState
@@ -15,15 +20,41 @@ from aura.schema import DriverState
 if TYPE_CHECKING:
     import numpy as np
 
+log = logging.getLogger("aura.driver_state")
 
-class DriverStateClassifier:
-    def __init__(self, cfg):
-        self.cfg = cfg
-        self.classes = list(cfg.get("models.driver_state.classes",
-                                    ["phone", "smoking", "no_seatbelt", "fatigue"]))
-        self.conf = float(cfg.get("models.driver_state.conf", 0.40))
 
+class DriverClassifier(ABC):
+    @abstractmethod
     def infer(self, cabin_roi: "np.ndarray | None") -> DriverState:
-        """Sürücü kabini ROI'sinden durum tespit et. M2: boş (hepsi False)."""
-        # TODO(M4): YOLO26l detection → çoklu sınıf bayrakları + güven skorları.
-        return DriverState()
+        raise NotImplementedError
+
+
+def _ultralytics_available() -> bool:
+    try:
+        import ultralytics  # noqa: F401
+
+        return True
+    except Exception:
+        return False
+
+
+def resolve_driver_mode(cfg) -> str:
+    mode = str(cfg.get("runtime.ai_mode", "auto")).lower()
+    if mode in ("real", "mock"):
+        return mode
+    weight = Path(cfg.get("models.driver_state.path", "weights/yolo26l.pt"))
+    if not weight.is_absolute():
+        weight = Path(__file__).resolve().parents[2] / weight
+    return "real" if (_ultralytics_available() and weight.exists()) else "mock"
+
+
+def build_driver_classifier(cfg) -> DriverClassifier:
+    if resolve_driver_mode(cfg) == "real":
+        from aura.driver_state.yolo import YOLO26lDriverClassifier
+
+        log.info("DriverState: YOLO26l (gerçek)")
+        return YOLO26lDriverClassifier(cfg)
+    from aura.driver_state.mock import MockDriverClassifier
+
+    log.info("DriverState: deterministik MOCK")
+    return MockDriverClassifier(cfg)

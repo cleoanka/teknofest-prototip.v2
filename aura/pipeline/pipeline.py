@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Iterator
 
 from aura.accumulator.accumulator import Accumulator
 from aura.detection.detector import build_detector, crop_rois
-from aura.driver_state.classifier import DriverStateClassifier
+from aura.driver_state.classifier import build_driver_classifier
 from aura.events.emitter import EventEmitter
 from aura.plate.reader import PlateReader
 from aura.preprocessing.preprocess import Preprocessor
@@ -53,7 +53,7 @@ class Pipeline:
         self.pre = Preprocessor(cfg)
         self.detector = build_detector(cfg)
         self.stability = StabilityTracker(cfg)
-        self.driver = DriverStateClassifier(cfg)
+        self.driver = build_driver_classifier(cfg)
         self.plate = PlateReader(cfg)
         self.speed = SpeedEstimator(cfg)
         self.acc = Accumulator(cfg)
