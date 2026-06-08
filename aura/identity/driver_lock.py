@@ -80,8 +80,7 @@ class DriverLock:
         return [
             p
             for p in persons
-            if p.track_id is not None
-            and _containment(p.bbox, vehicle) >= self.min_containment
+            if p.track_id is not None and _containment(p.bbox, vehicle) >= self.min_containment
         ]
 
     def _bbox_of(self, person_id: int, persons: list[Person]) -> BBox | None:
@@ -184,11 +183,7 @@ class DriverLock:
 
     def prune(self, frame_idx: int) -> None:
         """max_age'den uzun süredir görünmeyen araçların kilidini/adayını unut."""
-        dead = [
-            vid
-            for vid, seen in self._last_seen.items()
-            if frame_idx - seen > self.max_age
-        ]
+        dead = [vid for vid, seen in self._last_seen.items() if frame_idx - seen > self.max_age]
         for vid in dead:
             self._locked.pop(vid, None)
             self._cand.pop(vid, None)

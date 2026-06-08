@@ -3,6 +3,7 @@
 `pytest -m "not integration"` (CI) bunları atlar. Yerelde ağırlık + ultralytics
 varsa `pytest -m integration` ile çalıştırın.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

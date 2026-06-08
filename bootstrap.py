@@ -140,7 +140,9 @@ def _cuda_index() -> str:
     try:
         out = subprocess.run(
             ["nvidia-smi", "--query-gpu=compute_cap", "--format=csv,noheader"],
-            capture_output=True, text=True, timeout=15,
+            capture_output=True,
+            text=True,
+            timeout=15,
         ).stdout
         caps = [float(line.strip()) for line in out.splitlines() if line.strip()]
         if caps and max(caps) >= 10.0:  # sm_100+ (Blackwell) → cu128
@@ -211,7 +213,9 @@ def install_torch(skip: bool) -> str:
             ok("torch zaten kurulu ve GPU çalışıyor (backend: cuda)")
             return backend
         if probe.returncode == 3:
-            warn("torch kurulu ama GPU görünmüyor (CPU derlemesi?) — CUDA (cu128) derlemesi kuruluyor")
+            warn(
+                "torch kurulu ama GPU görünmüyor (CPU derlemesi?) — CUDA (cu128) derlemesi kuruluyor"
+            )
         else:
             warn(
                 "torch kurulu ama bu GPU'da kernel yok (eski/yanlış derleme) — "

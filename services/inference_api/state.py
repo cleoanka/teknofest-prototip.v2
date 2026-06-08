@@ -101,9 +101,7 @@ class StreamManager:
         # Ağır model yüklemeleri burada (arka planda) yapılır → başlangıcı bloklamaz.
         try:
             self.pipeline = Pipeline(self.cfg)
-            self.pipeline.emitter.on_event(
-                lambda e: self._push(self._event_queues, e.model_dump())
-            )
+            self.pipeline.emitter.on_event(lambda e: self._push(self._event_queues, e.model_dump()))
             self.pipeline.emitter.on_annotation(
                 lambda a: self._push(self._annot_queues, a.model_dump())
             )
