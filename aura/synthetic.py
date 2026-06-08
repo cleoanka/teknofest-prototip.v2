@@ -12,7 +12,14 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
+
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+    except (AttributeError, ValueError):
+        pass
 
 import cv2
 import numpy as np
@@ -151,8 +158,8 @@ def main(argv: list[str] | None = None) -> int:
     args = p.parse_args(argv)
 
     video, gt = generate(Path(args.out), args.frames, args.fps, args.width, args.height)
-    print(f"[OK] video: {video}")
-    print(f"[OK] ground-truth: {gt}")
+    print(f"✓ video: {video}")
+    print(f"✓ ground-truth: {gt}")
     return 0
 
 

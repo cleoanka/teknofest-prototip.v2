@@ -11,19 +11,13 @@ import logging
 from typing import TYPE_CHECKING
 
 from aura.detection.detector import Detection, Detector, crop_rois
+from aura.device import resolve_device
 from aura.schema import BBox
 
 if TYPE_CHECKING:
     import numpy as np
 
 log = logging.getLogger("aura.detection.yolo")
-
-
-def _resolve_device(device: str | None):
-    """'auto' → ultralytics otomatik seçsin (None); aksi halde değeri geçir."""
-    if device in (None, "auto", ""):
-        return None
-    return device
 
 
 class YOLO26Detector(Detector):
@@ -38,8 +32,14 @@ class YOLO26Detector(Detector):
         self.tracker = str(cfg.get("tracking.tracker", "bytetrack"))
         vc = cfg.get("models.detector.vehicle_classes", [])
         self.vehicle_classes = set(vc) if vc else set()
-        self.device = _resolve_device(cfg.get("runtime.device", "auto"))
-        log.info("YOLO26 yüklendi: %s (imgsz=%d, tracker=%s)", self.path, self.imgsz, self.tracker)
+        self.device = resolve_device(cfg.get("runtime.device", "auto"))
+        log.info(
+            "YOLO26 yüklendi: %s (imgsz=%d, tracker=%s, device=%s)",
+            self.path,
+            self.imgsz,
+            self.tracker,
+            self.device,
+        )
 
     def detect(self, frame: np.ndarray) -> list[Detection]:
         results = self.model.track(
