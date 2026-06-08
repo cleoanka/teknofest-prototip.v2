@@ -131,13 +131,37 @@ def ensure_venv(force: bool) -> None:
 
 # --- 3.3 Torch backend tespiti + kurulum ----------------------------------- #
 def detect_backend() -> tuple[str, list[str]]:
-    """(backend_adı, pip_index_args) döndür."""
+    """(backend_adı, pip_index_args) döndür.
+
+    CUDA index'i cu128: Turing(sm_75)'ten Blackwell(sm_120)'e kadar tüm modern
+    NVIDIA GPU'larını kapsar. Eski cu121, yeni GPU'larda "no kernel image" verir.
+    """
     system, machine = platform.system(), platform.machine()
     if system == "Darwin" and machine == "arm64":
         return "mps", []  # Apple Silicon — varsayılan index, MPS otomatik
     if shutil.which("nvidia-smi"):
-        return "cuda", ["--index-url", "https://download.pytorch.org/whl/cu121"]
+        return "cuda", ["--index-url", "https://download.pytorch.org/whl/cu128"]
     return "cpu", ["--index-url", "https://download.pytorch.org/whl/cpu"]
+
+
+# Blackwell (sm_120) dahil tüm modern NVIDIA GPU'ları destekleyen, test edilmiş
+# sabit sürüm çifti (cu128). Şartname donanımı RTX 5070 (sm_120) bunu gerektirir;
+# eski cu121 derlemesi "no kernel image is available" ile çöker.
+TORCH_PIN_CUDA = ["torch==2.8.0", "torchvision==0.23.0"]
+
+# torch import edilebiliyor olması yetmez: CUDA backend'inde GPU'da gerçek bir
+# kernel çalışabilmeli. Exit kodları: 0=GPU çalışıyor, 3=GPU yok (CPU derlemesi),
+# 4=kernel yok (yanlış/eski derleme).
+_TORCH_GPU_PROBE = (
+    "import sys, torch, torchvision\n"
+    "if not torch.cuda.is_available():\n"
+    "    sys.exit(3)\n"
+    "try:\n"
+    "    x = torch.zeros((8, 8), device='cuda'); _ = x @ x; torch.cuda.synchronize()\n"
+    "except Exception:\n"
+    "    sys.exit(4)\n"
+    "sys.exit(0)\n"
+)
 
 
 def install_torch(skip: bool) -> str:
@@ -146,20 +170,37 @@ def install_torch(skip: bool) -> str:
     if skip:
         warn(f"torch kurulumu atlandı (--skip-deps); tespit edilen backend: {backend}")
         return backend
-    try:
-        import importlib.util  # noqa: F401
 
-        check = run(
-            [venv_python(), "-c", "import torch, torchvision"],
+    imported = (
+        subprocess.run(
+            [str(venv_python()), "-c", "import torch, torchvision"],
+            cwd=ROOT,
             capture_output=True,
-        )
-        if check.returncode == 0:
+        ).returncode
+        == 0
+    )
+    if imported:
+        if backend != "cuda":
             ok(f"torch zaten kurulu (backend: {backend})")
             return backend
-    except subprocess.CalledProcessError:
-        pass
+        # CUDA: sadece import değil, bu GPU'da fiilen çalıştığını da doğrula.
+        probe = subprocess.run(
+            [str(venv_python()), "-c", _TORCH_GPU_PROBE], cwd=ROOT, capture_output=True
+        )
+        if probe.returncode == 0:
+            ok("torch zaten kurulu ve GPU çalışıyor (backend: cuda)")
+            return backend
+        if probe.returncode == 3:
+            warn("torch kurulu ama GPU görünmüyor (CPU derlemesi?) — CUDA (cu128) derlemesi kuruluyor")
+        else:
+            warn(
+                "torch kurulu ama bu GPU'da kernel yok (eski/yanlış derleme) — "
+                "doğru CUDA (cu128) derlemesi kuruluyor"
+            )
+
     ok(f"Tespit edilen backend: {backend}")
-    run([venv_python(), "-m", "pip", "install", "torch", "torchvision", *index_args])
+    pkgs = TORCH_PIN_CUDA if backend == "cuda" else ["torch", "torchvision"]
+    run([venv_python(), "-m", "pip", "install", "--upgrade", *pkgs, *index_args])
     ok("torch + torchvision kuruldu")
     return backend
 
