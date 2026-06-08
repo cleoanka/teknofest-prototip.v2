@@ -15,6 +15,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from aura.config import is_synthetic_source
+
 if TYPE_CHECKING:
     pass
 
@@ -90,6 +92,10 @@ def _easyocr_available() -> bool:
 
 def build_ocr(cfg) -> OCREngine:
     mode = str(cfg.get("runtime.ai_mode", "auto")).lower()
+    # auto + gömülü sentetik örnek → mock OCR (renk→plaka, hızlı ve deterministik;
+    # detector/driver de bu kaynakta mock'a düştüğü için tüm hat tutarlı kalır)
+    if mode == "auto" and is_synthetic_source(cfg):
+        return MockOCR(cfg)
     if mode != "mock" and _easyocr_available():
         return RealOCR(cfg)
     if mode == "real" and not _easyocr_available():
