@@ -1,0 +1,104 @@
+# =============================================================================
+# AURA — Merkezi Yapılandırma (tek doğruluk kaynağı)
+# Hiçbir eşik/flag koda gömülmez; tüm çalışma zamanı davranışı buradan yönetilir.
+# Açıklamalar için bkz. config/README.md
+# =============================================================================
+
+runtime:
+  device: auto                  # auto | cpu | cuda | mps
+  source: data/samples/ornek.mp4
+  log_level: INFO               # DEBUG | INFO | WARNING
+  # AI çalışma modu: real (gerçek YOLO), mock (numpy deterministik), auto (ultralytics+ağırlık varsa real)
+  ai_mode: auto                 # real | mock | auto
+
+models:
+  detector:
+    path: weights/yolo26s.pt
+    conf: 0.35
+    iou: 0.45
+    imgsz: 640
+    vehicle_classes: [car, truck, bus, minibus, motorcycle]
+  driver_state:
+    path: weights/yolo26l.pt
+    conf: 0.40
+    imgsz: 320
+    classes: [phone, smoking, no_seatbelt, fatigue]
+
+tracking:
+  tracker: bytetrack            # bytetrack | botsort
+  reid_model: null              # weights/yolo26s-reid.pt (opsiyonel)
+
+preprocessing:
+  headlight_suppression: true
+  motion_blur_correction: true
+  reflection_suppression: true
+  occlusion_handling: true
+
+stability:
+  window: 16
+  min_consistent: 8
+
+plate:
+  sweet_spot: {x1: 0.30, y1: 0.45, x2: 0.70, y2: 0.85}
+  voting_buffer_size: 7
+  consensus_ratio: 0.6
+  ocr_lang: [tr]
+  regex: '^\d{2}[A-Z]{1,3}\d{2,4}$'
+  min_pixel_height: 16          # bu yükseklik altındaki plaka ROI'leri kalite tetikler
+
+speed:
+  mode: disabled                # tripwire | ipm | disabled
+  calibration_file: null
+  tripwire:
+    line_a_y: 0.40              # normalize ekran konumu (0-1)
+    line_b_y: 0.70
+    real_distance_m: 20.0       # iki çizgi arası gerçek mesafe (metre)
+
+qod:
+  backend: mock                 # mock | camara
+  endpoint: http://localhost:8081
+  profiles:
+    optimize: LOW_LATENCY
+    quality: HIGH_THROUGHPUT
+  histeresis:
+    min_active_seconds: 3
+    cooldown_seconds: 5
+
+events:
+  transport: websocket
+  bind: "0.0.0.0:8080"
+
+number_verification:
+  backend: mock
+  endpoint: http://localhost:8082
+
+# ID-merkezli accumulator risk kuralları (genişletilebilir)
+risk:
+  rules:
+    - name: distracted_speeding
+      all_of: [driver.phone, speed.high]
+      severity: high
+    - name: prolonged_fatigue
+      all_of: [driver.fatigue, track.long_lived]
+      severity: high
+    - name: unbelted
+      all_of: [driver.no_seatbelt]
+      severity: medium
+  high_speed_kmh: 90            # speed.high eşiği (kalibrasyon varsa)
+  long_lived_frames: 90        # track.long_lived eşiği (kare sayısı)
+
+optional_modules:
+  zero_waste_payload: false
+  super_resolution: false
+  homography_ipm: false
+
+dashboard:
+  serve: true
+  default_bbox: true
+  theme: dark                   # dark | light
+
+# Servis portları (mock'lar gerçek sözleşmeyi taklit eder; final'de yalnızca endpoint değişir)
+services:
+  inference_api: 8080
+  qod_mock: 8081
+  nv_mock: 8082
