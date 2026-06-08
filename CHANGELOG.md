@@ -65,3 +65,10 @@ Format [Keep a Changelog](https://keepachangelog.com/tr/1.0.0/) temellidir.
 - `style.css`: dark/light CSS custom properties, grid düzen.
 - `inference_api` `/` ve `/assets` üzerinden serve eder.
 - Doğrulandı: `/` 200 (html), 5 ES modül + CSS 200, `node --check` 5/5.
+
+### Milestone 9 — QoD A/B paneli (eval harness + /eval/results + Chart.js)
+- `aura/eval/metrics.py`: Levenshtein/CER, plaka doğruluğu, tespit oranı, küçük-nesne oranı.
+- `aura/eval/harness.py`: aynı video QoD ON (tam çözünürlük) vs QoD OFF (düşük çözünürlük) → GT'ye karşı delta tablosu + report.md/json.
+- `python -m aura.eval` CLI (§4.3) + `/eval/run`/`/eval/results`/`/eval/results/export` bağlandı; dashboard Chart.js paneli tüketir.
+- Ölçülen delta (şartname %40 kanıtı): Plaka +33pp, Küçük nesne +51pp, Tespit +25pp.
+- `tests/test_eval.py` → toplam 50 test geçti.
