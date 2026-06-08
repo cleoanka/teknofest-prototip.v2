@@ -57,3 +57,11 @@ Format [Keep a Changelog](https://keepachangelog.com/tr/1.0.0/) temellidir.
 - `GET /cameras`: OpenCV enum + platform isim çözümleme (macOS AVFoundation), `AURA_CAMERA_PROBE=0` ile atlanır.
 - Canlı doğrulama: 3 servis kalktı, pipeline autostart (67 kare/3 track/1 QoD session), MJPEG 917KB aktı, mock'lar yanıt verdi, OpenAPI 15 endpoint.
 - `tests/test_events.py` + `tests/test_api_contracts.py` → toplam 46 test geçti.
+
+### Milestone 8 — dashboard (kamera seçici + MJPEG+Canvas + bbox toggle + event log + track panel)
+- `dashboard/` (vanilla HTML5 + ES6 modules + Canvas + WS + Chart.js CDN, npm/build yok).
+- İki-kanal video: MJPEG `<img>` + `<canvas>` overlay; **bbox toggle client-side** (MJPEG kesilmez).
+- `camera-selector.js` (webcam/iPhone/video/RTSP), `video-renderer.js` (bbox+ikon+QoD çizimi), `event-stream.js` (auto-reconnect WS), `qod-panel.js` (Chart.js A/B), `app.js` (orkestratör + track kartları + event log + tema).
+- `style.css`: dark/light CSS custom properties, grid düzen.
+- `inference_api` `/` ve `/assets` üzerinden serve eder.
+- Doğrulandı: `/` 200 (html), 5 ES modül + CSS 200, `node --check` 5/5.
