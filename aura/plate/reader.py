@@ -11,6 +11,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
+from aura.optional.loader import get_optional
 from aura.plate.ocr import build_ocr
 from aura.plate.voting import VotingBuffer
 from aura.schema import BBox, PlateState
@@ -33,6 +34,7 @@ class PlateReader:
         self.min_pixel_height = int(cfg.get("plate.min_pixel_height", 16))
         self.ocr = ocr if ocr is not None else build_ocr(cfg)
         self.qod = qod
+        self.sr = get_optional(cfg, "super_resolution")  # §8.2 (lazy; kapalıysa None)
         self._state: dict[int, PlateState] = {}
         self._buffers: dict[int, VotingBuffer] = {}
 
@@ -55,6 +57,10 @@ class PlateReader:
         # Sweet spot: araç netlik bölgesine girene kadar OCR pasif
         if not self.in_sweet_spot(vehicle_bbox, frame_shape):
             return st
+
+        # §8.2 süper çözünürlük (etkinse) — küçük plakaları OCR öncesi büyüt
+        if self.sr is not None and plate_roi is not None:
+            plate_roi = self.sr.enhance(plate_roi)
 
         # Yetersiz piksel → kalite tetiği (OCR'a girmeden)
         if plate_roi is not None and plate_roi.shape[0] < self.min_pixel_height:

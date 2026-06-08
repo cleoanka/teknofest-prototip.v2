@@ -85,3 +85,10 @@ Format [Keep a Changelog](https://keepachangelog.com/tr/1.0.0/) temellidir.
 - `src/api/client.ts` (verifyNumber + connectEvents + setSource), `LoginScreen`/`DashboardScreen`, `src/config.ts` (EXPO_PUBLIC_API_URL/NV_URL).
 - `mobile/README.md`: `npx expo start`, mock↔gerçek geçişi (yalnızca adres), Android emülatör notu.
 - Doğrulandı: JSON config'ler valid, TS import yolları tutarlı (Expo build emülatör gerektirir).
+
+### Milestone 12 — §8 opsiyonel modüller (toggle + lazy import)
+- `aura/optional/loader.py`: `get_optional(cfg, name)` — flag kapalıyken **import yapmaz** (lazy).
+- `zero_waste_payload.py` (ROI+yapısal metin payload), `super_resolution.py` (OCR öncesi upscale), `homography_ipm.py` (`ipm_speed` piksel→dünya).
+- Pipeline/PlateReader/SpeedEstimator'a lazy hook'lar; kapalıyken davranış değişmez.
+- `docs/mimari_ek_moduller.md` (ana mimari yalnızca referans verir).
+- `tests/test_optional.py`: kapalıyken `sys.modules`'te yok + işlevsellik → toplam 58 test geçti.
