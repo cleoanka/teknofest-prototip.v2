@@ -134,7 +134,9 @@ number_verification:
 risk:
   rules:
     - name: distracted_speeding
-      all_of: [driver.phone, speed.high]
+      # telefonda + uygulanabilir limiti aşıyor. speed.speeding = tabela varsa onu,
+      # yoksa high_speed tabanını kullanır (30 bölgesinde 35 de dikkatsiz sürüş sayılır).
+      all_of: [driver.phone, speed.speeding]
       severity: high
     - name: prolonged_fatigue
       all_of: [driver.fatigue, track.long_lived]
@@ -145,7 +147,7 @@ risk:
     - name: speed_limit_violation
       all_of: [speed.over_limit]   # araç hızı > aktif tabela limiti (SignTracker)
       severity: high
-  high_speed_kmh: 90            # speed.high eşiği (kalibrasyon varsa)
+  high_speed_kmh: 90            # mutlak yüksek-hız tabanı: tabela YOKKEN speed.speeding/QoD bu eşiğe düşer
   long_lived_frames: 90        # track.long_lived eşiği (kare sayısı)
 
 optional_modules:

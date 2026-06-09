@@ -99,9 +99,9 @@ class Pipeline:
         self.qod = QoDController(cfg)  # Quality-on-Demand kontrolcüsü (anomalide kalite yükseltir)
         self.plate = PlateReader(cfg, qod=self.qod)  # plaka okuyucu; QoD ile koordineli çalışır
         self.speed = SpeedEstimator(cfg)  # hız/göreli hız tahmincisi
-        # QoD tetiği için MUTLAK yüksek-hız tabanı (km/s). Tabela limiti varsa onun
-        # önüne geçilir (aşağıda min ile); tabela yoksa/120 gibi yüksekse bu taban devreye girer.
-        # Not: asıl tabela-bazlı ihlal kararı accumulator'daki 'speed.over_limit' kuralında.
+        # MUTLAK yüksek-hız tabanı (km/s): yalnızca tabela YOKKEN devreye girer.
+        # QoD tetiği (aşağıda) tabela varsa doğrudan onun limitini kullanır, yoksa bu tabana düşer.
+        # (Aynı mantık accumulator'daki 'speed.speeding' dikkatsiz-sürüş kuralında da geçerli.)
         self.high_speed = float(cfg.get("risk.high_speed_kmh", 90))
         self.acc = Accumulator(cfg)  # track durumunu biriktirir ve durum değişiminde event üretir
         # Sahne-seviyesi tabela takibi: aktif hız limitini çıkarır (ID-merkezli akışın yanında)
@@ -175,13 +175,10 @@ class Pipeline:
                 self.stability.update(f"{tid}:speed.rel", speed.relative_velocity_flag)
             )
             # Hız anomalisi → bu track için QoD'dan kalite yükseltme iste (plaka/delil yakalama anı).
-            # Eşik artık tabelaya duyarlı: aktif tabela limiti varsa onu kullan (limit aşımı = asıl
-            # delil anı), yoksa statik 'high_speed'. min(...) ile statik değer mutlak taban olarak
-            # kalır → 120 tabelasında bile 90+ hâlâ "yüksek hız" sayılıp QoD'u tetikler.
+            # KATI tabela-takibi: tabela limiti varsa DOĞRUDAN onu kullan (120 bölgesinde 100 =
+            # yasal → tetiklemez; 50 bölgesinde 60 → tetikler), tabela yoksa high_speed tabanına düş.
             active_limit = self.sign_tracker.active_limit
-            speed_threshold = (
-                min(active_limit, self.high_speed) if active_limit is not None else self.high_speed
-            )
+            speed_threshold = active_limit if active_limit is not None else self.high_speed
             if speed.relative_velocity_flag or (
                 speed.value_kmh is not None and speed.value_kmh >= speed_threshold
             ):

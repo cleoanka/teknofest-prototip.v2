@@ -180,14 +180,27 @@ class Accumulator:
 
     def _cond(self, rec: TrackRecord, token: str) -> bool:
         if token == "speed.high":
+            # MUTLAK yüksek hız (tabeladan bağımsız). Tek başına bir kural değil; bir
+            # yapıtaşı. Artık varsayılan kurallarda kullanılmıyor (yerine speed.speeding).
             return rec.speed.value_kmh is not None and rec.speed.value_kmh >= self.high_speed
         if token == "speed.over_limit":
-            # Aktif tabela limiti yoksa (None) kural pasiftir — yanlış ihlal üretmez.
+            # SAF tabela ihlali: yalnızca tabela limiti aktifken (None değilse) anlamlı.
+            # Tabela yoksa pasif kalır → yanlış ihlal üretmez (SPEED_LIMIT_VIOLATION için).
             return (
                 self.active_speed_limit is not None
                 and rec.speed.value_kmh is not None
                 and rec.speed.value_kmh > self.active_speed_limit
             )
+        if token == "speed.speeding":
+            # "Uygulanabilir limiti aşıyor mu?" → tabela varsa onun limiti, yoksa mutlak
+            # high_speed tabanı. over_limit'ten farkı: tabela YOKKEN pasif kalmaz, tabana
+            # düşer; böylece 30 bölgesinde 40 (limit aşımı) da, tabelasız yolda 150 (mutlak
+            # tehlike) de yakalanır. 'distracted_speeding = phone + speeding' bunu kullanır.
+            if rec.speed.value_kmh is None:
+                return False
+            if self.active_speed_limit is not None:
+                return rec.speed.value_kmh > self.active_speed_limit
+            return rec.speed.value_kmh >= self.high_speed
         if token == "track.long_lived":
             return (rec.last_frame - rec.first_frame) >= self.long_lived
         if token.startswith("driver."):
