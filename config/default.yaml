@@ -93,6 +93,25 @@ speed:
   speed_metric_max_kmh: 200.0   # akıl sağlığı üst sınırı
   frame_margin_px: 50           # ölü bölge: kadraj kenarı şeridi (px) — bu şeritte hız dondurulur
 
+# Trafik tabelası (sahne-seviyesi) — hız-limiti tespiti + araç hızıyla çapraz kontrol.
+# Detector bu sınıfları araç/kişi DIŞI olarak ayrı toplar (last_signs); SignTracker
+# aktif limiti çıkarır, accumulator 'speed.over_limit' kuralıyla ihlali ateşler.
+sign:
+  enabled: true
+  # Detector'ın tabela kabul ettiği sınıf adları (value_map anahtarları da otomatik dahildir).
+  classes: [sign, speed_limit_30, speed_limit_50, speed_limit_70, speed_limit_90, speed_limit_120]
+  # Tabela sınıfı → hız limiti (km/h). Generic 'sign' haritada yoktur → yalnızca çizilir.
+  value_map:
+    speed_limit_30: 30
+    speed_limit_50: 50
+    speed_limit_70: 70
+    speed_limit_90: 90
+    speed_limit_120: 120
+  persistence_frames: 150       # son görülen limit bu kadar kare daha geçerli kalır (araç tabelayı geçer)
+  min_conf: 0.40                # bu güvenin altındaki tabela tespiti yok sayılır
+  mock_synthetic: false         # mock modda (ağırlıksız demo) sabit bir hız-limiti tabelası üret
+  mock_speed_limit: 50          # mock_synthetic açıkken üretilen limit (km/h)
+
 qod:
   backend: mock                 # mock | camara
   endpoint: http://localhost:8081
@@ -123,6 +142,9 @@ risk:
     - name: unbelted
       all_of: [driver.no_seatbelt]
       severity: medium
+    - name: speed_limit_violation
+      all_of: [speed.over_limit]   # araç hızı > aktif tabela limiti (SignTracker)
+      severity: high
   high_speed_kmh: 90            # speed.high eşiği (kalibrasyon varsa)
   long_lived_frames: 90        # track.long_lived eşiği (kare sayısı)
 

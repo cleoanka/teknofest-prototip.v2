@@ -11,7 +11,7 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
-from aura.detection.detector import Detection, Detector, Person, crop_rois
+from aura.detection.detector import Detection, Detector, Person, Sign, crop_rois
 from aura.schema import BBox
 
 
@@ -79,6 +79,10 @@ class MockDetector(Detector):
         # Mock'ta gerçek kişi tespiti yok; demo/sunum için sentetik sürücü üretilebilir.
         self.synthetic_person = bool(cfg.get("driver_lock.mock_synthetic_person", False))
         self.last_persons: list[Person] = []
+        # Mock'ta gerçek tabela tespiti yok; ağırlıksız demo için sentetik hız-limiti üretilebilir.
+        self.sign_synthetic = bool(cfg.get("sign.mock_synthetic", False))
+        self.sign_synth_limit = int(cfg.get("sign.mock_speed_limit", 50))
+        self.last_signs: list[Sign] = []
 
     def detect(self, frame: np.ndarray) -> list[Detection]:
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -99,6 +103,9 @@ class MockDetector(Detector):
 
         dets = []
         self.last_persons = []
+        self.last_signs = []
+        if self.sign_synthetic:
+            self.last_signs.append(self._synthetic_sign(frame))
         for tid, (x1, y1, x2, y2) in self.tracker.update(boxes):
             bbox = BBox(
                 x1=float(x1), y1=float(y1), x2=float(x2), y2=float(y2), conf=0.9, cls=self.cls0
@@ -119,3 +126,10 @@ class MockDetector(Detector):
         hw, hh = v.width * 0.12, v.height * 0.12
         pbox = BBox(x1=cx - hw, y1=cy - hh, x2=cx + hw, y2=cy + hh, conf=0.9, cls="person")
         return Person(bbox=pbox, track_id=100000 + vehicle_tid)
+
+    def _synthetic_sign(self, frame: np.ndarray) -> Sign:
+        """Karenin sağ-üst köşesinde sabit bir hız-limiti tabelası (ağırlıksız demo)."""
+        h, w = frame.shape[:2]
+        cls = f"speed_limit_{self.sign_synth_limit}"
+        bbox = BBox(x1=float(w - 90), y1=10.0, x2=float(w - 10), y2=70.0, conf=0.95, cls=cls)
+        return Sign(bbox=bbox, cls=cls, track_id=None)

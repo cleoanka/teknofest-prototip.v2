@@ -6,7 +6,15 @@ ve config'ten gelen risk kurallarını uygular. Kare-merkezli değil, ID-merkezl
 
 from __future__ import annotations
 
-from aura.schema import BBox, DriverState, PlateState, SpeedState, TrackRecord, make_event
+from aura.schema import (
+    BBox,
+    DriverState,
+    PlateState,
+    SceneContext,
+    SpeedState,
+    TrackRecord,
+    make_event,
+)
 
 
 class Accumulator:
@@ -16,6 +24,13 @@ class Accumulator:
         self.rules = cfg.get("risk.rules", []) or []
         self.high_speed = float(cfg.get("risk.high_speed_kmh", 90))
         self.long_lived = int(cfg.get("risk.long_lived_frames", 90))
+        # Sahne-seviyesi aktif hız limiti (SignTracker → set_scene). risk eval'de
+        # 'speed.over_limit' koşulu bunu araç hızıyla karşılaştırır. None → kural pasif.
+        self.active_speed_limit: int | None = None
+
+    def set_scene(self, scene: SceneContext) -> None:
+        """Kare-başı sahne bağlamını güncelle — track risk eval'inden ÖNCE çağrılır."""
+        self.active_speed_limit = scene.active_speed_limit_kmh
 
     # --- ana giriş noktası ------------------------------------------------- #
     def update_track(
@@ -130,7 +145,27 @@ class Accumulator:
         newly = [f for f in fired if f not in rec.risk_flags]
         rec.risk_flags = fired
         for rule_name in newly:
-            events.append(make_event(track_id, "RISK_ALERT", {"rule": rule_name}))
+            if rule_name == "speed_limit_violation" and self.active_speed_limit is not None:
+                # Hız-limiti ihlali zengin payload'lı kendi event'iyle çıkar (jüri demosu için).
+                over = (
+                    round(rec.speed.value_kmh - self.active_speed_limit, 1)
+                    if rec.speed.value_kmh is not None
+                    else None
+                )
+                events.append(
+                    make_event(
+                        track_id,
+                        "SPEED_LIMIT_VIOLATION",
+                        {
+                            "speed_kmh": rec.speed.value_kmh,
+                            "limit_kmh": self.active_speed_limit,
+                            "over_by_kmh": over,
+                            "plate": rec.plate.value,
+                        },
+                    )
+                )
+            else:
+                events.append(make_event(track_id, "RISK_ALERT", {"rule": rule_name}))
 
         return rec, events
 
@@ -146,6 +181,13 @@ class Accumulator:
     def _cond(self, rec: TrackRecord, token: str) -> bool:
         if token == "speed.high":
             return rec.speed.value_kmh is not None and rec.speed.value_kmh >= self.high_speed
+        if token == "speed.over_limit":
+            # Aktif tabela limiti yoksa (None) kural pasiftir — yanlış ihlal üretmez.
+            return (
+                self.active_speed_limit is not None
+                and rec.speed.value_kmh is not None
+                and rec.speed.value_kmh > self.active_speed_limit
+            )
         if token == "track.long_lived":
             return (rec.last_frame - rec.first_frame) >= self.long_lived
         if token.startswith("driver."):
