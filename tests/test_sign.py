@@ -14,7 +14,7 @@ from aura.config import Config
 from aura.detection.detector import Sign
 from aura.detection.mock import MockDetector
 from aura.scene.sign_tracker import SCENE_TRACK_ID, SignTracker
-from aura.schema import BBox, SceneContext, SpeedState
+from aura.schema import BBox, DriverState, SceneContext, SpeedState
 
 
 def _sign(cls: str, conf: float = 0.9) -> Sign:
@@ -132,6 +132,56 @@ def test_violation_fires_once_not_every_frame(cfg):
     assert any(e.type == "SPEED_LIMIT_VIOLATION" for e in ev0)
     # Aynı bayrak zaten aktif → ikinci karede tekrar event üretilmez
     assert not any(e.type == "SPEED_LIMIT_VIOLATION" for e in ev1)
+
+
+# --- distracted_speeding: tabela-duyarlı (phone + speed.speeding) ---------- #
+# Kural: all_of [driver.phone, speed.speeding]. 'speeding' = tabela varsa onun
+# limiti, yoksa mutlak high_speed (90) tabanı aşılırsa True.
+def _fast(value: float) -> SpeedState:
+    return SpeedState(value_kmh=value, mode="metric", is_calibrated=True)
+
+
+def test_distracted_speeding_fires_over_sign_limit(cfg):
+    """30 bölgesinde telefonla 40 → mutlak 90'ın ALTINDA ama tabelayı aşıyor → dikkatsiz sürüş."""
+    acc = Accumulator(cfg)
+    acc.set_scene(SceneContext(active_speed_limit_kmh=30))
+    rec, _ = acc.update_track(
+        1, frame_idx=0, bbox=_vehicle(), driver=DriverState(phone=True), speed=_fast(40.0)
+    )
+    assert "distracted_speeding" in rec.risk_flags
+
+
+def test_distracted_speeding_needs_phone(cfg):
+    """Tabela aşılıyor ama telefon YOK → distracted_speeding tetiklenmez (ihlal ayrı kural)."""
+    acc = Accumulator(cfg)
+    acc.set_scene(SceneContext(active_speed_limit_kmh=30))
+    rec, _ = acc.update_track(
+        2, frame_idx=0, bbox=_vehicle(), driver=DriverState(phone=False), speed=_fast(40.0)
+    )
+    assert "distracted_speeding" not in rec.risk_flags
+
+
+def test_distracted_speeding_legal_speed_under_high_limit(cfg):
+    """120 bölgesinde telefonla 100 → YASAL hız → distracted_speeding YOK (katı tabela-takibi)."""
+    acc = Accumulator(cfg)
+    acc.set_scene(SceneContext(active_speed_limit_kmh=120))
+    rec, _ = acc.update_track(
+        3, frame_idx=0, bbox=_vehicle(), driver=DriverState(phone=True), speed=_fast(100.0)
+    )
+    assert "distracted_speeding" not in rec.risk_flags
+
+
+def test_distracted_speeding_no_sign_falls_back_to_absolute(cfg):
+    """Tabela yokken: telefonla 100 (≥90) tetikler; 50 (<90) tetiklemez."""
+    acc = Accumulator(cfg)  # set_scene çağrılmadı → active_speed_limit None
+    rec_fast, _ = acc.update_track(
+        4, frame_idx=0, bbox=_vehicle(), driver=DriverState(phone=True), speed=_fast(100.0)
+    )
+    assert "distracted_speeding" in rec_fast.risk_flags
+    rec_slow, _ = acc.update_track(
+        5, frame_idx=0, bbox=_vehicle(), driver=DriverState(phone=True), speed=_fast(50.0)
+    )
+    assert "distracted_speeding" not in rec_slow.risk_flags
 
 
 # --- Mock dedektör → last_signs wiring (ağırlıksız) ------------------------ #
