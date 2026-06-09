@@ -185,6 +185,39 @@ class StreamManager:
                 1,
                 cv2.LINE_AA,
             )
+        # Trafik tabelaları (sahne-seviyesi) — BGR ~ açık mavi (#33ccff)
+        sign_color = (255, 204, 51)
+        for s in getattr(anno, "signs", None) or []:
+            sx1, sy1, sx2, sy2 = (int(v) for v in s["bbox"])
+            cv2.rectangle(img, (sx1, sy1), (sx2, sy2), sign_color, 2)
+            lbl = (
+                f"{s['speed_limit_kmh']} km/h"
+                if s.get("speed_limit_kmh") is not None
+                else s.get("cls", "tabela")
+            )
+            cv2.putText(
+                img,
+                lbl,
+                (sx1, max(12, sy1 - 5)),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                sign_color,
+                1,
+                cv2.LINE_AA,
+            )
+        # Aktif hız limiti banner'ı (sol-üst)
+        lim = (getattr(anno, "scene", None) or {}).get("active_speed_limit_kmh")
+        if lim is not None:
+            cv2.putText(
+                img,
+                f"LIMIT {lim}",
+                (10, 30),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.9,
+                sign_color,
+                2,
+                cv2.LINE_AA,
+            )
         return img
 
     # --- okuma ------------------------------------------------------------- #

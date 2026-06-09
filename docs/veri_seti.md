@@ -16,7 +16,12 @@ stratejisini tanımlar. İki ayrı veri seti: araç tespiti (Stage-1) ve sürüc
 - Format: YOLO (`<class> <cx> <cy> <w> <h>` normalize, her görüntü için `.txt`).
 - Dizin: `images/` + `labels/` (veya görüntüyle aynı klasörde `<stem>.txt`).
 - Sınıf listesi: `classes.txt` (her satır bir sınıf) veya `--classes` argümanı.
-- Araç sınıfları: `car, truck, bus, minibus`.
+- Araç sınıfları: `car, truck, bus, minibus, motorcycle`.
+- **Tabela sınıfları (Stage-1, opsiyonel):** generic `sign` + hız-limiti değerli sınıflar
+  `speed_limit_30/50/70/90/120`. Dedektör bunları araç/kişiden ayrı toplar; `config/default.yaml`
+  → `sign.value_map` sınıf adını km/h'ye eşler (hız-limiti çapraz kontrolü için). Bkz. `docs/mimari.md` §7.5.
+- **Yaya:** `person` sınıfı hem yaya güvenliği hem (araç kutusu içinde kalırsa) sürücü kilidi içindir;
+  cam-ardı sürücüyü yaya seviyesinde yakalamak için kabin-içi `person` örnekleri de eklenmelidir.
 - Sürücü sınıfları: `phone, smoking, no_seatbelt, fatigue` — **çoklu etiket** (bir kabinde
   aynı anda birden çok aktif olabilir; her durum ayrı bbox).
 - **Yorgunluk:** kapalı göz, esneme, baş düşmesi sahnelerini `fatigue` olarak etiketleyin.

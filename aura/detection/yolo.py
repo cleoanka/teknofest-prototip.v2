@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from aura.detection.detector import Detection, Detector, Person, crop_rois
+from aura.detection.detector import Detection, Detector, Person, Sign, crop_rois
 from aura.device import resolve_device
 from aura.schema import BBox
 
@@ -36,6 +36,13 @@ class YOLO26Detector(Detector):
         pc = cfg.get("driver_lock.person_classes", ["person"])
         self.person_classes = set(pc) if pc else set()
         self.last_persons: list[Person] = []
+        # Trafik tabelası sınıfları (araç/kişi DIŞI; SignTracker tüketir). value_map
+        # anahtarları da tabela sayılır → config'te classes eksik kalsa bile yakalanır.
+        self.sign_enabled = bool(cfg.get("sign.enabled", True))
+        sc = cfg.get("sign.classes", []) or []
+        vmap = cfg.get("sign.value_map", {}) or {}
+        self.sign_classes = set(sc) | {str(k) for k in vmap}
+        self.last_signs: list[Sign] = []
         self.device = resolve_device(cfg.get("runtime.device", "auto"))
         log.info(
             "YOLO26 yüklendi: %s (imgsz=%d, tracker=%s, device=%s)",
@@ -58,6 +65,7 @@ class YOLO26Detector(Detector):
         )
         dets: list[Detection] = []
         self.last_persons = []
+        self.last_signs = []
         if not results:
             return dets
         r = results[0]
@@ -72,9 +80,15 @@ class YOLO26Detector(Detector):
                 if isinstance(names, (list, tuple))
                 else names.get(cls_idx, str(cls_idx))
             )
-            is_vehicle = (not self.vehicle_classes) or cls_name in self.vehicle_classes
             is_person = cls_name in self.person_classes
-            if not (is_vehicle or is_person):
+            is_sign = self.sign_enabled and cls_name in self.sign_classes
+            # vehicle_classes boşsa "süzgeç yok" demektir → kişi/tabela dışı her şey araç.
+            is_vehicle = (
+                cls_name in self.vehicle_classes
+                if self.vehicle_classes
+                else not (is_person or is_sign)
+            )
+            if not (is_vehicle or is_person or is_sign):
                 continue
             xyxy = b.xyxy[0].tolist()
             tid = int(b.id.item()) if getattr(b, "id", None) is not None else None
@@ -86,6 +100,10 @@ class YOLO26Detector(Detector):
                 conf=float(b.conf.item()),
                 cls=cls_name,
             )
+            # Tabela → SignTracker'a (sahne-seviyesi; ID-merkezli akışa girmez)
+            if is_sign:
+                self.last_signs.append(Sign(bbox=bbox, cls=cls_name, track_id=tid))
+                continue
             # Kişi sınıfı → sürücü kilidine; (araç sınıfıyla çakışmaz, COCO'da ayrık)
             if is_person:
                 self.last_persons.append(Person(bbox=bbox, track_id=tid))

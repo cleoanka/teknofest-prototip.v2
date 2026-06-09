@@ -76,5 +76,32 @@ export class VideoRenderer {
         ctx.fillText("⚡", x2 - 14, y2 - 4);
       }
     }
+
+    // --- Trafik tabelaları (sahne-seviyesi; bir araca bağlı değil) ---------- //
+    for (const s of anno.signs || []) {
+      const [sx1, sy1, sx2, sy2] = s.bbox;
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#33ccff";
+      ctx.strokeRect(sx1, sy1, sx2 - sx1, sy2 - sy1);
+      const lbl = s.speed_limit_kmh != null ? s.speed_limit_kmh + " km/h" : (s.cls || "tabela");
+      ctx.font = "bold 13px ui-monospace, monospace";
+      const tw = ctx.measureText(lbl).width;
+      ctx.fillStyle = "#33ccff";
+      ctx.fillRect(sx1, sy1 - 17, tw + 8, 17);
+      ctx.fillStyle = "#04222e";
+      ctx.fillText(lbl, sx1 + 4, sy1 - 4);
+    }
+
+    // --- Aktif hız limiti banner'ı (sol-üst; araç tabelayı geçse de görünür) - //
+    const lim = anno.scene && anno.scene.active_speed_limit_kmh;
+    if (lim != null) {
+      const txt = "LİMİT " + lim;
+      ctx.font = "bold 18px ui-monospace, monospace";
+      const w = ctx.measureText(txt).width + 16;
+      ctx.fillStyle = "#33ccff";
+      ctx.fillRect(8, 8, w, 26);
+      ctx.fillStyle = "#04222e";
+      ctx.fillText(txt, 16, 27);
+    }
   }
 }

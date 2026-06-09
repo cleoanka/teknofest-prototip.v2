@@ -65,6 +65,35 @@ class BBox(BaseModel):
 
 
 # --------------------------------------------------------------------------- #
+# Sahne-seviyesi modeller (ID-merkezli DEĞİL — tüm kareye/sahneye ait bağlam)
+# --------------------------------------------------------------------------- #
+
+
+class SignDetection(BaseModel):
+    """Bir trafik tabelası tespiti. Bir araca bağlı değildir (sahne-seviyesi).
+
+    ``speed_limit_kmh`` yalnızca hız-limiti tabelalarında doludur; diğer tabelalarda
+    (dur, yol ver vb.) None'dır ve tabela yalnızca çizim/kayıt amacıyla taşınır.
+    """
+
+    cls: str = ""  # ham sınıf adı (ör. "speed_limit_50", "sign")
+    bbox: BBox
+    speed_limit_kmh: int | None = None
+
+
+class SceneContext(BaseModel):
+    """Kare/sahne-seviyesi bağlam — ID-merkezli accumulator'ın YANINDA taşınır.
+
+    Şu an yalnızca aktif hız limitini tutar (tabela geçildikten sonra da bir süre
+    geçerli kalır; bkz. SignTracker). İleride hava/ışık/şerit-zon bilgisi eklenebilir.
+    """
+
+    active_speed_limit_kmh: int | None = None
+    speed_limit_source_cls: str | None = None
+    sign_count: int = 0
+
+
+# --------------------------------------------------------------------------- #
 # ID-merkezli kayıt
 # --------------------------------------------------------------------------- #
 
@@ -101,6 +130,8 @@ EventType = Literal[
     "QOD_TRIGGER",
     "QOD_RELEASE",
     "RISK_ALERT",
+    "SPEED_LIMIT_DETECTED",  # sahne: aktif hız limiti değişti (track_id=-1)
+    "SPEED_LIMIT_VIOLATION",  # araç: hız aktif tabela limitini aştı
 ]
 
 
@@ -117,6 +148,10 @@ class AnnotationFrame(BaseModel):
     frame_id: int
     ts: float = Field(default_factory=time.time)
     tracks: list[dict] = Field(default_factory=list)  # bbox + label + track_id + risk_flags
+    signs: list[dict] = Field(
+        default_factory=list
+    )  # sahne tabelaları: bbox + cls + speed_limit_kmh
+    scene: dict = Field(default_factory=dict)  # SceneContext.model_dump() (aktif hız limiti vb.)
 
 
 def make_event(

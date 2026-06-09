@@ -9,7 +9,8 @@ madde, onu karşılayan bileşene/dosyaya bağlanır. (Kaynak: şartname PDF + `
 |---|---|---|---|---|
 | 1 | Araç tespiti | `aura/detection` (YOLO26s + ByteTrack) | %40 | ✅ |
 | 2 | Plaka tespiti + okuma | `aura/plate` (sweet spot + voting + OCR + Türk regex) | %40 | ✅ |
-| 3 | Hız tespiti | `aura/speed` (tripwire/ipm/disabled + relative flag) | %40 | ✅ |
+| 3 | Hız tespiti | `aura/speed` (tripwire/ipm/disabled/metric + relative flag) | %40 | ✅ |
+| 3b | Hız-limiti tabelası + ihlal (yol güvenliği) | `aura/scene` (SignTracker) + `accumulator` `speed.over_limit` → `SPEED_LIMIT_VIOLATION` | %40 | ✅ (custom dataset retrain bekliyor) |
 | 4 | Araç-içi nesne / sürücü davranışı (telefon/sigara/kemer/yorgunluk) | `aura/driver_state` (YOLO26l, 4 sınıf, **no-landmark**) | %40 içinde | ✅ |
 | 5 | QoD yalnızca kritik anda | `aura/qod` (histerezis; kalite + optimizasyon tetiği) | %40 | ✅ |
 | 6 | QoD başarım artışı **kanıtı** | `aura/eval` A/B harness + `GET /eval/results` + dashboard paneli | %40 | ✅ (delta: plaka +33pp, küçük nesne +51pp) |
@@ -25,6 +26,7 @@ madde, onu karşılayan bileşene/dosyaya bağlanır. (Kaynak: şartname PDF + `
 | CAMARA QoD + histerezis | "QoD yalnızca kritik anda" + 5G-native kaynak yönetimi |
 | 16/8 state machine | Kararlı tespit (yanlış alarm engelleme) |
 | ID-merkezli accumulator | Tutarlı karar üretimi |
+| Sahne katmanı (tabela) | Tabela araca değil sahneye ait → ID-merkezli akışın yanında ayrı katman |
 | No-MediaPipe yorgunluk | Trafik kamerası koşullarında dayanıklılık (detection sınıfı) |
 | Kalibrasyon-bağımlı hız | Sistemin sınırını tanıması (kalibrasyon yoksa flag) |
 
