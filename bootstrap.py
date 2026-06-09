@@ -14,17 +14,17 @@ subprocess ile devredilir.
 # için anotasyonları string olarak ertele (PEP 563).
 from __future__ import annotations
 
-import argparse          # Komut satırı argümanlarını (--force, --dev, vb.) ayrıştırmak için
-import hashlib           # İndirilen ağırlıkların SHA256 bütünlük doğrulaması için
-import json              # weights.lock.json okuma/yazma için
-import os                # Ortam değişkenleri (NO_COLOR) ve işletim sistemi erişimi için
-import platform          # İşletim sistemi / mimari tespiti (Windows, Darwin, arm64...) için
-import shutil            # Dosya kopyalama, dizin silme, PATH'te program arama (which) için
-import subprocess        # venv python'unu ve harici komutları (pip, git, nvidia-smi) çağırmak için
-import sys               # Python sürümü, stdout/stderr, çıkış kodu erişimi için
-import urllib.error      # İndirme sırasında ağ/HTTP hatalarını yakalamak için
-import urllib.request    # Ağırlık dosyalarını HTTP üzerinden indirmek için
-from pathlib import Path # Platformdan bağımsız dosya yolu işlemleri için
+import argparse  # Komut satırı argümanlarını (--force, --dev, vb.) ayrıştırmak için
+import hashlib  # İndirilen ağırlıkların SHA256 bütünlük doğrulaması için
+import json  # weights.lock.json okuma/yazma için
+import os  # Ortam değişkenleri (NO_COLOR) ve işletim sistemi erişimi için
+import platform  # İşletim sistemi / mimari tespiti (Windows, Darwin, arm64...) için
+import shutil  # Dosya kopyalama, dizin silme, PATH'te program arama (which) için
+import subprocess  # venv python'unu ve harici komutları (pip, git, nvidia-smi) çağırmak için
+import sys  # Python sürümü, stdout/stderr, çıkış kodu erişimi için
+import urllib.error  # İndirme sırasında ağ/HTTP hatalarını yakalamak için
+import urllib.request  # Ağırlık dosyalarını HTTP üzerinden indirmek için
+from pathlib import Path  # Platformdan bağımsız dosya yolu işlemleri için
 from typing import NoReturn  # die() gibi asla geri dönmeyen fonksiyonları işaretlemek için
 
 # Windows konsolu cp1254/cp437 gibi olabilir; UTF-8'e geç ki kutu çizimi ve
@@ -38,11 +38,11 @@ for _stream in (sys.stdout, sys.stderr):
         pass
 
 # --- Proje genelinde kullanılan sabit dosya yolları ----------------------- #
-ROOT = Path(__file__).resolve().parent      # Bu dosyanın bulunduğu proje kök dizini
-VENV = ROOT / ".venv"                        # Oluşturulacak/kullanılacak sanal ortam dizini
-WEIGHTS_DIR = ROOT / "weights"               # Model ağırlıklarının indirileceği dizin
-SAMPLES_DIR = ROOT / "data" / "samples"      # Örnek video ve ground-truth dizini
-MIN_PY = (3, 10)                             # Desteklenen en düşük Python sürümü
+ROOT = Path(__file__).resolve().parent  # Bu dosyanın bulunduğu proje kök dizini
+VENV = ROOT / ".venv"  # Oluşturulacak/kullanılacak sanal ortam dizini
+WEIGHTS_DIR = ROOT / "weights"  # Model ağırlıklarının indirileceği dizin
+SAMPLES_DIR = ROOT / "data" / "samples"  # Örnek video ve ground-truth dizini
+MIN_PY = (3, 10)  # Desteklenen en düşük Python sürümü
 
 # Model ağırlıkları — bootstrap tarafından indirilir, .gitignore'lu.
 # sha256 None => "trust on first use": ilk indirmede hash hesaplanır ve
@@ -102,8 +102,8 @@ def die(msg: str, hint: str = "") -> NoReturn:
 def venv_python() -> Path:
     # Sanal ortamdaki python yorumlayıcısının yolunu döndürür (OS'a göre değişir).
     if platform.system() == "Windows":
-        return VENV / "Scripts" / "python.exe"   # Windows: .venv\Scripts\python.exe
-    return VENV / "bin" / "python"               # macOS/Linux: .venv/bin/python
+        return VENV / "Scripts" / "python.exe"  # Windows: .venv\Scripts\python.exe
+    return VENV / "bin" / "python"  # macOS/Linux: .venv/bin/python
 
 
 def run(cmd: list[str], **kw) -> subprocess.CompletedProcess:
@@ -202,13 +202,13 @@ TORCH_PIN_CUDA = ["torch==2.8.0", "torchvision==0.23.0"]
 # 4=kernel yok (yanlış/eski derleme).
 _TORCH_GPU_PROBE = (
     "import sys, torch, torchvision\n"
-    "if not torch.cuda.is_available():\n"      # GPU hiç görünmüyorsa
-    "    sys.exit(3)\n"                          # → kod 3 (muhtemelen CPU derlemesi)
+    "if not torch.cuda.is_available():\n"  # GPU hiç görünmüyorsa
+    "    sys.exit(3)\n"  # → kod 3 (muhtemelen CPU derlemesi)
     "try:\n"
     "    x = torch.zeros((8, 8), device='cuda'); _ = x @ x; torch.cuda.synchronize()\n"  # GPU'da gerçek matris çarpımı dene
     "except Exception:\n"
-    "    sys.exit(4)\n"                          # Çalışmadıysa → kod 4 (yanlış/eski kernel derlemesi)
-    "sys.exit(0)\n"                              # Sorunsuz → kod 0 (GPU çalışıyor)
+    "    sys.exit(4)\n"  # Çalışmadıysa → kod 4 (yanlış/eski kernel derlemesi)
+    "sys.exit(0)\n"  # Sorunsuz → kod 0 (GPU çalışıyor)
 )
 
 
@@ -302,7 +302,7 @@ def _download(url: str, dest: Path) -> bool:
                 while True:
                     chunk = resp.read(1 << 20)  # 1 MB'lık parçalar halinde indir
                     if not chunk:
-                        break                    # Veri bitti → döngüden çık
+                        break  # Veri bitti → döngüden çık
                     f.write(chunk)
                     done += len(chunk)
                     if total:
@@ -336,8 +336,8 @@ def _save_lock(data: dict) -> None:
 def fetch_weights(skip: bool) -> dict[str, str]:
     step("Model ağırlıkları (weights/)")
     WEIGHTS_DIR.mkdir(exist_ok=True)  # weights/ dizini yoksa oluştur
-    lock = _load_lock()               # Daha önce kilitlenmiş hash'leri yükle
-    status: dict[str, str] = {}       # Her ağırlık için sonuç durumu (present/missing/corrupt)
+    lock = _load_lock()  # Daha önce kilitlenmiş hash'leri yükle
+    status: dict[str, str] = {}  # Her ağırlık için sonuç durumu (present/missing/corrupt)
     # --skip-weights: indirme yapma, yalnızca dosyaların var olup olmadığını raporla.
     if skip:
         warn("ağırlık indirme atlandı (--skip-weights)")
@@ -386,8 +386,8 @@ def fetch_weights(skip: bool) -> dict[str, str]:
             )
             status[name] = "missing"
 
-    _save_lock(lock)                          # Güncellenen kilit verisini diske yaz
-    _write_weights_readme(status, lock)       # weights/README.md'yi durum tablosuyla güncelle
+    _save_lock(lock)  # Güncellenen kilit verisini diske yaz
+    _write_weights_readme(status, lock)  # weights/README.md'yi durum tablosuyla güncelle
     return status
 
 
@@ -434,7 +434,7 @@ def _write_weights_readme(status: dict[str, str], lock: dict) -> None:
 # --- 3.6 Config + env ------------------------------------------------------ #
 def ensure_config_env() -> None:
     step("Config ve ortam değişkenleri")
-    default = ROOT / "config" / "default.yaml"            # Asıl kullanılacak config
+    default = ROOT / "config" / "default.yaml"  # Asıl kullanılacak config
     template = ROOT / "config" / "default.yaml.template"  # Şablon (depoya dahil)
     # Asıl config yoksa ama şablon varsa → şablondan kopyala.
     if not default.exists() and template.exists():
@@ -555,15 +555,15 @@ def main(argv: list[str] | None = None) -> int:
     print(_c("1;35", "╚══════════════════════════════════════════╝\n"))
 
     # Kurulum adımları sırayla — her biri idempotent ve bayraklarla yönetilebilir.
-    check_system()                                    # 3.1 Python/git/platform doğrula
-    ensure_venv(args.force)                           # 3.2 Sanal ortamı kur
-    install_torch(args.skip_deps)                     # 3.3 Donanıma uygun torch'u kur
-    install_package(args.dev, args.skip_deps)         # 3.4 AURA paketini kur
-    weights_status = fetch_weights(args.skip_weights) # 3.5 Ağırlıkları indir/doğrula
-    ensure_config_env()                               # 3.6 Config ve .env hazırla
-    ensure_sample_data(args.skip_deps)                # 3.7 Örnek veriyi üret
-    ensure_node(args.skip_node)                       # 3.8 (Opsiyonel) Node/mobil
-    smoke_test(args.skip_deps)                        # 3.9 Uçtan uca çalışırlık testi
+    check_system()  # 3.1 Python/git/platform doğrula
+    ensure_venv(args.force)  # 3.2 Sanal ortamı kur
+    install_torch(args.skip_deps)  # 3.3 Donanıma uygun torch'u kur
+    install_package(args.dev, args.skip_deps)  # 3.4 AURA paketini kur
+    weights_status = fetch_weights(args.skip_weights)  # 3.5 Ağırlıkları indir/doğrula
+    ensure_config_env()  # 3.6 Config ve .env hazırla
+    ensure_sample_data(args.skip_deps)  # 3.7 Örnek veriyi üret
+    ensure_node(args.skip_node)  # 3.8 (Opsiyonel) Node/mobil
+    smoke_test(args.skip_deps)  # 3.9 Uçtan uca çalışırlık testi
 
     print()
     # Herhangi bir ağırlık eksik/bozuksa kullanıcıyı mock mod hakkında uyar.
