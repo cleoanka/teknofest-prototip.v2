@@ -84,6 +84,36 @@ kullanır → mimariyi gerçekten 5G-native kılar.
 | `disabled` | kalibrasyon yok | hız üretilmez; `relative_velocity_flag` |
 Sistem kendi sınırlarını tanır; kalibrasyon yoksa hız iddiasında bulunmaz.
 
+## 7.5 Sahne Katmanı — Trafik Tabelası + Hız-Limiti Çapraz Kontrolü
+
+Tüm karar akışı **ID-merkezlidir** (her araç bir `TrackRecord`). Trafik tabelası ise
+bir araca değil **sahneye** aittir; bu yüzden ID-merkezli accumulator'ın *yanına*
+ince bir **sahne katmanı** eklenir (`aura/scene/sign_tracker.py`).
+
+Akış:
+```
+[YOLO26s] ──(araç/kişi DIŞI tabela sınıfları)──► detector.last_signs
+                                                      ↓
+                              [SignTracker] ── value_map (speed_limit_50→50)
+                                                      ↓
+                              SceneContext.active_speed_limit_kmh  (persistence_frames boyunca korunur)
+                                                      ↓
+   [Accumulator.set_scene] ──► risk koşulu `speed.over_limit` ──► SPEED_LIMIT_VIOLATION
+```
+
+- **Tespit:** Dedektör tabelaları araç/kişiden ayrı toplar (`Sign` tipi). Hangi sınıfların
+  tabela olduğu `sign.classes` + `sign.value_map` ile config'ten gelir.
+- **Aktif limit:** `SignTracker` en güvenilir hız-limiti tabelasını seçer, km/h'ye çözer ve
+  araç tabelayı **geçtikten sonra da** `persistence_frames` kare boyunca geçerli tutar (kural sürer).
+  Limit değişince tek seferlik `SPEED_LIMIT_DETECTED` (sahne event'i, `track_id=-1`).
+- **Çapraz kontrol:** Accumulator her kare `set_scene()` ile aktif limiti alır; `speed.over_limit`
+  risk koşulu araç hızını (metric km/h) limitle karşılaştırır → `speed_limit_violation` kuralı →
+  zengin payload'lı **`SPEED_LIMIT_VIOLATION`** event (hız / limit / aşım / plaka).
+- **Dürüstlük:** Aktif limit yoksa (None) kural pasiftir — kalibrasyonsuz hız gibi, **yanlış ihlal üretmez**.
+  Feature config-driven; dedektör `speed_limit_*` sınıflarını üretene dek sessizce pasif kalır, çökmez.
+
+Dashboard tabela kutularını ve sol-üstte "LİMİT" banner'ını çizer (annotation `signs` + `scene` alanları).
+
 ---
 
 # Sistem Katmanı (v2.0 — yeni)

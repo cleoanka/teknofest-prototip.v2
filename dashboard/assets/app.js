@@ -86,6 +86,10 @@ function describe(ev) {
     case "QOD_TRIGGER": return `${p.profile} (${p.reason})`;
     case "QOD_RELEASE": return p.profile || "";
     case "RISK_ALERT": return p.rule || "risk";
+    case "SPEED_LIMIT_DETECTED": return "limit " + (p.speed_limit_kmh != null ? p.speed_limit_kmh + " km/h" : "?");
+    case "SPEED_LIMIT_VIOLATION":
+      return `${p.speed_kmh != null ? p.speed_kmh : "?"} km/h / limit ${p.limit_kmh != null ? p.limit_kmh : "?"}` +
+        (p.plate ? ` (${p.plate})` : "");
     default: return p.cls || "";
   }
 }

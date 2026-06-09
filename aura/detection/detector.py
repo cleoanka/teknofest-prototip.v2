@@ -44,16 +44,31 @@ class Person:
     track_id: int | None = None
 
 
+@dataclass
+class Sign:
+    """Bir trafik tabelası tespiti (sahne-seviyesi; araç/kişiden ayrı toplanır).
+
+    Ham sınıf adı (``cls``, ör. ``speed_limit_50``) taşınır; km/h çözümü SignTracker'da
+    ``sign.value_map`` ile yapılır. ID-merkezli karar akışına girmez.
+    """
+
+    bbox: BBox
+    cls: str = ""
+    track_id: int | None = None
+
+
 class Detector(ABC):
     """Tespit motoru soyut arayüzü (gerçek/mock implementasyonlar bunu uygular).
 
     Alt sınıflar her ``detect()`` çağrısından sonra o karede bulunan kişileri
-    ``last_persons`` listesine yazar (sürücü kilidi bunları tüketir). Araç tespiti
-    yapmayan/kişi üretmeyen implementasyonlar bunu boş bırakır.
+    ``last_persons``, tabelaları ``last_signs`` listesine yazar (sürücü kilidi ve
+    SignTracker bunları tüketir). Üretmeyen implementasyonlar bunları boş bırakır.
     """
 
     #: Son karede tespit edilen kişiler (her detect() çağrısında güncellenir)
     last_persons: list[Person] = []
+    #: Son karede tespit edilen trafik tabelaları (her detect() çağrısında güncellenir)
+    last_signs: list[Sign] = []
 
     @abstractmethod
     def detect(self, frame: np.ndarray) -> list[Detection]:
