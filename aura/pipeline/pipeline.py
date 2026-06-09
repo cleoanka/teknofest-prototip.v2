@@ -147,7 +147,7 @@ class Pipeline:
         driver_assignments = self.driver_lock.assign_frame(vehicles, persons, idx)
 
         # Her tespit edilen araç için aşamaları sırayla uygula:
-        for det, assign in zip(detections, driver_assignments):
+        for det, assign in zip(detections, driver_assignments, strict=True):
             # track_id yoksa -1 ile işaretle (takip kurulmamış geçici tespit).
             tid = det.track_id if det.track_id is not None else -1
             # Araç kutusundan iki ROI kes: kabin (sürücü bölgesi) ve plaka bölgesi.

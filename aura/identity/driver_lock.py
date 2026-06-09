@@ -271,7 +271,7 @@ class DriverLock:
             # Serbest kişi: eşiği geçen araçlar arasından en iyi skorlu TEK aracı seç.
             best_i: int | None = None
             best_s: float | None = None
-            for i, (vid, vbbox) in enumerate(vehicles):
+            for i, (_vid, vbbox) in enumerate(vehicles):
                 s = self._assign_score(p.bbox, vbbox)
                 if s is None:
                     continue
