@@ -101,3 +101,57 @@ def test_prune_forgets_stale_vehicle(cfg):
     assert lock.is_locked(11)
     lock.prune(frame_idx=4 + lock.max_age + 1)  # max_age aşıldı
     assert not lock.is_locked(11)
+
+
+# --- global / dışlamalı eşleştirme (assign_frame) --------------------------- #
+
+
+def test_person_in_overlap_locks_to_single_vehicle(cfg):
+    """Örtüşen iki araç + kabuk-içi kişi → SADECE en iyi eşleşen araca kilitlenir."""
+    lock = DriverLock(cfg)
+    a = BBox(x1=0, y1=0, x2=100, y2=100, conf=0.9, cls="car")  # merkez (50,50)
+    b = BBox(x1=50, y1=0, x2=150, y2=100, conf=0.9, cls="car")  # merkez (100,50)
+    # (60,80): iki araca da TAM giriyor (containment=1.0); A'nın merkezine daha yakın.
+    shared = _person(7, 60, 80)
+    vehicles = [(1, a), (2, b)]
+
+    last = None
+    for i in range(5):
+        last = lock.assign_frame(vehicles, [shared], frame_idx=i)
+    # A (poz 0) sürücü 7'ye kilitli; B (poz 1) sürücüsüz.
+    assert last[0].locked is True and last[0].driver_id == 7
+    assert last[1].locked is False and last[1].driver_id is None
+    assert lock.driver_of(1) == 7
+    assert lock.driver_of(2) is None
+
+
+def test_locked_driver_not_stolen_by_other_vehicle(cfg):
+    """A'ya kilitli sürücü, sonradan B'ye daha yakın düşse bile B'ye geçemez."""
+    lock = DriverLock(cfg)
+    a = BBox(x1=0, y1=0, x2=100, y2=100, conf=0.9, cls="car")
+    b = BBox(x1=50, y1=0, x2=150, y2=100, conf=0.9, cls="car")
+    # Önce yalnızca A varken sürücü 7'yi A'ya kilitle (B sahnede yok).
+    for i in range(5):
+        lock.assign_frame([(1, a)], [_person(7, 60, 80)], frame_idx=i)
+    assert lock.driver_of(1) == 7
+
+    # Şimdi B sahnede ve 7 B'nin merkezine daha yakın bir konumda; yine de B çalamaz.
+    near_b = _person(7, 120, 80)  # B'ye (merkez 100,50) çok daha yakın
+    out = lock.assign_frame([(1, a), (2, b)], [near_b], frame_idx=5)
+    assert out[0].driver_id == 7 and out[0].locked is True  # A korur
+    assert out[1].driver_id is None  # B, kilitli 7'yi aday bile yapamaz
+    assert lock.driver_of(2) is None
+
+
+def test_two_vehicles_lock_distinct_drivers(cfg):
+    """İki ayrı araç + iki ayrı kişi → her biri kendi sürücüsüne kilitlenir."""
+    lock = DriverLock(cfg)
+    a = BBox(x1=0, y1=0, x2=100, y2=100, conf=0.9, cls="car")
+    b = BBox(x1=200, y1=0, x2=300, y2=100, conf=0.9, cls="car")
+    pa = _person(7, 80, 80)  # yalnızca A içinde
+    pb = _person(9, 280, 80)  # yalnızca B içinde
+    vehicles = [(1, a), (2, b)]
+    for i in range(5):
+        lock.assign_frame(vehicles, [pa, pb], frame_idx=i)
+    assert lock.driver_of(1) == 7
+    assert lock.driver_of(2) == 9

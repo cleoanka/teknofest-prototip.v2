@@ -137,15 +137,21 @@ class Pipeline:
         events.extend(scene_events)
         self.acc.set_scene(scene)
 
+        # Sürücü kilidi GLOBAL çözülür: kare içindeki TÜM araç↔kişi eşleşmesi tek seferde
+        # yapılır ki bir kişi yalnızca GERÇEKTEN içinde olduğu TEK araca kilitlensin
+        # (örtüşen araçlarda çift-sahiplenme olmasın). Araç döngüsünden ÖNCE, çünkü
+        # karar tüm araçları aynı anda görmeyi gerektirir. Sıra: vehicles[i] ↔ assign[i].
+        vehicles = [
+            (det.track_id if det.track_id is not None else -1, det.bbox) for det in detections
+        ]
+        driver_assignments = self.driver_lock.assign_frame(vehicles, persons, idx)
+
         # Her tespit edilen araç için aşamaları sırayla uygula:
-        for det in detections:
+        for det, assign in zip(detections, driver_assignments):
             # track_id yoksa -1 ile işaretle (takip kurulmamış geçici tespit).
             tid = det.track_id if det.track_id is not None else -1
             # Araç kutusundan iki ROI kes: kabin (sürücü bölgesi) ve plaka bölgesi.
             cabin, plate_roi = crop_rois(frame, det.bbox)
-
-            # Sürücü kimlik kilidi: sağ-alt aday → 5 kare tutarlıysa araca kilitle
-            assign = self.driver_lock.update(tid, det.bbox, persons, idx)
 
             # Sürücü ROI: kilitli/aday sürücünün kutusundan kes (kesin);
             # kişi yoksa geometrik kabin crop'una düş (geriye dönük uyumluluk).
