@@ -1,0 +1,27 @@
+{
+  "_note": "Gerçek test videosu GT'si (12 Haz 2026). Kare-kare bbox etiketi yok; plaka ve davranış video-düzeyi ground-truth. Sürücü video boyunca TELEFONLA konuşuyor.",
+  "video": "video_2.mp4",
+  "fps": 50,
+  "width": 3840,
+  "height": 2160,
+  "frames": [
+    {
+      "frame": 0,
+      "objects": [
+        {
+          "id": 1,
+          "bbox": [1500, 540, 2700, 1400],
+          "vehicle_class": "car",
+          "plate": "34TC8532",
+          "driver": {
+            "phone": true,
+            "smoking": false,
+            "no_seatbelt": false,
+            "fatigue": false
+          },
+          "speed_kmh": null
+        }
+      ]
+    }
+  ]
+}

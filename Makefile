@@ -32,3 +32,6 @@ format:         ## black format
 
 clean:          ## Geçici dosyaları temizle
 	rm -rf .pytest_cache .ruff_cache __pycache__ */__pycache__ **/__pycache__ eval_results/*.json
+
+video-test:     ## Gerçek video testi: make video-test VIDEO=/yol/video.mp4 → annotated mp4 + JSON kanıt
+	$(PY) tools/test_video.py --source $(VIDEO) --device auto

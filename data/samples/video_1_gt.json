@@ -1,0 +1,27 @@
+{
+  "_note": "Gerçek test videosu GT'si (12 Haz 2026). Kare-kare bbox etiketi yok; plaka ve davranış video-düzeyi ground-truth. bbox, videonun başındaki yaklaşık araç konumudur (4K). Sürücü video boyunca SİGARA içiyor.",
+  "video": "video_1.mp4",
+  "fps": 50,
+  "width": 3840,
+  "height": 2160,
+  "frames": [
+    {
+      "frame": 0,
+      "objects": [
+        {
+          "id": 1,
+          "bbox": [1579, 544, 2685, 1389],
+          "vehicle_class": "car",
+          "plate": "34TC8532",
+          "driver": {
+            "phone": false,
+            "smoking": true,
+            "no_seatbelt": false,
+            "fatigue": false
+          },
+          "speed_kmh": null
+        }
+      ]
+    }
+  ]
+}
