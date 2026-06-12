@@ -25,16 +25,23 @@ models:
     mock_bright_threshold: 90     # mock dedektör (ağırlık yokken) parlaklık eşiği
     mock_min_area: 300            # mock dedektör min blob alanı (şerit gürültüsünü eler)
   driver_state:
-    path: weights/yolo26l.pt
-    conf: 0.40
-    imgsz: 320
-    classes: [phone, smoking, no_seatbelt, fatigue]
+    path: weights/custom_driver.pt   # AURA özel eğitimi (phone/smoking/seatbelt) — bkz. docs/egitim
+    conf: 0.45
+    imgsz: 640   # 320 küçük telefonu kaybediyordu (cam-ardı sürücü); 640 küçük nesneyi korur
+    # Modelin HAM tespit sınıfları. 'seatbelt' = kemer ŞERİDİ (kemer VAR) tespiti;
+    # 'no_seatbelt' İHLALİ bundan TÜRETİLİR (Katman B), bu yüzden burada yer almaz.
+    classes: [phone, smoking, seatbelt, fatigue]
     # Katman B — ID-merkezli zaman tamponu (DriverStateEngine). Her track_id için
     # son `window` karede bayrak en az `min_votes` kez görülürse "kararlı aktif".
     voting:
       window: 16                # son kaç kareye bakılır
       min_votes: 8              # aktif sayılması için gereken True oy sayısı (16/8 kuralı)
       max_age: 30               # bu kadar kare görülmeyen ID'nin tamponu düşürülür
+    # Kemer ihlali (no_seatbelt) türetme aç/kapa. Kemer "yokluğundan" türetildiği için
+    # kemerin görünmediği (cam-ardı/loş/uzak) footage'da yanlış pozitif üretebilir →
+    # VARSAYILAN KAPALI. Net kemer görünümü olan kamerada açılabilir.
+    no_seatbelt:
+      enabled: false
 
 # Sürücü kimlik kilidi: araç kabininde sağ-alttaki kişiyi sürücü kabul et,
 # confirm_frames boyunca aynı kişi sürücüyse o kişinin takip ID'sini araca KİLİTLE.

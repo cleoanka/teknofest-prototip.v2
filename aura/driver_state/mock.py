@@ -12,11 +12,15 @@ import numpy as np
 from aura.driver_state.classifier import DriverClassifier
 from aura.schema import DriverState
 
-# Sentetik araç renkleri (BGR) → sürücü durum bayrakları
+# Sentetik araç renkleri (BGR) → HAM sürücü-durum bayrakları (seatbelt = kemer VAR).
+# no_seatbelt İHLALİ burada üretilmez; engine kemerin yokluğundan türetir:
+#   araç 1: telefon ama KEMERLİ        → engine no_seatbelt üretmez
+#   araç 2: sigara, KEMER YOK           → engine no_seatbelt türetir
+#   araç 3: yorgun ama KEMERLİ          → engine no_seatbelt üretmez
 _REFS: list[tuple[tuple[int, int, int], set[str]]] = [
-    ((90, 200, 255), {"phone"}),  # araç 1 (sarı/turuncu)
-    ((120, 255, 120), {"smoking", "no_seatbelt"}),  # araç 2 (yeşil)
-    ((200, 150, 255), {"fatigue"}),  # araç 3 (pembe)
+    ((90, 200, 255), {"phone", "seatbelt"}),  # araç 1 (sarı/turuncu)
+    ((120, 255, 120), {"smoking"}),  # araç 2 (yeşil) — kemer yok
+    ((200, 150, 255), {"fatigue", "seatbelt"}),  # araç 3 (pembe)
 ]
 
 

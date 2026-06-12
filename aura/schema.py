@@ -30,9 +30,13 @@ class DriverState(BaseModel):
     smoking: bool = False
     no_seatbelt: bool = False
     fatigue: bool = False
+    # HAM gözlem (ihlal DEĞİL): kemer şeridi görüldü mü. Model bunu tespit eder;
+    # `no_seatbelt` ihlali Katman B'de bunun YOKLUĞUNDAN türetilir (DriverStateEngine).
+    seatbelt: bool = False
     confidence: dict[str, float] = Field(default_factory=dict)
 
     def active_flags(self) -> list[str]:
+        # Yalnızca İHLAL bayrakları (seatbelt presence bir ihlal değildir → dahil değil).
         return [k for k in ("phone", "smoking", "no_seatbelt", "fatigue") if getattr(self, k)]
 
 

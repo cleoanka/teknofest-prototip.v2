@@ -37,9 +37,11 @@ class DriverStateEngine:
         # Katman A — ham, durumsuz (stateless) model. Placeholder ya da YOLO26l.
         self.model = build_driver_classifier(cfg)
         # Katman B — oylama parametreleri (config'ten; yoksa güvenli varsayılan = 16/8).
-        self.window = int(cfg.get("driver_state.voting.window", 16))
-        self.min_votes = int(cfg.get("driver_state.voting.min_votes", 8))
-        self.max_age = int(cfg.get("driver_state.voting.max_age", 30))
+        self.window = int(cfg.get("models.driver_state.voting.window", 16))
+        self.min_votes = int(cfg.get("models.driver_state.voting.min_votes", 8))
+        self.max_age = int(cfg.get("models.driver_state.voting.max_age", 30))
+        # Kemer ihlali türetme aç/kapa (varsayılan KAPALI; bkz. config no_seatbelt.enabled).
+        self.derive_no_seatbelt = bool(cfg.get("models.driver_state.no_seatbelt.enabled", False))
         # track_id → o ID'nin zaman tamponu (ID-merkezli durum burada yaşar).
         self.voters: dict[int, TrackVoter] = {}
         log.info(
@@ -59,13 +61,34 @@ class DriverStateEngine:
         """
         # Katman A: bu karenin ham tahmini (henüz oylanmamış).
         raw = self.model.infer(cabin_roi)
-        # Katman B: bu ID'nin tamponunu bul/oluştur, ham tahmini ekle, kararlısını döndür.
+        # Katman B: bu ID'nin tamponunu bul/oluştur, ham tahmini ekle, kararlısını al.
         voter = self.voters.get(track_id)
         if voter is None:
             voter = TrackVoter(self.window, self.min_votes)
             self.voters[track_id] = voter
         voter.update(raw, frame_idx)
-        return voter.stable()
+        ds = voter.stable_raw()  # kararlı HAM durum (phone/smoking/seatbelt/fatigue)
+        self._derive_no_seatbelt(ds, voter)
+        return ds
+
+    def _derive_no_seatbelt(self, ds: DriverState, voter: TrackVoter) -> None:
+        """Kemer İHLALİNİ kemerin YOKLUĞUNDAN türet (model 'kemer var'ı tespit eder).
+
+        Kural: yeterince kare gözlendiyse (>= min_votes) VE kemer kararlı şekilde
+        GÖRÜLMÜYORSA → no_seatbelt ihlali. Az gözlemde (soğuk tampon) yanlış alarm
+        üretmemek için min_votes eşiği beklenir.
+
+        Not: şimdilik sürücü-varlığı koşulu eklenmedi (boş kabinde de tetikleyebilir);
+        gerçek dağıtımda driver_lock varlığıyla kapılanabilir — inşaat sonrası iyileştirme.
+        """
+        if not self.derive_no_seatbelt:
+            return  # toggle KAPALI → kemer ihlali türetilmez (varsayılan)
+        if not ds.seatbelt and voter.seen >= self.min_votes:
+            ds.no_seatbelt = True
+            # güven: kemer ne kadar az görüldüyse o kadar yüksek (0..1)
+            ds.confidence["no_seatbelt"] = round(
+                1.0 - voter.votes("seatbelt") / max(voter.seen, 1), 3
+            )
 
     def prune(self, frame_idx: int) -> None:
         """Uzun süredir görülmeyen ID'lerin tamponunu düşür (bellek sızıntısını önler)."""
