@@ -9,16 +9,19 @@ Yetersiz piksel (min_pixel_height altı) → QoD kalite tetiği.
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import TYPE_CHECKING
 
 from aura.optional.loader import get_optional
+from aura.plate.normalize import PlateVotePool
 from aura.plate.ocr import build_ocr
-from aura.plate.voting import VotingBuffer
 from aura.schema import BBox, PlateState
 
 if TYPE_CHECKING:
     import numpy as np
+
+log = logging.getLogger("aura.plate.reader")
 
 
 class PlateReader:
@@ -35,11 +38,98 @@ class PlateReader:
         self.consensus_ratio = float(cfg.get("plate.consensus_ratio", 0.6))
         self.regex = re.compile(cfg.get("plate.regex", r"^\d{2}[A-Z]{1,3}\d{2,4}$"))
         self.min_pixel_height = int(cfg.get("plate.min_pixel_height", 16))
+        # Format-öncelikli kalıcı oy havuzu parametreleri (plate.voting.*)
+        pv = cfg.get("plate.voting", {}) or {}
+        self._pool_kwargs = dict(
+            min_weight=float(pv.get("min_weight", 2.0)),
+            margin_weight=float(pv.get("margin_weight", 1.5)),
+            ratio=self.consensus_ratio,
+            fix1_weight=float(pv.get("fix1_weight", 0.45)),
+            fix2_weight=float(pv.get("fix2_weight", 0.20)),
+            substring_weight=float(pv.get("substring_weight", 0.25)),
+        )
         self.ocr = ocr if ocr is not None else build_ocr(cfg)
         self.qod = qod
         self.sr = get_optional(cfg, "super_resolution")  # §8.2 (lazy; kapalıysa None)
+        # Sıkı plaka kırpma (opsiyonel LP dedektörü): araç-altı GENİŞ crop yerine
+        # plakanın kendisi kırpılıp OCR'a verilir — karakter doğruluğu belirgin
+        # artar (v1'in kanıtlanmış yolu). Ağırlık yoksa/ultralytics yoksa sessizce
+        # (tek log) eski geniş-crop davranışına düşer. Dışarıdan OCR enjekte
+        # edilmişse (testler) bu aşama atlanır.
+        lp = cfg.get("plate.lp_detector", {}) or {}
+        self._lp_enabled = bool(lp.get("enabled", True)) and ocr is None
+        # Düşük güvenli okumada ikinci (CLAHE+2x) varyant denemesi: oy havuzuna ek
+        # bağımsız kanıt — tek-atış karakter hataları varyantlar arasında sönümlenir.
+        self._second_variant = bool(cfg.get("plate.ocr_second_variant", True)) and ocr is None
+        self._second_variant_below = float(cfg.get("plate.ocr_second_variant_below", 0.5))
+        self._lp_conf = float(lp.get("conf", 0.30))
+        self._lp_imgsz = int(lp.get("imgsz", 640))
+        self._lp_pad = float(lp.get("pad_ratio", 0.08))
+        self._lp_path = str(lp.get("path", "weights/lp_yolo11n.pt"))
+        self._lp_model = None  # lazy yüklenir
+        self._lp_failed = False
         self._state: dict[int, PlateState] = {}
-        self._buffers: dict[int, VotingBuffer] = {}
+        self._pools: dict[int, PlateVotePool] = {}
+        self._reads_since_eval: dict[int, int] = {}
+
+    # --- sıkı plaka kırpma --------------------------------------------------- #
+    def _lp_crop(self, plate_roi: np.ndarray | None) -> np.ndarray | None:
+        if plate_roi is None or not self._lp_enabled or self._lp_failed:
+            return plate_roi
+        if self._lp_model is None:
+            try:
+                from ultralytics import YOLO
+
+                from aura.config import resolve_repo_path
+                from aura.device import resolve_device
+
+                p = resolve_repo_path(self._lp_path)
+                if not p.exists():
+                    raise FileNotFoundError(p)
+                self._lp_model = YOLO(str(p))
+                self._lp_device = resolve_device(self.cfg.get("runtime.device", "auto"))
+                log.info("LP dedektörü yüklendi: %s", p)
+            except Exception as e:  # noqa: BLE001 - ağırlık/ultralytics yok → geniş crop
+                log.warning("LP dedektörü kullanılamıyor (%s) — geniş crop ile devam", e)
+                self._lp_failed = True
+                return plate_roi
+        try:
+            r = self._lp_model.predict(
+                plate_roi,
+                conf=self._lp_conf,
+                imgsz=self._lp_imgsz,
+                device=self._lp_device,
+                verbose=False,
+            )[0]
+        except Exception as e:  # noqa: BLE001 - tek kare hatası tüm hattı durdurmasın
+            log.debug("LP tahmini başarısız: %s", e)
+            return plate_roi
+        boxes = getattr(r, "boxes", None)
+        if boxes is None or len(boxes) == 0:
+            return plate_roi
+        best = max(boxes, key=lambda b: float(b.conf.item()))
+        x1, y1, x2, y2 = (int(v) for v in best.xyxy[0].tolist())
+        pad = int(self._lp_pad * max(x2 - x1, y2 - y1))
+        h, w = plate_roi.shape[:2]
+        crop = plate_roi[max(0, y1 - pad) : min(h, y2 + pad), max(0, x1 - pad) : min(w, x2 + pad)]
+        if crop.size == 0:
+            return plate_roi
+        if crop.shape[0] < 48:  # küçük plaka: OCR öncesi 2x büyüt
+            import cv2
+
+            crop = cv2.resize(crop, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
+        return crop
+
+    @staticmethod
+    def _enhance(img: np.ndarray) -> np.ndarray:
+        """CLAHE + 2x büyütme varyantı (karanlık/küçük plaka için ikinci şans)."""
+        import cv2
+
+        up = cv2.resize(img, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
+        lab = cv2.cvtColor(up, cv2.COLOR_BGR2LAB)
+        lab_l, lab_a, lab_b = cv2.split(lab)
+        lab_l = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8)).apply(lab_l)
+        return cv2.cvtColor(cv2.merge((lab_l, lab_a, lab_b)), cv2.COLOR_LAB2BGR)
 
     # --- sweet spot -------------------------------------------------------- #
     def in_sweet_spot(self, bbox: BBox, frame_shape: tuple[int, ...]) -> bool:
@@ -83,26 +173,46 @@ class PlateReader:
             x2, y2 = int(vehicle_bbox.x2), int(vehicle_bbox.y2)
             vehicle_crop = frame[y1:y2, x1:x2]
 
-        text, conf = self.ocr.read(plate_roi, vehicle_crop)
-        buf = self._buffers.setdefault(
-            track_id, VotingBuffer(self.buffer_size, self.consensus_ratio)
-        )
-        buf.add(text)
-        st.votes = buf.counts()
+        crop = self._lp_crop(plate_roi)
+        text, conf = self.ocr.read(crop, vehicle_crop)
+        pool = self._pools.setdefault(track_id, PlateVotePool(**self._pool_kwargs))
+        pool.add(text, conf)
+        if (
+            self._second_variant
+            and crop is not None
+            and getattr(crop, "size", 0)
+            and (text is None or conf < self._second_variant_below)
+        ):
+            t2, c2 = self.ocr.read(self._enhance(crop), vehicle_crop)
+            pool.add(t2, c2)
+            if t2 and not text:
+                text = t2  # okuma sayacı için (kanıt geldi)
+        st.votes = pool.counts()
+        # Konsensüs olmasa bile en güçlü aday kanıt izi olarak raporlanır
+        # (şartname 4.5: kanıtlanamayan hedef puanlanmaz — kısmi okuma da kanıttır).
+        st.partial = pool.best_partial()
+        if text:
+            self._reads_since_eval[track_id] = self._reads_since_eval.get(track_id, 0) + 1
 
-        if buf.full:
-            value, frac = buf.consensus()
-            if value and self.regex.match(value):
+        value, frac = pool.consensus()
+        if value is not None:
+            # Oy havuzu kazananı zaten TR formatına normalize edilmiş üretir;
+            # regex yine de son kapı olarak uygulanır (config'ten daraltılabilir).
+            if self.regex.match(value):
                 st.value = value
-                st.confidence = round(frac, 2)
+                st.confidence = frac
                 st.status = "confirmed"
                 st.ocr_disabled = True
-            else:
-                st.status = "rejected"
-                st.confidence = round(frac, 2)
-                if self.qod:
-                    self.qod.request_quality(track_id, reason="consensus_fail")
-                buf.clear()  # yeniden okuma için tamponu boşalt
+            return st
+        # Konsensüs yok: her `buffer_size` okumada bir 'rejected' döngüsü işlet —
+        # event + QoD kalite tetiği üretir ama OYLAR SIFIRLANMAZ (kalıcı birikim,
+        # v1 PlateTracker dersi: '97 oy vs 1' kararlılığı ancak birikimle oluşur).
+        if self._reads_since_eval.get(track_id, 0) >= self.buffer_size:
+            self._reads_since_eval[track_id] = 0
+            st.status = "rejected"
+            st.confidence = frac
+            if self.qod:
+                self.qod.request_quality(track_id, reason="consensus_fail")
         return st
 
     def get(self, track_id: int) -> PlateState | None:

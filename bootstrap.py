@@ -22,6 +22,7 @@ import platform  # İşletim sistemi / mimari tespiti (Windows, Darwin, arm64...
 import shutil  # Dosya kopyalama, dizin silme, PATH'te program arama (which) için
 import subprocess  # venv python'unu ve harici komutları (pip, git, nvidia-smi) çağırmak için
 import sys  # Python sürümü, stdout/stderr, çıkış kodu erişimi için
+import time  # İndirme yeniden-denemeleri arasındaki bekleme için
 import urllib.error  # İndirme sırasında ağ/HTTP hatalarını yakalamak için
 import urllib.request  # Ağırlık dosyalarını HTTP üzerinden indirmek için
 from pathlib import Path  # Platformdan bağımsız dosya yolu işlemleri için
@@ -56,7 +57,24 @@ WEIGHTS: dict[str, dict] = {
         "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26l.pt",
         "sha256": None,  # Resmi hash yok → ilk indirmede kilitle
     },
+    "yolo26s-pose.pt": {  # Pose modeli — sürücü davranışı keypoint geometrisi
+        "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26s-pose.pt",
+        "sha256": None,  # Resmi hash yok → ilk indirmede kilitle
+    },
+    "lp_yolo11n.pt": {  # Plaka dedektörü (YOLOv11n fine-tune) — sıkı plaka kırpma
+        "url": "https://huggingface.co/morsetechlab/yolov11-license-plate-detection/resolve/main/license-plate-finetune-v1n.pt",
+        "sha256": None,  # Resmi hash yok → ilk indirmede kilitle
+    },
 }
+
+# Fine-tune dedektör (11 sınıf; held-out mAP50 .788). İndirme URL'si yok — Git LFS ile
+# teknofest-prototip (v1) reposunda yaşar. Bootstrap önce weights/ altına bakar,
+# yoksa bilinen komşu klon yollarından kopyalamayı dener (yerel geliştirme kolaylığı).
+FINETUNE_WEIGHT = "yolguvenligi_types_v4.pt"
+FINETUNE_SIBLINGS = [
+    Path.home() / "teknofest-prototip" / "models" / FINETUNE_WEIGHT,
+    ROOT.parent / "teknofest-prototip" / "models" / FINETUNE_WEIGHT,
+]
 
 # --------------------------------------------------------------------------- #
 # Çıktı yardımcıları (ANSI; NO_COLOR veya tty değilse düz)
@@ -287,8 +305,25 @@ def _sha256(path: Path) -> str:
     return h.hexdigest()
 
 
-def _download(url: str, dest: Path) -> bool:
-    """urllib ile indir, basit ilerleme çubuğu. Başarı/başarısızlık döndürür."""
+def _download(url: str, dest: Path, retries: int = 3) -> bool:
+    """urllib ile indir (yeniden-denemeli), basit ilerleme çubuğu.
+
+    Ağ kesintileri (connection reset / timeout) tek denemede kurulumu mock moda
+    düşürüyordu (D2): artık `retries` deneme yapılır, denemeler arası bekleme
+    katlanarak artar (2s, 4s, 8s) ve yarım kalan `.part` dosyası temizlenir.
+    """
+    for attempt in range(1, retries + 1):
+        if _download_once(url, dest):
+            return True
+        if attempt < retries:
+            wait = 2**attempt
+            warn(f"{dest.name} deneme {attempt}/{retries} başarısız — {wait}s sonra yeniden")
+            time.sleep(wait)
+    dest.with_suffix(dest.suffix + ".part").unlink(missing_ok=True)
+    return False
+
+
+def _download_once(url: str, dest: Path) -> bool:
     try:
         # Bazı sunucular User-Agent ister; özel bir başlıkla istek oluştur.
         req = urllib.request.Request(url, headers={"User-Agent": "aura-bootstrap"})
@@ -385,6 +420,27 @@ def fetch_weights(skip: bool) -> dict[str, str]:
                 "Manuel yerleştirme için bkz. weights/README.md"
             )
             status[name] = "missing"
+
+    # Fine-tune dedektör: indirme URL'si yok (Git LFS, teknofest-prototip v1 reposu).
+    # Önce weights/ altına bak; yoksa bilinen komşu klon yollarından kopyalamayı dene.
+    ft = WEIGHTS_DIR / FINETUNE_WEIGHT
+    if ft.exists() and ft.stat().st_size > 1024:
+        ok(f"{FINETUNE_WEIGHT} mevcut")
+        status[FINETUNE_WEIGHT] = "present"
+    else:
+        for cand in FINETUNE_SIBLINGS:
+            # 1 KB üstü kontrolü: gerçek ağırlık mı, çekilmemiş LFS pointer'ı mı ayırır.
+            if cand.exists() and cand.stat().st_size > 1024:
+                shutil.copy2(cand, ft)
+                ok(f"{FINETUNE_WEIGHT} komşu repodan kopyalandı: {cand}")
+                status[FINETUNE_WEIGHT] = "present"
+                break
+        else:
+            warn(
+                f"{FINETUNE_WEIGHT} bulunamadı — detector stok yolo26s.pt'ye düşer (loglu). "
+                "Edinmek için: git -C ~/teknofest-prototip lfs pull"
+            )
+            status[FINETUNE_WEIGHT] = "missing"
 
     _save_lock(lock)  # Güncellenen kilit verisini diske yaz
     _write_weights_readme(status, lock)  # weights/README.md'yi durum tablosuyla güncelle
