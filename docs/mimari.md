@@ -55,19 +55,46 @@ machine. Bir ID'nin durumu ancak **16 ardışık karenin ≥8'inde** tutarlı te
 güncellenir; aksi halde yüksek güvenli önceki veri korunur (override yok). Kötü ışık ve
 occlusion senaryolarında yanlış alarmı engeller.
 
-## 4. Aşama 2 — Sürücü Durumu (YOLO26l)
-Aşama 1'in ürettiği **Sürücü Kabini ROI**'sini girdi alır; şu durumları tespit eder:
-telefon, sigara, emniyet kemeri takmama, **yorgunluk**. Çoklu sınıf aynı anda aktif
-olabilir (detection, classification değil). **MediaPipe/landmark kullanılmaz** (bkz. §9).
+## 4. Aşama 2 — Sürücü Durumu (iki backend: pose | yolo)
+Aşama 1'in ürettiği **Sürücü ROI**'sini girdi alır; telefon, sigara, emniyet kemeri
+takmama ve **yorgunluk** durumlarını üretir. **MediaPipe/landmark kütüphanesi
+kullanılmaz** (bkz. §9). `models.driver_state.backend` ile seçilir:
+
+- **`yolo`** — fine-tune YOLO26l detection (phone/smoking/no_seatbelt/fatigue sınıfları).
+  En doğru yol; bu sınıflar için eğitilmiş ağırlık gerektirir (STOK COCO ağırlığı bu
+  sınıfları üretemez — sessiz sıfır).
+- **`pose`** (fine-tune ağırlık gerektirmez) — **YOLO26-pose** (COCO 17 keypoint) ROI'de
+  koşulur; **bilek↔ağız / bilek↔kulak GÖRELİ yakınlık** kıyası telefon/sigara çıkarımı
+  yapar (eşikler yüz-genişliği biriminde, ölçek-bağımsız). Kulak keypoint'i görünmüyorsa
+  karar verilmez (dürüst çekimserlik). Üstüne **hibrit nesne kanıtı**: fine-tune dedektör
+  (`v4`, `phone` sınıfı) aynı ROI'de koşulur; NESNE kanıtı geometriden üstündür (telefon
+  nesnesi görülünce el-ağızda geometrisi 'sigara' sayılmaz — hoparlörde konuşma durumu).
+  ROI ön-işleme: kısa kenar 320px'e büyütme + CLAHE + gamma (cam arkası karanlık kabin).
+- **`auto`** (varsayılan): pose ağırlığı diskte varsa `pose`, yoksa `yolo`.
+
+Her iki backend'in ham bayrakları 16/8 kararlılık süzgecinden geçer; Stage-1'in tam
+karede gördüğü `phone`/`smoking` nesneleri de araca düşüyorsa füzyon edilir
+(`fuse_detections`). Gerçek 4K test videolarında doğrulandı (sigara: video_1,
+telefon: video_2; çapraz-FP yok).
 
 ## 5. Plaka Okuma ve Konsensüs Döngüsü
 Hesap yükü en yüksek parça; katı kaynak yönetimiyle çalışır.
-- **Sweet Spot:** araç uzaktayken OCR pasif; önceden tanımlı sanal koordinata (en yüksek
-  optik netlik) girince etkinleşir.
-- **Voting Buffer:** sweet-spot içinde ardışık okumalar havuzlanır.
+- **Sweet Spot:** araç uzaktayken OCR pasif; önceden tanımlı sanal bölgeye girince
+  etkinleşir (x aralığı yanal yaklaşan araçları da kapsayacak şekilde geniş).
+- **Sıkı plaka kırpma (LP dedektörü):** özel YOLOv11n plaka modeli, araç-altı geniş
+  crop içinde plakanın kendisini bulup sıkı kırpar — OCR karakter doğruluğu belirgin
+  artar; ağırlık yoksa loglu olarak geniş-crop'a düşülür.
+- **OCR güçlendirme:** aynı-satır segment birleştirme ("34"+"TC"+"8532" tek okuma),
+  parlama testi (far ışığı OCR'a girmez), küçük plakada CLAHE+2x varyantı.
+- **Kalıcı oy havuzu (`aura/plate/normalize.py`):** okumalar track ömrü boyunca birikir
+  (redde sıfırlanmaz). TR-blok-farkında normalizasyon (O→0, 1→I...) aday üretir; KARAR
+  yalnızca **ikamesiz format-geçerli ham okumalarla**, her okuma **OCR güveniyle
+  ağırlıklanarak** verilir (min ağırlık + ikinciye fark + oran — erken/yanlış kilit
+  koruması). Kesik okumalar (`8532`) alt-dizi kanıtı olarak adaylara destek verir.
 - **Karar:** konsensüs → plakayı ID'ye kalıcı yaz, OCR kapat (erken çıkış),
-  `PLATE_CONFIRMED`. Ret → `QOD_TRIGGER` (kalite) + yeniden okuma. Post-validasyon: Türk
-  plaka regex `^\d{2}[A-Z]{1,3}\d{2,4}$`.
+  `PLATE_CONFIRMED`. Ret → `QOD_TRIGGER` (kalite) + birikime devam. Konsensüs yokken en
+  güçlü aday `PlateState.partial` alanında **kanıt izi** olarak taşınır (şartname 4.5).
+  Post-validasyon: Türk plaka regex `^\d{2}[A-Z]{1,3}\d{2,4}$`.
 
 ## 6. QoD — Dinamik Kaynak Yönetimi (CAMARA QoD)
 5G'yi statik bant genişliği değil, talep üzerine şekillenen dinamik kaynak havuzu olarak
@@ -83,6 +110,20 @@ kullanır → mimariyi gerçekten 5G-native kılar.
 | `ipm` | intrinsics + montaj | homography (opsiyonel modül, §11) |
 | `disabled` | kalibrasyon yok | hız üretilmez; `relative_velocity_flag` |
 Sistem kendi sınırlarını tanır; kalibrasyon yoksa hız iddiasında bulunmaz.
+
+## 7.4 Swerving — Dikkatsiz Sürüş / Yalpalama Tespiti
+Hız tahmincisinin yanında, **kalibrasyon gerektirmeyen** yanal yörünge analizi
+(`aura/speed/estimator.py::_swerving_flag`). ZigZag ekstremum sayacı: aracın bbox
+merkez-x serisi, mevcut uç noktadan `amp_ratio × o-anki-genişlik` kadar GERİ dönünce bir
+yön-değişimi sayılır; `min_flips` dönüşe ulaşan track **swerving** bayrağı alır.
+
+Tasarım garantileri (sentetik + 3 gerçek videoda doğrulandı):
+- **Monoton hareket** (kameraya yaklaşma perspektif kayması, tek şerit değişimi
+  S-eğrisi) yapısal olarak 0 dönüş üretir → trend modeli gerekmez.
+- Eşikler **araç genişliği biriminde** (ölçek-bağımsız) ve pencere **saniye** cinsinden
+  (fps-bağımsız) — K-004: hiçbir sabit tek çekime özgü değildir.
+- Bayrak 16/8 süzgecinden geçer → `speed.swerving` risk tokenı → `swerving_vehicle`
+  kuralı `RISK_ALERT` üretir → QoD optimize tetiklenir.
 
 ## 7.5 Sahne Katmanı — Trafik Tabelası + Hız-Limiti Çapraz Kontrolü
 
@@ -161,8 +202,10 @@ eval, train                     │
 **Final ortamında yalnızca endpoint/credential değişir; sözleşme ve YZ çekirdeği aynı kalır.**
 
 ## 9. Yorgunluk / MediaPipe Çözümü
-**Karar:** Yorgunluk dahil tüm sürücü durumları **YOLO26l detection sınıfı** olarak öğrenilir;
-MediaPipe/landmark tabanlı hiçbir yaklaşım kullanılmaz.
+**Karar:** Sürücü durumları için MediaPipe/landmark KÜTÜPHANESİ kullanılmaz; ya
+fine-tune **YOLO26l detection sınıfı** ya da **YOLO26-pose keypoint geometrisi** (saf
+ultralytics, ek bağımlılık yok — §4 `pose` backend) kullanılır. Yorgunluk yalnızca
+detection yoluyla çözülür (kapalı göz/esneme/baş düşmesi pose ile güvenilir çıkarılamaz).
 
 **Gerekçe:** Trafik kamerası montaj açıları ve değişken görüş mesafelerinde landmark/pose
 sistemleri tutarsız ve kırılgan sonuç üretir (yüz çözünürlüğü düşük, açı uç, occlusion sık).
@@ -199,6 +242,9 @@ Detay yalnızca **[`docs/mimari_ek_moduller.md`](mimari_ek_moduller.md)**'de.
 | Decoupled output | YZ modülü upstream/downstream'i bilmez (mikroservis) |
 | Kalibrasyon-bağımlı hız | Sistemin kendi sınırlarını tanıması |
 | No-MediaPipe yorgunluk | Trafik kamerası koşullarında dayanıklılık (§9) |
+| Pose-geometri sürücü davranışı | Fine-tune ağırlık beklemeden gerçek tespit; saf YOLO26, ek bağımlılık yok (§4) |
+| Swerving = ZigZag yanal analiz | Kalibrasyonsuz, fps/ölçek-bağımsız dikkatsiz-sürüş kanıtı (§7.4) |
+| Kanıt-izi alanları (partial, --save-events) | Şartname 4.5: kanıtlanamayan hedef puanlanmaz |
 
 ## Şartname İzlenebilirlik (özet)
 Tam eşleme: [`docs/sartname_izlenebilirlik.md`](sartname_izlenebilirlik.md).

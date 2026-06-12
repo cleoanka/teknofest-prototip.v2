@@ -38,16 +38,37 @@ ağırlığı için `path`'i değiştirin (bkz. `docs/egitim.md`).
 tutarlıysa yazılır (flicker koruması).
 
 ### `plate`
-`sweet_spot` (normalize ROI), `voting_buffer_size`, `consensus_ratio`, `ocr_lang`,
-`regex` (Türk plaka), `min_pixel_height` (altında kalite tetiklenir).
+`sweet_spot` (normalize ROI — yanal yaklaşan araçlar için geniş x aralığı),
+`voting_buffer_size` (rejected-event kadansı), `consensus_ratio`, `ocr_lang`,
+`regex` (Türk plaka), `min_pixel_height` (altında kalite tetiklenir),
+`ocr_max_side` / `ocr_enhance_below_px` (OCR girdi boyut yönetimi),
+`lp_detector.*` (sıkı plaka kırpma — özel YOLOv11n plaka modeli; yoksa loglu fallback),
+`voting.*` (kalıcı, güven-ağırlıklı oy havuzu: `min_weight`, `margin_weight`,
+`fix1/fix2_weight`, `substring_weight` — bkz. `aura/plate/normalize.py`).
+
+### `models.driver_state` (backend seçimi)
+`backend: auto|pose|yolo` — pose: YOLO26-pose keypoint geometrisi (`pose_path`,
+`pose_conf`, `pose_kp_conf`, `phone_ear_ratio`, `smoke_mouth_ratio`, `roi_min_side`,
+`roi_enhance`) + hibrit ROI nesne kanıtı (`roi_objects.*`); yolo: fine-tune YOLO26l
+detection. `fuse_detections` + `aux_classes`: Stage-1'in tam karede gördüğü
+phone/smoking nesneleri araca düşüyorsa sürücü bayrağına OR'lanır.
 
 ### `speed`
-`mode`: `tripwire` (sabit kamera+mesafe) / `ipm` (homography) / `disabled` (yalnızca
+`mode`: `metric` (oto-kalibrasyon) / `tripwire` / `ipm` / `disabled` (yalnızca
 `relative_velocity_flag`). `calibration_file` ile kalibrasyon yüklenir.
+`swerving.*`: dikkatsiz sürüş / yalpalama tespiti — `window_s` (saniye, fps-bağımsız),
+`min_flips`, `amp_ratio` (o anki araç genişliği birimi, ölçek-bağımsız).
+
+### `tracking`
+`tracker`, `reid_model`, `min_track_frames` (ağır aşama kapısı: track bu kadar kare
+yaşamadan OCR/pose çalışmaz — tek-kare hayalet tespit koruması).
+Ek: `models.detector.dedup_iou` — aynı araca üretilen kopya kutuları bastırır.
 
 ### `qod`
 `backend` (`mock`/`camara`), `endpoint`, `profiles` (optimize/quality), `histeresis`
-(min_active_seconds + cooldown_seconds — tetikle-bırak salınımını önler).
+(min_active_seconds + cooldown_seconds — tetikle-bırak salınımını önler),
+`approach.*` (yaklaşma tetiği: `window`, `growth`, `min_area_ratio` — şartnamenin
+"TOGG yaklaşınca QoD" senaryosu, `reason=vehicle_approach`).
 
 ### `risk`
 ID-merkezli accumulator risk kuralları. `rules[].all_of` koşulları sağlanınca `RISK_ALERT`.
