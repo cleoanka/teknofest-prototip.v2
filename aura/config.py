@@ -84,6 +84,17 @@ def load_config(path: str | Path | None = None) -> Config:
     return Config(data, cfg_path)
 
 
+def resolve_repo_path(path: str | Path) -> Path:
+    """Göreli yolu repo köküne göre mutlaklaştır (CWD-bağımsız model/ağırlık yükleme).
+
+    ``weights/yolo26s.pt`` gibi config yolları, süreç hangi dizinden başlatılırsa
+    başlatılsın repo köküne göre çözülür (hidden_prototip ``_resolve_model_path``
+    dersi: CWD'ye bağlı yükleme, servis/CLI/IDE'den farklı davranıyordu).
+    """
+    p = Path(path)
+    return p if p.is_absolute() else ROOT / p
+
+
 def resolve_source(cfg: Config) -> str | int:
     """`runtime.source`'u açılabilir bir kaynağa çöz.
 
