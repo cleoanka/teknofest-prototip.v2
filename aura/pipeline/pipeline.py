@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING  # sadece tip-denetiminde çalışan, runtime'd
 # Aşağıdaki her import bir boru-hattı aşamasını getirir; ne işe yaradıkları:
 #   Accumulator           → track durumunu biriktirir, durum değişiminde event üretir
 #   build_detector/crop_* → araç (ve kişi) tespiti + ROI kırpma yardımcıları
-#   build_driver_classifier → Stage-2 sürücü davranışı (telefon/sigara/kemer/yorgunluk)
+#   build_driver_engine   → Stage-2 sürücü-durum motoru (ID-merkezli; telefon/sigara/kemer)
 #   EventEmitter          → event ve annotation'ları downstream'e (dashboard) yayınlar
 #   DriverLock            → sürücüyü araca kilitleyen kimlik takipçisi
 #   get_optional          → §8 opsiyonel modülleri tembel (lazy) yükler
@@ -32,7 +32,7 @@ from typing import TYPE_CHECKING  # sadece tip-denetiminde çalışan, runtime'd
 #   StabilityTracker      → 16/8 kararlılık süzgeci (titreşimli bayrakları yumuşatır)
 from aura.accumulator.accumulator import Accumulator
 from aura.detection.detector import build_detector, crop_person_roi, crop_rois
-from aura.driver_state.classifier import build_driver_classifier
+from aura.driver_state.engine import build_driver_engine
 from aura.events.emitter import EventEmitter
 from aura.identity.driver_lock import DriverLock
 from aura.optional.loader import get_optional
@@ -51,9 +51,6 @@ if TYPE_CHECKING:
 
 # Modül seviyesinde tek logger: tüm pipeline mesajları "aura.pipeline" altında toplanır.
 log = logging.getLogger("aura.pipeline")
-
-# Kararlılık süzgecinden geçirilen 4 sürücü-durumu bayrağı (her biri ayrı izlenir).
-_DRIVER_FIELDS = ("phone", "smoking", "no_seatbelt", "fatigue")
 
 
 def record_to_annotation(rec: TrackRecord) -> dict:
@@ -92,7 +89,7 @@ class Pipeline:
         self.detector = build_detector(cfg)  # 2. aşama: araçları (ve kişileri) tespit + takip eder
         # bayrak titreşimini bastıran 16/8 kararlılık süzgeci
         self.stability = StabilityTracker(cfg)
-        self.driver = build_driver_classifier(cfg)  # Stage-2 sürücü davranış sınıflandırıcısı
+        self.driver = build_driver_engine(cfg)  # Stage-2 sürücü-durum motoru (ID-merkezli)
         self.driver_lock = DriverLock(cfg)  # sürücüyü araca kilitleyen kimlik takipçisi
         # Sürücü kutusunu kırparken etrafa eklenen oran (varsayılan %15 dolgu).
         self.driver_roi_pad = float(cfg.get("driver_lock.roi_pad", 0.15))
@@ -162,15 +159,10 @@ class Pipeline:
             else:
                 driver_roi = cabin
 
-            # Stage-2 sürücü durumu → 16/8 kararlılık süzgeci (alan-bazında)
-            driver = self.driver.infer(driver_roi)  # ham tahmin: telefon/sigara/kemer/yorgunluk
-            # Her bayrağı kendi anahtarıyla (track+alan) kararlılık süzgecinden geçir:
-            # tek karelik yanlış pozitiflerin event'e dönüşmesini engeller.
-            for f in _DRIVER_FIELDS:
-                stable = self.stability.update(
-                    f"{tid}:driver.{f}", getattr(driver, f), driver.confidence.get(f, 1.0)
-                )
-                setattr(driver, f, bool(stable))  # ham değeri kararlı (süzülmüş) değerle değiştir
+            # Stage-2 sürücü durumu — motor ID-merkezli oylar (Katman A model → Katman B voting).
+            # track_id ana anahtar: motor her ID için kendi zaman tamponunu tutar; tek-karelik
+            # yanlış pozitifler (flicker) tampon içinde elenir, harici süzgeç gerekmez.
+            driver = self.driver.process(tid, driver_roi, idx)
 
             # Plaka OCR: ilgili ROI'den oku; track'e göre sonucu biriktirir/günceller.
             plate = self.plate.update(tid, plate_roi, det.bbox, frame.shape, frame=frame)
@@ -228,6 +220,7 @@ class Pipeline:
 
         # --- kare sonu temizlik/ilerletme (araç döngüsü dışında) --- #
         self.driver_lock.prune(idx)  # uzun süredir görülmeyen sürücü kilitlerini düşür
+        self.driver.prune(idx)  # giden araçların sürücü-durum tamponlarını düşür (bellek)
         self.qod.tick()  # QoD zamanlayıcısını bir adım ilerlet (süresi dolan optimizasyonları kapat)
         events.extend(self.qod.drain_events())  # QoD'un kendi ürettiği event'leri (aç/kapa) topla
 

@@ -29,6 +29,12 @@ models:
     conf: 0.40
     imgsz: 320
     classes: [phone, smoking, no_seatbelt, fatigue]
+    # Katman B — ID-merkezli zaman tamponu (DriverStateEngine). Her track_id için
+    # son `window` karede bayrak en az `min_votes` kez görülürse "kararlı aktif".
+    voting:
+      window: 16                # son kaç kareye bakılır
+      min_votes: 8              # aktif sayılması için gereken True oy sayısı (16/8 kuralı)
+      max_age: 30               # bu kadar kare görülmeyen ID'nin tamponu düşürülür
 
 # Sürücü kimlik kilidi: araç kabininde sağ-alttaki kişiyi sürücü kabul et,
 # confirm_frames boyunca aynı kişi sürücüyse o kişinin takip ID'sini araca KİLİTLE.
