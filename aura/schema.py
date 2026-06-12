@@ -23,6 +23,9 @@ class PlateState(BaseModel):
     status: Literal["pending", "confirmed", "rejected"] = "pending"
     votes: dict[str, int] = Field(default_factory=dict)
     ocr_disabled: bool = False  # erken çıkış flag'i (konsensüs sonrası OCR kapanır)
+    # Kısmi plaka: tam TR formatı doğrulanamasa bile en güçlü aday burada raporlanır
+    # (jüri/denetim kanıtı — "kanıtlanamayan hedef puanlanmaz" şartname kuralı için).
+    partial: str | None = None
 
 
 class DriverState(BaseModel):
@@ -41,6 +44,9 @@ class SpeedState(BaseModel):
     mode: Literal["tripwire", "ipm", "disabled", "metric"] = "disabled"
     relative_velocity_flag: bool = False
     is_calibrated: bool = False  # metric mod: ppm(y) ölçek-alanı hazır mı (km/h gerçek mi)
+    # Swerving (dikkatsiz sürüş): yanal yörüngede zigzag VEYA hızlı yanal kayma.
+    # Ölçek-bağımsız ölçülür (araç genişliği birimi) — kalibrasyon gerektirmez.
+    swerving: bool = False
 
 
 class BBox(BaseModel):

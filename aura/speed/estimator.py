@@ -38,6 +38,25 @@ class SpeedEstimator:
         self.rel_threshold = float(cfg.get("speed.relative_threshold", 0.012))
         self.window = int(cfg.get("speed.window", 8))
         self._hist: dict[int, deque] = {}  # track_id -> (frame_idx, cy_norm)
+        # --- swerving (dikkatsiz sürüş) — yanal yörünge analizi ---------------- #
+        # Genlik eşiği ARAÇ GENİŞLİĞİ birimindedir (ölçek/çözünürlük bağımsız, K-004),
+        # pencere SANİYE cinsindendir (fps-bağımsız — 50fps'te de 25fps'te de aynı
+        # salınım periyodunu görür). Algoritma: ZigZag ekstremum sayacı — cx serisi
+        # mevcut uç noktadan amp kadar GERİ dönünce bir yön-değişimi (yalpalama)
+        # sayılır. Monoton hareket (yaklaşma kayması, tek şerit değişimi) yapısal
+        # olarak 0 üretir; trend çıkarmaya gerek kalmaz.
+        sw = cfg.get("speed.swerving", {}) or {}
+        self.swerve_enabled = bool(sw.get("enabled", True))
+        self.swerve_window_s = float(sw.get("window_s", 3.0))
+        # min_flips=2: gerçek yalpalama (sol→sağ→sol) ≥2 dönüş üretir; tek şerit
+        # değişimi 0, oturma payı (overshoot) en çok 1 dönüş üretir → elenir.
+        self.swerve_min_flips = int(sw.get("min_flips", 2))
+        # amp O ANKİ araç genişliğiyle ölçeklenir (pencere medyanı değil): yaklaşan
+        # araçta genişlik 5 kat büyür; medyan kullanmak uzak evredeki yalpalamayı
+        # görünmez kılıyordu (gerçek video_3 ölçümü: salınım ≈ 0.11×genişlik;
+        # 0.04-0.08 bandı yakalar, 3 videoda çapraz-FP=0 doğrulandı).
+        self.swerve_amp_ratio = float(sw.get("amp_ratio", 0.06))
+        self._lat_hist: dict[int, deque] = {}  # track_id -> (cx_px, bbox_w_px)
         self._tw: dict[int, dict] = {}  # tripwire durum makinesi
         self._ipm_warned = False
         # Ölü bölge (margin): araç kadraj kenarına bu kadar piksel yaklaşınca hız
@@ -81,15 +100,63 @@ class SpeedEstimator:
         hist.append((frame_idx, cy_norm))
 
         rel_flag = self._relative_flag(hist)
+        swerving = self._swerving_flag(track_id, bbox, frame_idx)
 
         if self.mode == "metric":
-            return self._metric_update(track_id, bbox, frame_idx, rel_flag, frame_shape)
-        if self.mode == "tripwire":
+            st = self._metric_update(track_id, bbox, frame_idx, rel_flag, frame_shape)
+        elif self.mode == "tripwire":
             value = self._tripwire(track_id, cy_norm, frame_idx)
-            return SpeedState(mode="tripwire", value_kmh=value, relative_velocity_flag=rel_flag)
-        if self.mode == "ipm":
-            return self._ipm(track_id, bbox, frame_idx, rel_flag, frame_shape)
-        return SpeedState(mode="disabled", value_kmh=None, relative_velocity_flag=rel_flag)
+            st = SpeedState(mode="tripwire", value_kmh=value, relative_velocity_flag=rel_flag)
+        elif self.mode == "ipm":
+            st = self._ipm(track_id, bbox, frame_idx, rel_flag, frame_shape)
+        else:
+            st = SpeedState(mode="disabled", value_kmh=None, relative_velocity_flag=rel_flag)
+        st.swerving = swerving
+        return st
+
+    # --- swerving (yanal yörünge) ------------------------------------------ #
+    def _swerving_flag(self, track_id: int, bbox: BBox, frame_idx: int) -> bool:
+        """Yanal yörüngeden dikkatsiz-sürüş (swerving = yalpalama) bayrağı üret.
+
+        Yöntem — ZigZag ekstremum sayacı (v1 ``Track.is_swerving`` fikrinin fps- ve
+        ölçek-bağımsız hali): son ``window_s`` saniyenin cx serisinde, mevcut uç
+        noktadan ``amp_ratio×medyan-genişlik``ten fazla GERİ dönüş bir yön-değişimi
+        sayılır; sayı ``min_flips``'e ulaşırsa swerving.
+
+        Neden bu tasarım: monoton hareketler (kameraya yaklaşma perspektif kayması,
+        tek şerit değişimi S-eğrisi) hiç geri dönmediği için yapısal olarak 0 üretir
+        — trend modeli/çıkarması gerekmez. Bbox titremesi amp kapısının altında
+        kalır. Sentetik doğrulama: S-eğrisi=0, overshoot'lu şerit değişimi=1,
+        1.5 periyot yalpalama=2, 3 periyot=4-6.
+        """
+        if not self.swerve_enabled:
+            return False
+        maxlen = max(8, int(self.swerve_window_s * max(self.fps, 1.0)))
+        lat = self._lat_hist.get(track_id)
+        if lat is None or lat.maxlen != maxlen:
+            lat = deque(lat or (), maxlen=maxlen)
+            self._lat_hist[track_id] = lat
+        lat.append((bbox.center[0], max(bbox.width, 1.0)))
+        if len(lat) < maxlen // 3:
+            return False
+        up_ext = down_ext = lat[0][0]
+        direction, reversals = 0, 0
+        for x, w in list(lat)[1:]:
+            amp = self.swerve_amp_ratio * w  # o anki genişliğe göre eşik
+            if direction >= 0:
+                up_ext = max(up_ext, x)
+                if up_ext - x > amp:  # tepe onaylandı → aşağı dönüş
+                    if direction == 1:
+                        reversals += 1
+                    direction, down_ext = -1, x
+                    continue
+            if direction <= 0:
+                down_ext = min(down_ext, x)
+                if x - down_ext > amp:  # dip onaylandı → yukarı dönüş
+                    if direction == -1:
+                        reversals += 1
+                    direction, up_ext = 1, x
+        return reversals >= self.swerve_min_flips
 
     # --- ölü bölge (margin) ------------------------------------------------ #
     def _in_frame_border(self, bbox: BBox, frame_shape: tuple[int, ...] | None) -> bool:

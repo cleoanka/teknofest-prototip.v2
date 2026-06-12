@@ -69,6 +69,10 @@ class Detector(ABC):
     last_persons: list[Person] = []
     #: Son karede tespit edilen trafik tabelaları (her detect() çağrısında güncellenir)
     last_signs: list[Sign] = []
+    #: Son karede tespit edilen yardımcı kanıt nesneleri (kanonik adlarıyla, ör.
+    #: 'phone'/'smoking') — pipeline bunları araç kabinine düşüyorsa sürücü durumuyla
+    #: füzyon eder. Üretmeyen implementasyonlar boş bırakır.
+    last_aux: list[BBox] = []
 
     @abstractmethod
     def detect(self, frame: np.ndarray) -> list[Detection]:

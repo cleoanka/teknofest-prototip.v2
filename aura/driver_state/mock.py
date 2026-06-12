@@ -25,7 +25,7 @@ class MockDriverClassifier(DriverClassifier):
         self.cfg = cfg
         self.max_dist = 160.0  # bundan uzaksa "durum yok" (arka plan)
 
-    def infer(self, cabin_roi: np.ndarray | None) -> DriverState:
+    def infer(self, cabin_roi: np.ndarray | None, track_id: int | None = None) -> DriverState:
         if cabin_roi is None or cabin_roi.size == 0:
             return DriverState()
         mean = cabin_roi.reshape(-1, cabin_roi.shape[-1])[:, :3].mean(axis=0)

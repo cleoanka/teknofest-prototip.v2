@@ -10,9 +10,11 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from aura.config import resolve_repo_path
 from aura.detection.detector import Detection, Detector, Person, Sign, crop_rois
 from aura.device import resolve_device
 from aura.schema import BBox
+from aura.taxonomy import canonical
 
 if TYPE_CHECKING:
     import numpy as np
@@ -24,7 +26,17 @@ class YOLO26Detector(Detector):
     def __init__(self, cfg):
         from ultralytics import YOLO
 
-        self.path = cfg.get("models.detector.path", "weights/yolo26s.pt")
+        # Yol repo köküne göre çözülür (CWD-bağımsız); yapılandırılan ağırlık yoksa
+        # stok yolo26s.pt'ye LOGLU fallback (sessiz mock düşüşü yerine).
+        configured = resolve_repo_path(cfg.get("models.detector.path", "weights/yolo26s.pt"))
+        if not configured.exists():
+            fallback = resolve_repo_path("weights/yolo26s.pt")
+            if fallback.exists():
+                log.warning(
+                    "Detector ağırlığı yok (%s) → stok %s kullanılıyor", configured, fallback
+                )
+                configured = fallback
+        self.path = str(configured)
         self.model = YOLO(self.path)
         self.conf = float(cfg.get("models.detector.conf", 0.35))
         self.iou = float(cfg.get("models.detector.iou", 0.45))
@@ -43,6 +55,16 @@ class YOLO26Detector(Detector):
         vmap = cfg.get("sign.value_map", {}) or {}
         self.sign_classes = set(sc) | {str(k) for k in vmap}
         self.last_signs: list[Sign] = []
+        # Yardımcı kanıt sınıfları (kanonik adlar): fine-tune dedektör (ör. v4)
+        # 'phone' nesnesini tam karede görürse pipeline sürücü durumuna füzyon eder.
+        ax = cfg.get("models.driver_state.aux_classes", ["phone", "smoking"]) or []
+        self.aux_classes = set(ax)
+        self.last_aux: list[BBox] = []
+        # Araç-içi kopya kutu bastırma: NMS-free YOLO26/fine-tune modeller aynı araca
+        # hafif kaymış İKİNCİ bir kutu üretebiliyor; kopya her karede yeni ByteTrack
+        # ID'si doğurup (hayalet track) OCR/driver maliyeti yaratıyor. Aynı sınıftan,
+        # IoU > dedup_iou örtüşen kutulardan yalnız en yüksek conf'lu tutulur.
+        self.dedup_iou = float(cfg.get("models.detector.dedup_iou", 0.80))
         self.device = resolve_device(cfg.get("runtime.device", "auto"))
         log.info(
             "YOLO26 yüklendi: %s (imgsz=%d, tracker=%s, device=%s)",
@@ -66,6 +88,7 @@ class YOLO26Detector(Detector):
         dets: list[Detection] = []
         self.last_persons = []
         self.last_signs = []
+        self.last_aux = []
         if not results:
             return dets
         r = results[0]
@@ -80,15 +103,19 @@ class YOLO26Detector(Detector):
                 if isinstance(names, (list, tuple))
                 else names.get(cls_idx, str(cls_idx))
             )
+            # Model-uzayı adını kanonik ada çevir ('cell phone'→'phone' vb.) —
+            # stok COCO ve fine-tune ağırlıkları aynı config sözleşmesiyle çalışır.
+            cls_name = canonical(cls_name)
             is_person = cls_name in self.person_classes
             is_sign = self.sign_enabled and cls_name in self.sign_classes
-            # vehicle_classes boşsa "süzgeç yok" demektir → kişi/tabela dışı her şey araç.
+            is_aux = cls_name in self.aux_classes
+            # vehicle_classes boşsa "süzgeç yok" demektir → kişi/tabela/kanıt dışı her şey araç.
             is_vehicle = (
                 cls_name in self.vehicle_classes
                 if self.vehicle_classes
-                else not (is_person or is_sign)
+                else not (is_person or is_sign or is_aux)
             )
-            if not (is_vehicle or is_person or is_sign):
+            if not (is_vehicle or is_person or is_sign or is_aux):
                 continue
             xyxy = b.xyxy[0].tolist()
             tid = int(b.id.item()) if getattr(b, "id", None) is not None else None
@@ -104,11 +131,45 @@ class YOLO26Detector(Detector):
             if is_sign:
                 self.last_signs.append(Sign(bbox=bbox, cls=cls_name, track_id=tid))
                 continue
+            # Yardımcı kanıt nesnesi (phone/smoking) → pipeline füzyonuna
+            if is_aux:
+                self.last_aux.append(bbox)
+                continue
             # Kişi sınıfı → sürücü kilidine; (araç sınıfıyla çakışmaz, COCO'da ayrık)
             if is_person:
                 self.last_persons.append(Person(bbox=bbox, track_id=tid))
                 continue
             d = Detection(bbox=bbox, track_id=tid)
-            d.cabin_roi, d.plate_roi = crop_rois(frame, bbox)
             dets.append(d)
+        dets = self._dedup(dets)
+        # ROI crop'lar yalnız dedup'tan SAĞ ÇIKAN tespitler için üretilir (maliyet).
+        for d in dets:
+            d.cabin_roi, d.plate_roi = crop_rois(frame, d.bbox)
         return dets
+
+    @staticmethod
+    def _iou(a: BBox, b: BBox) -> float:
+        ix1, iy1 = max(a.x1, b.x1), max(a.y1, b.y1)
+        ix2, iy2 = min(a.x2, b.x2), min(a.y2, b.y2)
+        if ix2 <= ix1 or iy2 <= iy1:
+            return 0.0
+        inter = (ix2 - ix1) * (iy2 - iy1)
+        union = a.width * a.height + b.width * b.height - inter
+        return inter / union if union > 0 else 0.0
+
+    def _dedup(self, dets: list[Detection]) -> list[Detection]:
+        """Yüksek-IoU'lu kopya araç kutularını bastır (en iyi conf kalır).
+
+        SINIFTAN BAĞIMSIZ: fine-tune araç-tipi modelleri aynı fiziksel araca hem
+        'car' hem 'truck' kutusu üretebiliyor (NMS sınıf-bazlı çalıştığından ikisi de
+        sağ kalır). Liste zaten yalnız araçları içerir ve iki gerçek araç fiziksel
+        olarak %80+ örtüşemez → sınıf kontrolü yapılmaz.
+        """
+        if self.dedup_iou >= 1.0 or len(dets) < 2:
+            return dets
+        ordered = sorted(dets, key=lambda d: d.bbox.conf, reverse=True)
+        kept: list[Detection] = []
+        for d in ordered:
+            if not any(self._iou(k.bbox, d.bbox) >= self.dedup_iou for k in kept):
+                kept.append(d)
+        return kept

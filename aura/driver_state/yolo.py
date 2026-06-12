@@ -10,9 +10,11 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from aura.config import resolve_repo_path
 from aura.device import resolve_device
 from aura.driver_state.classifier import DriverClassifier
 from aura.schema import DriverState
+from aura.taxonomy import canonical
 
 if TYPE_CHECKING:
     import numpy as np
@@ -24,7 +26,9 @@ class YOLO26lDriverClassifier(DriverClassifier):
     def __init__(self, cfg):
         from ultralytics import YOLO
 
-        self.path = cfg.get("models.driver_state.path", "weights/yolo26l.pt")
+        self.path = str(
+            resolve_repo_path(cfg.get("models.driver_state.path", "weights/yolo26l.pt"))
+        )
         self.model = YOLO(self.path)
         self.conf = float(cfg.get("models.driver_state.conf", 0.40))
         self.imgsz = int(cfg.get("models.driver_state.imgsz", 320))
@@ -34,7 +38,7 @@ class YOLO26lDriverClassifier(DriverClassifier):
         self.device = resolve_device(cfg.get("runtime.device", "auto"))
         log.info("YOLO26l yüklendi: %s (imgsz=%d, device=%s)", self.path, self.imgsz, self.device)
 
-    def infer(self, cabin_roi: np.ndarray | None) -> DriverState:
+    def infer(self, cabin_roi: np.ndarray | None, track_id: int | None = None) -> DriverState:
         ds = DriverState()
         if cabin_roi is None or cabin_roi.size == 0:
             return ds
@@ -55,6 +59,9 @@ class YOLO26lDriverClassifier(DriverClassifier):
                 if isinstance(names, (list, tuple))
                 else names.get(cls_idx, str(cls_idx))
             )
+            # Kanonik ad eşlemesi: stok COCO 'cell phone' → 'phone' vb. — model
+            # değişse de config/şema sözleşmesi aynı kalır (aura/taxonomy.py).
+            name = canonical(name)
             if name in self.classes and hasattr(ds, name):
                 setattr(ds, name, True)
                 ds.confidence[name] = max(ds.confidence.get(name, 0.0), float(b.conf.item()))

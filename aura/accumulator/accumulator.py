@@ -124,6 +124,7 @@ class Accumulator:
             if (
                 speed.value_kmh != prev.value_kmh
                 or speed.relative_velocity_flag != prev.relative_velocity_flag
+                or speed.swerving != prev.swerving
             ):
                 events.append(
                     make_event(
@@ -133,6 +134,10 @@ class Accumulator:
                             "value_kmh": speed.value_kmh,
                             "mode": speed.mode,
                             "relative_velocity_flag": speed.relative_velocity_flag,
+                            "swerving": speed.swerving,
+                            # km/h değerinin gerçek (kalibre) mi sezgisel mi olduğu —
+                            # downstream tüketici güvenilmez değeri ayırt edebilsin.
+                            "calibrated": speed.is_calibrated,
                         },
                     )
                 )
@@ -201,6 +206,10 @@ class Accumulator:
             if self.active_speed_limit is not None:
                 return rec.speed.value_kmh > self.active_speed_limit
             return rec.speed.value_kmh >= self.high_speed
+        if token == "speed.swerving":
+            # Dikkatsiz sürüş: yanal yörünge zigzag/ani kayma bayrağı (SpeedEstimator
+            # üretir, 16/8 kararlılık süzgecinden geçmiş halde gelir).
+            return bool(rec.speed.swerving)
         if token == "track.long_lived":
             return (rec.last_frame - rec.first_frame) >= self.long_lived
         if token.startswith("driver."):
