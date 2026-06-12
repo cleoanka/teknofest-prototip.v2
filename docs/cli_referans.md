@@ -6,6 +6,7 @@
 ## İçindekiler
 - [bootstrap.py](#bootstrappy) — kurulum
 - [python -m aura](#python--m-aura) — inference pipeline
+- [python tools/test_video.py](#python-toolstest_videopy) — gerçek video testi (annotated mp4 + JSON kanıt)
 - [python -m aura.eval](#python--m-auraeval) — değerlendirme + QoD A/B
 - [python -m train](#python--m-train) — eğitim (alt komutlar)
 - [python -m aura.synthetic](#python--m-aurasynthetic) — örnek veri
@@ -40,7 +41,7 @@ options:
 ```
 usage: python -m aura [-h] [--config PATH] [--source SOURCE]
                       [--device {auto,cpu,cuda,mps}] [--no-bbox]
-                      [--max-frames MAX_FRAMES]
+                      [--max-frames MAX_FRAMES] [--save-events PATH]
                       [--log-level {DEBUG,INFO,WARNING}]
 
 AURA inference pipeline — araç, plaka, sürücü durumu ve hız tespiti.
@@ -55,6 +56,8 @@ options:
   --no-bbox             Ham video akışı (annotation overlay olmadan)
   --max-frames MAX_FRAMES
                         En fazla bu kadar kare işle (test/demo için)
+  --save-events PATH    Üretilen tüm event'leri JSONL olarak bu dosyaya yaz
+                        (denetim/kanıt izi)
   --log-level {DEBUG,INFO,WARNING}
                         Log seviyesi (varsayılan: INFO)
 
@@ -63,6 +66,44 @@ options:
   python -m aura --source video.mp4 --device mps
   python -m aura --source rtsp://10.0.0.5:8554/cam --log-level DEBUG
 ```
+
+## python tools/test_video.py
+
+```
+usage: python tools/test_video.py [-h] --source PATH [--config PATH]
+                                  [--device {auto,cpu,cuda,mps}]
+                                  [--ai-mode {auto,real,mock}]
+                                  [--max-frames MAX_FRAMES] [--output PATH]
+                                  [--json PATH] [--no-video]
+
+Videoyu AURA pipeline'ından geçir; annotated mp4 + JSON özet üret.
+
+options:
+  -h, --help            show this help message and exit
+  --source PATH         İşlenecek video dosyası
+  --config PATH         Config (vars: config/default.yaml)
+  --device {auto,cpu,cuda,mps}
+                        İşlem birimi
+  --ai-mode {auto,real,mock}
+                        AI modu (vars: real — gerçek video testi aracı
+                        olduğundan)
+  --max-frames MAX_FRAMES
+                        En fazla bu kadar kare işle
+  --output PATH         Annotated mp4 çıktısı (vars:
+                        eval_results/<video>_annotated.mp4)
+  --json PATH           JSON özet çıktısı (vars:
+                        eval_results/<video>_summary.json)
+  --no-video            Video yazma (yalnız JSON özet)
+
+örnekler:
+  python tools/test_video.py --source ~/video_1.mp4
+  python tools/test_video.py --source ~/video_3.mp4 --device mps --max-frames 200
+```
+
+JSON özet şunları içerir: event sayıları, QoD tetik nedenleri, track başına
+plaka kararı + en güçlü 5 oy + `partial` aday, sürücü bayrak süreleri (kare),
+swerving kare sayısı, yanal yörünge (`trajectory`) ve işleme FPS'i — şartname
+4.5 "her hedefin otomatik analiz sonucu üretildiğini kanıtlama" izi.
 
 ## python -m aura.eval
 

@@ -3,6 +3,32 @@
 Bu projedeki tüm önemli değişiklikler bu dosyada belgelenir.
 Format [Keep a Changelog](https://keepachangelog.com/tr/1.0.0/) temellidir.
 
+## [2.1.0] — 2026-06-12 (gece bakım + yenileme oturumu — detay: `fable.md`, plan: `plan.md`)
+
+### Eklenenler
+- **Pose-tabanlı sürücü davranışı** (`aura/driver_state/pose.py`): YOLO26-pose (COCO 17 keypoint) ile bilek↔ağız/kulak **göreli yakınlık** geometrisi — fine-tune ağırlık olmadan telefon/sigara tespiti (v1 prototipin gerçek videoda ölçülmüş MediaPipe geometrisinin saf-YOLO portu; mimari "landmark kütüphanesi yok" kararı korunur). ROI ön-işleme (büyüt + CLAHE + gamma) dahil. `models.driver_state.backend: auto|pose|yolo`. **Gerçek videoda doğrulandı: video_1 sigara, video_2 telefon.**
+- **Swerving / dikkatsiz sürüş tespiti** (`aura/speed/estimator.py`): yanal yörüngede zigzag (yön-değişim sayacı) veya ani şerit kayması; tüm eşikler **araç genişliği biriminde** (ölçek-bağımsız, K-004). `SpeedState.swerving` → 16/8 süzgeci → `speed.swerving` risk tokenı → `swerving_vehicle` kuralı → `RISK_ALERT` + QoD optimize. `tests/test_swerving.py`.
+- **TR plaka normalizasyonu + format-öncelikli kalıcı oy havuzu** (`aura/plate/normalize.py`): blok-farkında karakter düzeltme (O→0, 1→I...), track-ömrü oy birikimi (redde sıfırlanmaz), karar yalnız ikamesiz format-geçerli ham okumalarla (min oy + margin + oran); kesik okumalar (`8532`) alt-dizi desteği verir; `PlateState.partial` en güçlü adayı kanıt izi olarak taşır. `tests/test_plate_normalize.py`.
+- **Stage-1 kanıt füzyonu**: dedektörün tam karede gördüğü `phone`/`smoking` nesnesi (fine-tune v4) araca düşüyorsa sürücü bayrağına OR'lanır (`models.driver_state.fuse_detections`).
+- **QoD yaklaşma tetiği** (`qod.approach`): bbox alanı pencere içinde büyüyorsa (`vehicle_approach`) optimize tetiklenir — şartnamenin birincil "TOGG yaklaşması" senaryosu.
+- **Fine-tune dedektör** `weights/yolguvenligi_types_v4.pt` (11 sınıf, held-out test mAP50 .788; v1 reposundan Git LFS ile kurtarıldı) birincil detector yapıldı; yoksa stok `yolo26s.pt`'ye **loglu** fallback. Sınıf adı taksonomisi `aura/taxonomy.py` (`cell phone`→`phone`, `cigarette`→`smoking`...).
+- **Araç kutusu dedup** (`models.detector.dedup_iou`): NMS-free/fine-tune modellerin aynı araca ürettiği çift kutu (car+truck) bastırılır — hayalet ByteTrack track'leri ve gereksiz OCR maliyeti kalktı (gerçek videoda 7 track → 2).
+- **Ağır aşama kapısı** (`tracking.min_track_frames`): track N kare yaşamadan OCR/pose çalışmaz.
+- **`tools/test_video.py`**: video → annotated mp4 + JSON özet (event sayıları, plaka oy dökümü, sürücü bayrak süreleri, swerving kareleri, QoD nedenleri) — jüri/denetim kanıtı (şartname 4.5). `python -m aura`'ya `--save-events` (JSONL kanıt izi).
+- `smoking_driver` risk kuralı (sigara artık `RISK_ALERT` üretir); `SPEED` event'ine `swerving` + `calibrated` alanları; annotation'a `swerving`, `plate_partial`, `speed_calibrated`.
+- EasyOCR güçlendirme: aynı-satır segment birleştirme ("34"+"TC"+"8532" tek okuma), 4K crop küçültme (`plate.ocr_max_side`), parlama testi (far FP'si OCR'a girmez), küçük plakada CLAHE+2x varyantı.
+- 3 gerçek test videosu için GT iskeletleri (`data/samples/video_*_gt.json`).
+
+### Düzeltmeler
+- **D3:** `--source` artık config'e yazılır — `ai_mode: auto` gerçek videoyu mock'ta işleyebiliyordu (`aura/__main__.py` + `services/.../state.py`).
+- **D4:** `--device auto` macOS'ta artık MPS seçer (önceden hep CPU'ya düşüyordu, `aura/device.py`).
+- Model yolları repo köküne göre çözülür (CWD-bağımsız, `resolve_repo_path`).
+- `bootstrap.py`: indirmelere yeniden-deneme (3×, artan bekleme) + `.part` temizliği; `yolo26s-pose.pt` ağırlık listesinde; v4 için komşu-repo kopyalama fallback'i.
+
+### Değişiklikler
+- `models.detector`: path → v4, conf 0.35→0.30, imgsz 640→768 (eşik rehberi config yorumunda: ön-eğitimli stok model için 0.08-0.10).
+- Eski kök `plan.md` → `docs/plan_insa_v2.md` arşivlendi; kök `plan.md` artık 12 Haz yenileme planı.
+
 ## [Unreleased]
 
 ### Eklenenler
