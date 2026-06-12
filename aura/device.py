@@ -103,7 +103,16 @@ def _resolve_uncached(key: str) -> str:
     if key in ("cuda",) or key.startswith("cuda:"):
         # Kullanıcı açıkça CUDA istedi ama çalışmıyor — uyarı _cuda_smoke_ok'ta verildi.
         return "cpu"
-    # auto: GPU yoksa sessizce CPU (uyarı yalnızca açık 'cuda' isteğinde anlamlı)
+    # auto: CUDA yoksa Apple Silicon'da MPS'i dene (4K videoda CPU'ya göre kat kat
+    # hızlı); o da yoksa CPU. Önceden auto yalnız CUDA'yı deniyordu ve macOS'ta
+    # her zaman CPU'ya düşüyordu (D4 düzeltmesi).
+    try:
+        import torch
+
+        if torch.backends.mps.is_available():
+            return "mps"
+    except Exception:  # noqa: BLE001 - torch yok/MPS probe hatası → CPU
+        pass
     return "cpu"
 
 
