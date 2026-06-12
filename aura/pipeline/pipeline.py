@@ -40,7 +40,14 @@ from aura.plate.reader import PlateReader
 from aura.preprocessing.preprocess import Preprocessor
 from aura.qod.client import QoDController
 from aura.scene.sign_tracker import SignTracker
-from aura.schema import AnnotationFrame, AuraEvent, TrackRecord, make_event
+from aura.schema import (
+    AnnotationFrame,
+    AuraEvent,
+    DriverState,
+    PlateState,
+    TrackRecord,
+    make_event,
+)
 from aura.speed.estimator import SpeedEstimator
 from aura.stability.state_machine import StabilityTracker
 
@@ -73,7 +80,10 @@ def record_to_annotation(rec: TrackRecord) -> dict:
         "driver_id": rec.driver_id,  # kilitlenmiş sürücünün kimliği
         "driver_locked": rec.driver_locked,  # sürücü araca kilitlendi mi
         "speed_kmh": rec.speed.value_kmh,  # tahmini hız (km/s)
+        "speed_calibrated": rec.speed.is_calibrated,  # km/h gerçek (kalibre) mi
         "relative_velocity_flag": rec.speed.relative_velocity_flag,  # ego'ya göre hızlı yaklaşıyor mu
+        "swerving": rec.speed.swerving,  # dikkatsiz sürüş (yanal zigzag/ani kayma)
+        "plate_partial": rec.plate.partial,  # tam doğrulanamadıysa en güçlü plaka adayı
         "risk_flags": rec.risk_flags,  # birleşik risk bayrakları
         "qod_active": rec.qod_active,  # bu track için yüksek-kalite modu açık mı
     }
@@ -104,6 +114,26 @@ class Pipeline:
         # (Aynı mantık accumulator'daki 'speed.speeding' dikkatsiz-sürüş kuralında da geçerli.)
         self.high_speed = float(cfg.get("risk.high_speed_kmh", 90))
         self.acc = Accumulator(cfg)  # track durumunu biriktirir ve durum değişiminde event üretir
+        # Stage-1 yardımcı kanıt füzyonu: dedektör tam karede phone/smoking nesnesi
+        # görmüşse ve kutu araca düşüyorsa sürücü durumuna OR'lanır (16/8'den geçer).
+        self.fuse_aux = bool(cfg.get("models.driver_state.fuse_detections", True))
+        # QoD yaklaşma tetiği (şartname: "TOGG aracının yaklaştığını algıladığında"):
+        # bbox alanı pencere içinde `growth` katına çıktıysa ve araç yeterince
+        # büyükse (min_area_ratio) → kritik an, optimize tetikle.
+        ap = cfg.get("qod.approach", {}) or {}
+        self.approach_enabled = bool(ap.get("enabled", True))
+        self.approach_window = int(ap.get("window", 20))
+        self.approach_growth = float(ap.get("growth", 1.35))
+        self.approach_min_area = float(ap.get("min_area_ratio", 0.02))
+        from collections import deque as _deque
+
+        self._area_hist: dict[int, _deque] = {}
+        self._deque = _deque
+        # Ağır aşama kapısı: bir track bu kadar karede bir görülmeden driver/plaka
+        # aşamalarına girmez (hidden_prototip min-track-hits dersi: tek-kare hayalet
+        # tespitler OCR/pose maliyeti yaratmasın, çıktıyı kirletmesin).
+        self.min_track_frames = int(cfg.get("tracking.min_track_frames", 3))
+        self._track_age: dict[int, int] = {}
         # Sahne-seviyesi tabela takibi: aktif hız limitini çıkarır (ID-merkezli akışın yanında)
         self.sign_tracker = SignTracker(cfg)
         self.emitter = EventEmitter()  # event/annotation'ları downstream'e yayınlar
@@ -162,8 +192,27 @@ class Pipeline:
             else:
                 driver_roi = cabin
 
+            # Ağır aşama kapısı: yeni doğan (muhtemelen hayalet) track'ler ilk
+            # min_track_frames karede driver/plaka aşamalarına girmez.
+            age = self._track_age[tid] = self._track_age.get(tid, 0) + 1
+            heavy_ok = age >= self.min_track_frames
+
             # Stage-2 sürücü durumu → 16/8 kararlılık süzgeci (alan-bazında)
-            driver = self.driver.infer(driver_roi)  # ham tahmin: telefon/sigara/kemer/yorgunluk
+            # ham tahmin: telefon/sigara/kemer/yorgunluk (track_id: latch belleği için)
+            driver = self.driver.infer(driver_roi, track_id=tid) if heavy_ok else DriverState()
+            # Stage-1 yardımcı kanıt füzyonu: dedektörün tam karede gördüğü
+            # phone/smoking nesnesi BU aracın kutusuna düşüyorsa bayrağa OR'lanır.
+            # (Kanıt da 16/8 süzgecinden geçer — tek-kare nesne FP'si event olamaz.)
+            if self.fuse_aux:
+                for aux in getattr(self.detector, "last_aux", []):
+                    ax, ay = aux.center
+                    if det.bbox.x1 <= ax <= det.bbox.x2 and det.bbox.y1 <= ay <= det.bbox.y2:
+                        field = aux.cls if aux.cls in _DRIVER_FIELDS else None
+                        if field is not None:
+                            setattr(driver, field, True)
+                            driver.confidence[field] = max(
+                                driver.confidence.get(field, 0.0), float(aux.conf)
+                            )
             # Her bayrağı kendi anahtarıyla (track+alan) kararlılık süzgecinden geçir:
             # tek karelik yanlış pozitiflerin event'e dönüşmesini engeller.
             for f in _DRIVER_FIELDS:
@@ -173,13 +222,35 @@ class Pipeline:
                 setattr(driver, f, bool(stable))  # ham değeri kararlı (süzülmüş) değerle değiştir
 
             # Plaka OCR: ilgili ROI'den oku; track'e göre sonucu biriktirir/günceller.
-            plate = self.plate.update(tid, plate_roi, det.bbox, frame.shape, frame=frame)
+            if heavy_ok:
+                plate = self.plate.update(tid, plate_roi, det.bbox, frame.shape, frame=frame)
+            else:
+                plate = self.plate.get(tid) or PlateState()
             # Hız tahmini: bbox'ın kareler arası hareketinden km/s ve göreli hız bayrağı.
             speed = self.speed.update(tid, det.bbox, idx, frame.shape)
             # göreli hız bayrağını da 16/8 süzgecinden geçir (eşik civarı salınımı önle)
             speed.relative_velocity_flag = bool(
                 self.stability.update(f"{tid}:speed.rel", speed.relative_velocity_flag)
             )
+            # swerving bayrağı da 16/8 süzgecinden geçer (tek pencerelik zigzag FP'si elenir)
+            speed.swerving = bool(self.stability.update(f"{tid}:speed.swerve", speed.swerving))
+            if speed.swerving:
+                # Dikkatsiz sürüş kritik andır: delil kalitesi için QoD optimize iste.
+                self.qod.request_optimize(tid, "swerving")
+            # Yaklaşma tetiği: bbox alanı pencerede growth katına çıktıysa araç
+            # kameraya YAKLAŞIYOR → şartnamenin birincil QoD senaryosu.
+            if self.approach_enabled:
+                h_, w_ = frame.shape[0], frame.shape[1]
+                area_norm = (det.bbox.width * det.bbox.height) / max(1.0, float(h_ * w_))
+                ah = self._area_hist.setdefault(tid, self._deque(maxlen=self.approach_window))
+                ah.append(area_norm)
+                if (
+                    len(ah) >= self.approach_window
+                    and ah[-1] >= self.approach_min_area
+                    and ah[0] > 0
+                    and (ah[-1] / ah[0]) >= self.approach_growth
+                ):
+                    self.qod.request_optimize(tid, "vehicle_approach")
             # Hız anomalisi → bu track için QoD'dan kalite yükseltme iste (plaka/delil yakalama anı).
             # KATI tabela-takibi: tabela limiti varsa DOĞRUDAN onu kullan (120 bölgesinde 100 =
             # yasal → tetiklemez; 50 bölgesinde 60 → tetikler), tabela yoksa high_speed tabanına düş.

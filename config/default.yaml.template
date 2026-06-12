@@ -5,30 +5,95 @@
 # =============================================================================
 
 runtime:
-  device: auto                  # auto | cpu | cuda | mps
-  source: data/samples/ornek.mp4
+  device: auto                  # auto | cpu | cuda | mps  (auto: CUDA→MPS→CPU otomatik seçer; sabit 'cuda' CUDA'sız makinede/macOS'ta kırılır)
+  source: data/samples/ornek.mp4   # pakete gömülü sentetik demo; gerçek footage için kendi yolunuzu/kamera indeksini verin
   log_level: INFO               # DEBUG | INFO | WARNING
-  # AI çalışma modu: real (gerçek YOLO), mock (numpy deterministik), auto (ultralytics+ağırlık varsa real)
+  # AI çalışma modu:
+  #   real → her zaman gerçek YOLO (gerçek trafik footage'ı için)
+  #   mock → numpy deterministik (ağırlıksız, her makinede çalışan demo)
+  #   auto → ağırlık+ultralytics varsa gerçek YOLO; ANCAK gömülü sentetik örnekte mock
+  #          (COCO-YOLO renkli blokları araç olarak göremez → 0 bbox olurdu)
   ai_mode: auto                 # real | mock | auto
 
 models:
   detector:
-    path: weights/yolo26s.pt
-    conf: 0.35
+    # Birincil dedektör: fine-tune yolguvenligi_types_v4 (11 sınıf: araç tipleri +
+    # person + phone...; held-out test mAP50 .788). Dosya yoksa koda gömülü LOGLU
+    # fallback stok yolo26s.pt'ye düşer (detection/yolo.py).
+    # EŞİK REHBERİ (hidden_prototip gerçek-video dersi): fine-tune model → conf
+    # 0.25-0.35; ÖN-EĞİTİMLİ stok model gerçek trafikte araçlara 0.05-0.15 conf
+    # verir → stok kullanıyorsanız conf'u 0.08-0.10'a düşürün.
+    path: weights/yolguvenligi_types_v4.pt
+    conf: 0.30
     iou: 0.45
-    imgsz: 640
+    imgsz: 768                    # v4 768'de eğitildi; stok yolo26s için 640 yeterli
     vehicle_classes: [car, truck, bus, minibus, motorcycle]
     mock_bright_threshold: 90     # mock dedektör (ağırlık yokken) parlaklık eşiği
     mock_min_area: 300            # mock dedektör min blob alanı (şerit gürültüsünü eler)
   driver_state:
+    # Backend seçimi:
+    #   yolo → fine-tune detection ağırlığı (phone/smoking/... sınıfları) gerekir;
+    #          STOK COCO yolo26l bu sınıfları ÜRETEMEZ (sessiz sıfır).
+    #   pose → YOLO26-pose keypoint geometrisi: bilek↔ağız/kulak GÖRELİ yakınlığı
+    #          (v1'in gerçek videoda ölçülmüş MediaPipe geometrisinin saf-YOLO portu;
+    #          fine-tune ağırlık GEREKTİRMEZ). Bkz. aura/driver_state/pose.py.
+    #   auto → pose ağırlığı diskte varsa pose, yoksa yolo.
+    backend: auto
     path: weights/yolo26l.pt
     conf: 0.40
     imgsz: 320
     classes: [phone, smoking, no_seatbelt, fatigue]
+    # --- pose backend ayarları ---
+    pose_path: weights/yolo26s-pose.pt
+    pose_conf: 0.25               # pose kişi tespiti min güveni
+    pose_kp_conf: 0.30            # keypoint görünürlük eşiği
+    pose_imgsz: 640
+    phone_ear_ratio: 0.40         # bilek↔kulak < bu × yüz-genişliği → telefon adayı (v1 K-012 ölçümü)
+    smoke_mouth_ratio: 0.60       # bilek↔ağız < bu × yüz-genişliği → sigara adayı
+    roi_min_side: 320             # sürücü ROI kısa kenarı bu boyuta büyütülür (max 4x)
+    roi_max_upscale: 4.0
+    roi_enhance: true             # CLAHE + gamma (cam arkası karanlık kabini açar)
+    # --- hibrit ROI nesne kanıtı (pose backend ile) ---
+    # Fine-tune dedektör (vars: models.detector.path) sürücü ROI'sinde ayrıca koşar;
+    # phone NESNESİ görülürse doğrudan bayrak + latch_frames boyunca geçerli kalır
+    # (nesne her karede yakalanmaz; latch sigara FP'sine dönüşmeyi önler). NESNE
+    # kanıtı geometriden üstündür (telefon varken el-ağızda 'sigara' sayılmaz).
+    roi_objects:
+      enabled: true
+      conf: 0.25
+      imgsz: 640
+      # BASTIRMA latch'i: GÜÇLÜ telefon nesnesi (conf >= suppress_conf) son
+      # görüldükten sonra bu kadar kare boyunca geometrik 'sigara' bastırılır;
+      # telefon BAYRAĞI ileri taşınmaz (iddia yalnız gerçek kanıt karelerinde →
+      # 16/8 sıklık ayrımını yapar). suppress_conf > conf: bayraklama duyarlı,
+      # bastırma muhafazakâr (düşük güvenli FP gerçek sigarayı ezemez).
+      suppress_frames: 25
+      suppress_conf: 0.30
+    # --- Stage-1 kanıt füzyonu ---
+    # Dedektör tam karede phone/smoking NESNESİ görür ve kutu araca düşerse sürücü
+    # bayrağına OR'lanır (16/8 süzgecinden geçer). v4 modeli 'phone' üretebilir.
+    fuse_detections: true
+    aux_classes: [phone, smoking]
+
+# Sürücü kimlik kilidi: araç kabininde sağ-alttaki kişiyi sürücü kabul et,
+# confirm_frames boyunca aynı kişi sürücüyse o kişinin takip ID'sini araca KİLİTLE.
+# Kilitlendikten sonra başka kişi o aracın sürücüsü olamaz.
+driver_lock:
+  enabled: true
+  confirm_frames: 5             # kaç ardışık karede aynı aday → kilit
+  corner: bottom_right          # sürücü konumu: bottom_right | bottom_left | top_right | top_left
+  person_classes: [person]      # Stage-1'de kişi olarak sayılan sınıf adları
+  min_containment: 0.5          # kişi kutusunun araç kutusuyla min örtüşme oranı
+  roi_pad: 0.15                 # sürücü ROI'si kesilirken kenarlardan bırakılan pay
+  max_age: 30                   # araç bu kadar kare görünmezse kilit unutulur
+  mock_synthetic_person: false  # mock dedektörde demo için sentetik sürücü üret (test/sunum)
 
 tracking:
   tracker: bytetrack            # bytetrack | botsort
   reid_model: null              # weights/yolo26s-reid.pt (opsiyonel)
+  # Ağır aşama kapısı: track bu kadar kare yaşamadan driver/plaka aşamalarına girmez
+  # (tek-kare hayalet tespitler OCR/pose maliyeti yaratmasın — hidden min-track-hits dersi).
+  min_track_frames: 3
 
 preprocessing:
   headlight_suppression: true
@@ -41,36 +106,95 @@ stability:
   min_consistent: 8
 
 plate:
-  sweet_spot: {x1: 0.30, y1: 0.45, x2: 0.70, y2: 0.85}
-  voting_buffer_size: 7
+  # Sweet spot: araç MERKEZİ bu normalize bölgedeyken OCR aktif. Yanal yaklaşan
+  # araçlar (kadraj kenarından girip çapraz geçenler) için x aralığı geniş tutulur
+  # (eski 0.30-0.70, sağdan yaklaşan aracı hiç okuyamıyordu — gerçek video_3 dersi).
+  sweet_spot: {x1: 0.18, y1: 0.40, x2: 0.85, y2: 0.90}
+  voting_buffer_size: 7         # bu kadar okumada bir konsensüs değerlendirilir (rejected event kadansı)
   consensus_ratio: 0.6
   ocr_lang: [tr]
   regex: '^\d{2}[A-Z]{1,3}\d{2,4}$'
   min_pixel_height: 16          # bu yükseklik altındaki plaka ROI'leri kalite tetikler
+  ocr_max_side: 1280            # OCR girişi uzun kenar sınırı (4K crop yavaşlatmasın)
+  ocr_enhance_below_px: 64      # ROI yüksekliği bunun altındaysa CLAHE+2x varyantı denenir
+  # Sıkı plaka kırpma: özel LP dedektörü (YOLOv11n plaka fine-tune, ~5MB) plakayı
+  # araç-altı geniş crop içinde bulup SIKI kırpar → OCR karakter doğruluğu artar.
+  # Ağırlık bootstrap ile iner; yoksa loglu olarak geniş-crop davranışına düşülür.
+  lp_detector:
+    enabled: true
+    path: weights/lp_yolo11n.pt
+    conf: 0.30
+    imgsz: 640
+    pad_ratio: 0.08             # sıkı kutu etrafına bırakılan pay
+  ocr_second_variant: true      # okuma güveni düşükse CLAHE+2x varyantıyla ikinci deneme
+  ocr_second_variant_below: 0.5 # bu güvenin altındaki okumalarda varyant devreye girer
+  # Format-öncelikli KALICI oy havuzu (aura/plate/normalize.py):
+  # oylar track ömrü boyunca birikir (redde sıfırlanmaz). KARAR yalnızca ikamesiz
+  # format-geçerli ham okumalarla verilir ve her okuma OCR GÜVENİYLE ağırlıklanır
+  # (yakın/net okuma uzak/bulanık okumayı ezer — uzaktan sistematik 3→0 hatası
+  # koruması). İkameli düzeltmeler (fix1/fix2_weight) ve kesik okumalar
+  # (substring_weight) yalnız 'partial' kanıt alanına katkı yapar.
+  voting:
+    min_weight: 2.0             # kazanan için min toplam güven-ağırlığı (~2-3 sağlam okuma)
+    margin_weight: 1.5          # kazanan ile ikinci ham aday arasındaki min ağırlık farkı
+    fix1_weight: 0.45
+    fix2_weight: 0.20
+    substring_weight: 0.25
 
 speed:
-  mode: disabled                # tripwire | ipm | disabled
+  mode: metric                  # metric | tripwire | ipm | disabled
   calibration_file: null
-  relative_threshold: 0.012     # disabled modda anormal göreli hız bayrağı eşiği (ekran/kare)
+  relative_threshold: 0.012     # anormal göreli hız bayrağı eşiği (ekran/kare) — her modda
   window: 8                     # göreli hız için kayar pencere (kare)
   tripwire:
     line_a_y: 0.40              # normalize ekran konumu (0-1)
     line_b_y: 0.70
     real_distance_m: 20.0       # iki çizgi arası gerçek mesafe (metre)
+  # --- metric (oto-kalibrasyon, kalibrasyonsuz km/h) — aura/speed/calibration.py ---
+  plate_width_m: 0.520          # TR Tip-1 plaka standardı (520 mm) — varsa en kesin ppm kaynağı
+  plate_aspect_tolerance: 0.35  # 520/120≈4.33'ten sapma toleransı (foreshortening koruması)
+  vehicle_width_m:              # sınıf-bazlı tipik genişlik (m) — araç ppm yedeği
+    car: 1.80
+    minibus: 2.00
+    truck: 2.50
+    bus: 2.50
+    motorcycle: 0.80
+  vehicle_ppm_weight: 0.25      # araç-genişliği ppm örnek ağırlığı (plaka=1.0)
+  calib_min_samples: 6          # ppm(y) regresyonu için min ölçüm (ısınma)
+  speed_window_frames: 8        # hız pencere-medyan regresyon penceresi (kare) — uzun = düz
+  speed_max_accel_mps2: 8.0     # fiziksel-olmayan ivme aykırı reddi eşiği
+  speed_kalman_q: 2.0           # Kalman süreç gürültüsü (küçük = daha düz)
+  speed_kalman_r: 12.0          # Kalman ölçüm gürültüsü (büyük = ölçüme az güven, daha düz)
+  speed_ema_alpha: 0.25         # Kalman üstü EMA yumuşatma (küçük = daha düz; 0 = kapalı)
+  speed_metric_max_kmh: 200.0   # akıl sağlığı üst sınırı
+  frame_margin_px: 50           # ölü bölge: kadraj kenarı şeridi (px) — bu şeritte hız dondurulur
+  # --- swerving (dikkatsiz sürüş / yalpalama) — yanal yörünge analizi --------
+  # Pencere SANİYE cinsinden (fps-bağımsız), genlik ARAÇ GENİŞLİĞİ biriminde
+  # (ölçek-bağımsız, K-004). Algoritma: ZigZag ekstremum sayacı — cx serisi mevcut
+  # uç noktadan amp kadar geri dönünce yön-değişimi sayılır; monoton hareket
+  # (yaklaşma kayması, tek şerit değişimi) yapısal olarak 0 üretir. Bayrak 16/8
+  # süzgecinden geçer; 'swerving_vehicle' kuralı RISK_ALERT üretir; QoD tetiklenir.
+  swerving:
+    enabled: true
+    window_s: 3.0               # yanal yörünge penceresi (saniye)
+    min_flips: 2                # min yön-değişimi (sol→sağ→sol); şerit değişimi 0-1 üretir
+    amp_ratio: 0.06             # anlamlı dönüş genliği = bu × O ANKİ araç genişliği
 
 # Trafik tabelası (sahne-seviyesi) — hız-limiti tespiti + araç hızıyla çapraz kontrol.
 # Detector bu sınıfları araç/kişi DIŞI olarak ayrı toplar (last_signs); SignTracker
 # aktif limiti çıkarır, accumulator 'speed.over_limit' kuralıyla ihlali ateşler.
 sign:
   enabled: true
+  # Detector'ın tabela kabul ettiği sınıf adları (value_map anahtarları da otomatik dahildir).
   classes: [sign, speed_limit_30, speed_limit_50, speed_limit_70, speed_limit_90, speed_limit_120]
+  # Tabela sınıfı → hız limiti (km/h). Generic 'sign' haritada yoktur → yalnızca çizilir.
   value_map:
     speed_limit_30: 30
     speed_limit_50: 50
     speed_limit_70: 70
     speed_limit_90: 90
     speed_limit_120: 120
-  persistence_frames: 150       # son görülen limit bu kadar kare daha geçerli kalır
+  persistence_frames: 150       # son görülen limit bu kadar kare daha geçerli kalır (araç tabelayı geçer)
   min_conf: 0.40                # bu güvenin altındaki tabela tespiti yok sayılır
   mock_synthetic: false         # mock modda (ağırlıksız demo) sabit bir hız-limiti tabelası üret
   mock_speed_limit: 50          # mock_synthetic açıkken üretilen limit (km/h)
@@ -84,6 +208,14 @@ qod:
   histeresis:
     min_active_seconds: 3
     cooldown_seconds: 5
+  # Yaklaşma tetiği — şartnamenin birincil QoD senaryosu ("TOGG aracının
+  # yaklaştığını algıladığında"): bbox alanı pencere içinde `growth` katına
+  # çıktıysa ve araç kadrajın min_area_ratio'sundan büyükse optimize tetiklenir.
+  approach:
+    enabled: true
+    window: 20                  # alan-büyüme penceresi (kare)
+    growth: 1.35                # alan(son)/alan(ilk) >= bu → yaklaşıyor
+    min_area_ratio: 0.02        # araç alanı / kare alanı alt sınırı (uzak araç tetiklemez)
 
 events:
   transport: websocket
@@ -97,7 +229,9 @@ number_verification:
 risk:
   rules:
     - name: distracted_speeding
-      all_of: [driver.phone, speed.high]
+      # telefonda + uygulanabilir limiti aşıyor. speed.speeding = tabela varsa onu,
+      # yoksa high_speed tabanını kullanır (30 bölgesinde 35 de dikkatsiz sürüş sayılır).
+      all_of: [driver.phone, speed.speeding]
       severity: high
     - name: prolonged_fatigue
       all_of: [driver.fatigue, track.long_lived]
@@ -108,7 +242,16 @@ risk:
     - name: speed_limit_violation
       all_of: [speed.over_limit]   # araç hızı > aktif tabela limiti (SignTracker)
       severity: high
-  high_speed_kmh: 90            # speed.high eşiği (kalibrasyon varsa)
+    - name: smoking_driver
+      # Sigara tek başına da risktir (şartname 4.4 birebir hedef sınıfı). Önceden
+      # yalnız DRIVER_STATE event'inde gömülüydü; artık RISK_ALERT üretir.
+      all_of: [driver.smoking]
+      severity: medium
+    - name: swerving_vehicle
+      # Dikkatsiz sürüş: yanal zigzag / ani şerit kayması (SpeedEstimator üretir).
+      all_of: [speed.swerving]
+      severity: high
+  high_speed_kmh: 90            # mutlak yüksek-hız tabanı: tabela YOKKEN speed.speeding/QoD bu eşiğe düşer
   long_lived_frames: 90        # track.long_lived eşiği (kare sayısı)
 
 optional_modules:

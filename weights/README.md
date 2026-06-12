@@ -2,15 +2,15 @@
 
 Bu dizin `bootstrap.py` tarafından doldurulur ve `.gitignore`'ludur.
 
-- **Tespit edilen torch backend:** `cuda`
-- **Son kurulum platformu:** Windows AMD64
+- **Tespit edilen torch backend:** `mps`
+- **Son kurulum platformu:** Darwin arm64
 
 ## Ağırlıklar
 
 | Dosya | Durum | SHA256 (ilk 16) | Kaynak |
 |---|---|---|---|
-| `yolo26s.pt` | present | `646f8bc3fe0a6568` | https://github.com/ultralytics/assets/releases/download/v9.0.0/yolo26s.pt |
-| `yolo26l.pt` | present | `9fe3c544f2b19beb` | https://github.com/ultralytics/assets/releases/download/v9.0.0/yolo26l.pt |
+| `yolo26s.pt` | missing | `646f8bc3fe0a6568` | https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26s.pt |
+| `yolo26l.pt` | missing | `9fe3c544f2b19beb` | https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26l.pt |
 
 ## Trust-on-first-use
 

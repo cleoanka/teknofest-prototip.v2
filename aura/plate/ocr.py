@@ -42,17 +42,69 @@ class RealOCR(OCREngine):
         # hızlandır; aksi halde CPU. cuda_is_usable() önbellekli probe kullanır.
         use_gpu = bool(cfg.get("plate.ocr_gpu", True)) and cuda_is_usable()
         self.reader = easyocr.Reader(langs, gpu=use_gpu, verbose=False)
+        # 4K araç crop'ları OCR'ı gereksiz yavaşlatır: uzun kenar bu değeri aşarsa
+        # küçültülür (plaka okunaklılığı korunur, süre kat kat düşer).
+        self.max_side = int(cfg.get("plate.ocr_max_side", 1280))
+        # Küçük ROI'lerde (yükseklik < enhance_below) CLAHE+2x upscale varyantı denenir.
+        self.enhance_below = int(cfg.get("plate.ocr_enhance_below_px", 64))
         log.info("EasyOCR yüklendi (langs=%s, gpu=%s)", langs, use_gpu)
+
+    @staticmethod
+    def _merge_line(results) -> tuple[str | None, float]:
+        """EasyOCR segmentlerini satır bazında soldan sağa birleştir.
+
+        Plaka çoğu karede '34' + 'TC' + '8532' gibi AYRI kutular halinde döner;
+        yalnızca en güvenli tek kutuyu almak kesik okuma ('8532') üretir
+        (v1 multi-block concat dersi). En güvenli kutunun satırındaki tüm
+        kutular x'e göre sıralanıp birleştirilir.
+        """
+        if not results:
+            return None, 0.0
+        best = max(results, key=lambda r: r[2])
+        bys = [p[1] for p in best[0]]
+        b_cy = sum(bys) / len(bys)
+        b_h = max(bys) - min(bys)
+        line = []
+        for box, txt, conf in results:
+            ys = [p[1] for p in box]
+            cy = sum(ys) / len(ys)
+            if abs(cy - b_cy) <= max(b_h * 0.7, 8.0):
+                line.append((min(p[0] for p in box), txt, conf))
+        line.sort(key=lambda t: t[0])
+        text = _NON_ALNUM.sub("", "".join(t[1] for t in line).upper())
+        confs = [t[2] for t in line]
+        return (text or None), float(sum(confs) / len(confs)) if confs else 0.0
+
+    def _readtext(self, img) -> tuple[str | None, float]:
+        return self._merge_line(self.reader.readtext(img))
 
     def read(self, plate_roi, vehicle_crop=None) -> tuple[str | None, float]:
         if plate_roi is None or getattr(plate_roi, "size", 0) == 0:
             return None, 0.0
-        results = self.reader.readtext(plate_roi)
-        if not results:
+        import cv2
+
+        roi = plate_roi
+        # Parlama/far testi (hidden_prototip dersi): aşırı parlak + düşük varyans
+        # ROI ışık kaynağıdır, plaka değil → OCR'a hiç girmeden atla (FP + süre kazancı).
+        mean = float(roi.mean())
+        std = float(roi.std())
+        if mean > 215.0 and std < 25.0:
             return None, 0.0
-        best = max(results, key=lambda r: r[2])
-        text = _NON_ALNUM.sub("", best[1].upper())
-        return (text or None), float(best[2])
+        h, w = roi.shape[:2]
+        long_side = max(h, w)
+        if long_side > self.max_side:
+            scale = self.max_side / long_side
+            roi = cv2.resize(roi, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+        text, conf = self._readtext(roi)
+        if text is None and roi.shape[0] < self.enhance_below:
+            # Küçük/karanlık plaka: 2x büyüt + L kanalında CLAHE, bir kez daha dene.
+            up = cv2.resize(roi, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
+            lab = cv2.cvtColor(up, cv2.COLOR_BGR2LAB)
+            lab_l, lab_a, lab_b = cv2.split(lab)
+            lab_l = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8)).apply(lab_l)
+            up = cv2.cvtColor(cv2.merge((lab_l, lab_a, lab_b)), cv2.COLOR_LAB2BGR)
+            text, conf = self._readtext(up)
+        return text, conf
 
 
 class MockOCR(OCREngine):
