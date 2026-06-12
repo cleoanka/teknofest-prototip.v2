@@ -1,7 +1,11 @@
 # AURA — Claude Code Uygulama Promptu v2.0
 
+> **TARİHSEL BELGE (12 Haz 2026 notu):** Bu prompt projenin ilk inşasında (M1-M16)
+> kullanıldı. Atıf yaptığı inşa planı artık `docs/plan_insa_v2.md`'dedir; kökteki
+> `plan.md` 12 Haziran bakım/yenileme oturumunun planıdır (sonuç dökümü: `fable.md`).
+
 > Bu dosyanın içeriğini Claude Code'a ilk mesaj olarak yapıştır.
-> Repo kökünde şunlar bulunmalı: `plan.md`, `AURA_YZ_Mimarisi_v1.1.md`, şartname PDF/MD.
+> Repo kökünde şunlar bulunmalı: `plan.md` (inşa sürümü: `docs/plan_insa_v2.md`), `AURA_YZ_Mimarisi_v1.1.md`, şartname PDF/MD.
 
 ---
 
