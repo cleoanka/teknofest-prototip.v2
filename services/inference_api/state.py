@@ -80,6 +80,11 @@ class StreamManager:
         self.bbox_overlay = bbox_overlay
         if device:
             self.cfg.data.setdefault("runtime", {})["device"] = device
+        if source not in (None, ""):
+            # Kaynak config'e de yazılır: Pipeline kurulurken resolve_ai_mode gerçek
+            # kaynağa bakar; aksi halde auto modu config'teki örnek videoya göre karar
+            # verip gerçek kaynağı mock'ta işleyebiliyordu (CLI'daki D3'ün servis eşi).
+            self.cfg.data.setdefault("runtime", {})["source"] = source
         self._running = True
         self.started_at = time.time()
         # Pipeline (ağır model yüklemeleri: YOLO/EasyOCR ısınması) worker thread'inde
