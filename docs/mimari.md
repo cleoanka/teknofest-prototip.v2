@@ -10,11 +10,11 @@ event/annotation stream, dashboard/mobil tüketimi, mock↔gerçek sınırı).
 ```
 [Kamera Girişi]
       ↓
-[1. Ön-İşleme] → [2. YOLO26s ROI + ByteTrack] ←→ [3. 16/8 Kararlılık]
+[1. Ön-İşleme] → [2. YOLO26 ROI + ByteTrack + sınıf oyu] ←→ [3. 16/8 Kararlılık]
                        ↓                ↓
-              [Sürücü Kabini ROI]   [Plaka ROI]
+              [Sürücü ROI (sıkı)]    [Plaka ROI]
                        ↓                ↓
-        [4. YOLO26l Driver State] [5. Sweet Spot + OCR + Voting]
+        [4. Pose/YOLO Driver State] [5. Sweet Spot + LP kırpma + OCR + Füzyon Voting]
                        ↓                ↓
                                  [QoD Tetikleyici]
                                         ↓
@@ -63,19 +63,35 @@ kullanılmaz** (bkz. §9). `models.driver_state.backend` ile seçilir:
 - **`yolo`** — fine-tune YOLO26l detection (phone/smoking/no_seatbelt/fatigue sınıfları).
   En doğru yol; bu sınıflar için eğitilmiş ağırlık gerektirir (STOK COCO ağırlığı bu
   sınıfları üretemez — sessiz sıfır).
-- **`pose`** (fine-tune ağırlık gerektirmez) — **YOLO26-pose** (COCO 17 keypoint) ROI'de
+- **`pose`** (fine-tune ağırlık gerektirmez) — **YOLO26l-pose** (COCO 17 keypoint) ROI'de
   koşulur; **bilek↔ağız / bilek↔kulak GÖRELİ yakınlık** kıyası telefon/sigara çıkarımı
   yapar (eşikler yüz-genişliği biriminde, ölçek-bağımsız). Kulak keypoint'i görünmüyorsa
   karar verilmez (dürüst çekimserlik). Üstüne **hibrit nesne kanıtı**: fine-tune dedektör
   (`v4`, `phone` sınıfı) aynı ROI'de koşulur; NESNE kanıtı geometriden üstündür (telefon
   nesnesi görülünce el-ağızda geometrisi 'sigara' sayılmaz — hoparlörde konuşma durumu).
   ROI ön-işleme: kısa kenar 320px'e büyütme + CLAHE + gamma (cam arkası karanlık kabin).
-- **`auto`** (varsayılan): pose ağırlığı diskte varsa `pose`, yoksa `yolo`.
+- **`auto`** (varsayılan): pose ağırlığı (l-pose; yoksa s-pose) diskte varsa `pose`, yoksa `yolo`.
+
+**Sürücü-içi sıkı kırpma (`driver_crop`):** Modele giden alan MINIMUM tutulur. Gelen ROI
+(DriverLock kişi kutusu yoksa kabin fallback'i — araç üst %55'i, ön cam + yolcu
+yansımaları dahil) önce **sürücünün kişi kutusuna (+%10)** daraltılır; pose ve nesne
+kanıtı yalnız bu dar kırpıkta koşar. Kutu track başına önbelleğe alınır (normalize
+koordinat; sürücü araç içinde sabit oturur), `redetect_every` karede bir tazelenir →
+kare başına TEK pose geçişi korunur. Bu sayede l-pose gibi büyük model affordable olur
+(minimum alana maksimum model). Sürücü tarafı `driver_lock.corner` ile aynı sözleşme.
 
 Her iki backend'in ham bayrakları 16/8 kararlılık süzgecinden geçer; Stage-1'in tam
 karede gördüğü `phone`/`smoking` nesneleri de araca düşüyorsa füzyon edilir
-(`fuse_detections`). Gerçek 4K test videolarında doğrulandı (sigara: video_1,
-telefon: video_2; çapraz-FP yok).
+(`fuse_detections`). Gerçek 4K test videolarında doğrulandı (sigara: video_1 — sürücü
+kırpma + l-pose ile 118 kare; telefon: video_2 — 110+ kare; çapraz-FP yok).
+
+**Araç-sınıfı kararlılığı (`tracking.class_vote`):** Fine-tune dedektör aynı aracı
+kareler arasında farklı sınıflarla görebiliyor (ölçüm: araç ilk/uzak karelerde
+`truck`, sonra kalıcı `car`). Track başına **güven-ağırlıklı sınıf oyu + hafif unutma**
+tek-kare titremeyi düzeltir; sınıf pipeline'da tek noktada (`det.bbox.cls`) güncellenir
+→ hız genişlik-önseli, accumulator, annotation ve event'ler aynı kararlı sınıfı görür.
+Ayrıca `min_track_frames` artık bir **çıktı kapısı**: genç (2-karelik hayalet) track'ler
+annotation/event üretmez (gerçek video_3'te phantom `truck` track'leri çıktıya sızmıyordu).
 
 ## 5. Plaka Okuma ve Konsensüs Döngüsü
 Hesap yükü en yüksek parça; katı kaynak yönetimiyle çalışır.
@@ -84,17 +100,31 @@ Hesap yükü en yüksek parça; katı kaynak yönetimiyle çalışır.
 - **Sıkı plaka kırpma (LP dedektörü):** özel YOLOv11n plaka modeli, araç-altı geniş
   crop içinde plakanın kendisini bulup sıkı kırpar — OCR karakter doğruluğu belirgin
   artar; ağırlık yoksa loglu olarak geniş-crop'a düşülür.
+- **Boyut-farkında kanıt:** okumanın kanıt değeri = OCR güveni × kaynak kalitesi (LP
+  kırpık yüksekliği). Çok küçük plaka (`lp_vote_min_px`) oylamaya hiç girmez; küçük plaka
+  (`lp_qod_below_px`) görüldüğü AN `plate_too_small` QoD kalite tetiği (consensus_fail
+  beklemeden — havuz çöp okumayla zehirlenmeden). Uzak/bulanık karelerin sistematik
+  misread'leri (ör. `34→04`) yakın/net okumayı artık ezemez.
 - **OCR güçlendirme:** aynı-satır segment birleştirme ("34"+"TC"+"8532" tek okuma),
   parlama testi (far ışığı OCR'a girmez), küçük plakada CLAHE+2x varyantı.
 - **Kalıcı oy havuzu (`aura/plate/normalize.py`):** okumalar track ömrü boyunca birikir
   (redde sıfırlanmaz). TR-blok-farkında normalizasyon (O→0, 1→I...) aday üretir; KARAR
-  yalnızca **ikamesiz format-geçerli ham okumalarla**, her okuma **OCR güveniyle
-  ağırlıklanarak** verilir (min ağırlık + ikinciye fark + oran — erken/yanlış kilit
-  koruması). Kesik okumalar (`8532`) alt-dizi kanıtı olarak adaylara destek verir.
-- **Karar:** konsensüs → plakayı ID'ye kalıcı yaz, OCR kapat (erken çıkış),
-  `PLATE_CONFIRMED`. Ret → `QOD_TRIGGER` (kalite) + birikime devam. Konsensüs yokken en
-  güçlü aday `PlateState.partial` alanında **kanıt izi** olarak taşınır (şartname 4.5).
-  Post-validasyon: Türk plaka regex `^\d{2}[A-Z]{1,3}\d{2,4}$`.
+  yalnızca **ikamesiz format-geçerli ham okumalarla**, her okuma **güven × kaynak
+  kalitesiyle ağırlıklanarak** verilir (min ağırlık + ikinciye fark + oran — erken/yanlış
+  kilit koruması). Kesik okumalar (`8532`) alt-dizi kanıtı olarak adaylara destek verir.
+- **Pozisyon-hizalı karakter füzyonu (YALNIZ `partial` — kanıt izi):** birden çok
+  format-geçerli okuma varsa aynı YAPIDAKİ okumalar pozisyon pozisyon birleşip en olası
+  tek tahmini üretir. **Bu CONFIRMED kararına KATILMAZ.** Gerçek video dersi: uzak/bulanık
+  karelerde OCR sistematik yanlış okuyabilir (T→I, 3→2) ve doğru okuma hiç gelmeyebilir;
+  böyle bir okumayı "onaylamak" yanlış plakayı kesinleştirir — `pending + en iyi tahmin`
+  daha dürüst (jüri için "kesin değil" sinyali). Onay yalnız katı ayrı-aday konsensüsüyle.
+- **Karar:** **katı ayrı-aday** konsensüsü (min ağırlık + ikinciye fark + oran) → plakayı
+  ID'ye kalıcı yaz, OCR kapat (erken çıkış), `PLATE_CONFIRMED` + kalite QoD oturumu **hemen
+  bırakılır**. Ret → `QOD_TRIGGER` (kalite) + birikime devam. Konsensüs yokken en güçlü
+  aday `PlateState.partial` alanında **kanıt izi** olarak taşınır (şartname 4.5).
+  Post-validasyon: Türk plaka regex `^\d{2}[A-Z]{1,3}\d{2,4}$`. Gerçek videoda: **video_2'de
+  `34TC8532` net kanıtla CONFIRMED**; video_1/3'te plaka uzak/bulanık → dürüst `pending` +
+  partial (aynı araç olduğu video_2'den kesin bilinir).
 
 ## 6. QoD — Dinamik Kaynak Yönetimi (CAMARA QoD)
 5G'yi statik bant genişliği değil, talep üzerine şekillenen dinamik kaynak havuzu olarak

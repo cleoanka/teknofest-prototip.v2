@@ -43,15 +43,24 @@ tutarlıysa yazılır (flicker koruması).
 `regex` (Türk plaka), `min_pixel_height` (altında kalite tetiklenir),
 `ocr_max_side` / `ocr_enhance_below_px` (OCR girdi boyut yönetimi),
 `lp_detector.*` (sıkı plaka kırpma — özel YOLOv11n plaka modeli; yoksa loglu fallback),
+`lp_vote_min_px` / `lp_qod_below_px` (boyut-farkında kanıt: çok küçük LP oylamaya
+girmez; küçük LP görüldüğü an `plate_too_small` QoD tetiği — consensus_fail beklemeden),
 `voting.*` (kalıcı, güven-ağırlıklı oy havuzu: `min_weight`, `margin_weight`,
-`fix1/fix2_weight`, `substring_weight` — bkz. `aura/plate/normalize.py`).
+`fix1/fix2_weight`, `substring_weight`; `size_full_px`/`size_floor`/`no_lp_weight` =
+okuma ağırlığı OCR güveni × kaynak kalitesi; `char_consensus`/`char_margin` =
+pozisyon-hizalı karakter füzyonu (en güçlü tek okuma çapa; ikinciyi `char_margin`
+ile geçmeli), T↔I / 3↔0 misread'ini çoğunlukla düzeltir —
+bkz. `aura/plate/normalize.py`).
 
 ### `models.driver_state` (backend seçimi)
-`backend: auto|pose|yolo` — pose: YOLO26-pose keypoint geometrisi (`pose_path`,
-`pose_conf`, `pose_kp_conf`, `phone_ear_ratio`, `smoke_mouth_ratio`, `roi_min_side`,
-`roi_enhance`) + hibrit ROI nesne kanıtı (`roi_objects.*`); yolo: fine-tune YOLO26l
-detection. `fuse_detections` + `aux_classes`: Stage-1'in tam karede gördüğü
-phone/smoking nesneleri araca düşüyorsa sürücü bayrağına OR'lanır.
+`backend: auto|pose|yolo` — pose: YOLO26-pose keypoint geometrisi (`pose_path` =
+varsayılan `yolo26l-pose.pt`, yoksa s-pose'a loglu fallback; `pose_conf`,
+`pose_kp_conf`, `phone_ear_ratio`, `smoke_mouth_ratio`, `roi_min_side`, `roi_enhance`) +
+hibrit ROI nesne kanıtı (`roi_objects.*`); yolo: fine-tune YOLO26l detection.
+`driver_crop.*`: modele giden alanı sürücünün kişi kutusuna (+`pad_ratio`) daraltır
+(`redetect_every` = önbellek tazeleme, `min_gain` = ROI zaten darsa kırpmayı atla).
+`fuse_detections` + `aux_classes`: Stage-1'in tam karede gördüğü phone/smoking
+nesneleri araca düşüyorsa sürücü bayrağına OR'lanır.
 
 ### `speed`
 `mode`: `metric` (oto-kalibrasyon) / `tripwire` / `ipm` / `disabled` (yalnızca
@@ -60,8 +69,10 @@ phone/smoking nesneleri araca düşüyorsa sürücü bayrağına OR'lanır.
 `min_flips`, `amp_ratio` (o anki araç genişliği birimi, ölçek-bağımsız).
 
 ### `tracking`
-`tracker`, `reid_model`, `min_track_frames` (ağır aşama kapısı: track bu kadar kare
-yaşamadan OCR/pose çalışmaz — tek-kare hayalet tespit koruması).
+`tracker`, `reid_model`, `min_track_frames` (ağır aşama + ÇIKTI kapısı: track bu kadar
+kare yaşamadan OCR/pose çalışmaz VE annotation/event üretmez — tek/iki-kare hayalet
+track koruması). `class_vote.*` (track başına araç-sınıfı oylaması: `enabled`, `decay` —
+tek-kare `car↔truck` titremesini güven-ağırlıklı çoğunlukla düzeltir).
 Ek: `models.detector.dedup_iou` — aynı araca üretilen kopya kutuları bastırır.
 
 ### `qod`
