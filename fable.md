@@ -203,16 +203,15 @@ Yöntem yine "ölç → düzelt → yeniden ölç", hile yok (`sakın hile yapma
   (LP kırpık yüksekliği). Çok küçük LP oylamaya girmez; küçük LP görüldüğü an
   `plate_too_small` QoD tetiği (consensus_fail beklemeden — havuz zehirlenmeden).
 - **QoD erken bırakma**: plaka onaylanır onaylanmaz HIGH_THROUGHPUT bırakılır.
-- **Pozisyon-hizalı karakter füzyonu** (`normalize.py:_char_fuse_best`): birden çok
-  format-geçerli okuma pozisyon pozisyon birleşip en olası tahmini verir — **ama YALNIZ
-  `partial` (kanıt izi) için; CONFIRMED'e KATILMAZ.**
-- **Dürüstlük kararı (önemli):** Gerçek ölçüm gösterdi ki video_1/3'te OCR plakayı
-  sistematik yanlış okuyor (T→I, 3→2) ve **doğru okuma neredeyse hiç gelmiyor** (uzak/
-  bulanık). Bunu "düzeltmek" videoya-özgü zorlama = hile olurdu. İlk denememde char-füzyon
-  bunları yanlış CONFIRMED yaptı (34IC8532 / 24IC8532) — bu bir **regresyondu** ve geri
-  alındı. Doğru davranış: **video_2'de net kanıtla `34TC8532` CONFIRMED** (ki bu aynı
-  aracın plakasını kesinleştirir); video_1/3'te **dürüst `pending` + en iyi tahmin partial**.
-  Yanlış plakayı kesinleştirmek "okuyamadım"dan kötüdür.
+- **Pozisyon-hizalı karakter füzyonu** (`normalize.py:_char_consensus`): birden çok
+  format-geçerli okuma pozisyon pozisyon birleşip en olası tahmini verir. İlk turda
+  yalnız `partial`'a koymuştum; **ikinci turda güvenli şekilde ONAYA getirildi** (bkz. §15)
+  — her pozisyonda kazanan ikinciyi `char_margin` mutlak farkla geçmeli, belirsizse pending.
+- **Dürüstlük kararı (önemli):** video_1/3'te OCR plakayı varyantlara bölüyor (3→0, T→I).
+  İlk turda char-füzyonu yanlış uyguladım (anchor + grup oranı) ve yanlış CONFIRMED ürettim
+  (34IC8532 / 24IC8532) — geri aldım. İkinci turda **pozisyon-margin** ile doğru çözüldü:
+  video_1 doğru `34TC8532` CONFIRMED, video_3 dürüst `pending` (uzaktan I↔T ayrılamıyor).
+  Yanlış plakayı kesinleştirmek "okuyamadım"dan kötüdür — belirsiz pozisyon → pending.
 
 ### 12.4 "aracın doğru tanımlanmasını sağla"
 - 12.2'deki sınıf oylaması + çıktı kapısı ile çözüldü; üç videoda da `car`.
@@ -225,24 +224,46 @@ Yöntem yine "ölç → düzelt → yeniden ölç", hile yok (`sakın hile yapma
   `.env` yükleme (run.sh parite). Yeni **`dev.ps1`** (test/lint/format/eval/video-test —
   Makefile eşleniği). `bootstrap.py` git-lfs ipucu platforma göre (`%USERPROFILE%`/`~`).
 
-## 13. Doğrulama Matrisi (13 Haz, gerçek video, hile yok)
+## 13. Doğrulama Matrisi (13 Haz nihai, gerçek video, hile yok)
 
 | Video | Araç | Plaka | Sürücü | Swerving | RISK_ALERT |
 |---|---|---|---|---|---|
-| video_1 | **car** ✓ | `pending`, partial **34TC8532** | **sigara 118 kare** ✓ | 0 ✓ | 4 |
+| video_1 | **car** ✓ | **34TC8532 CONFIRMED** ✓ | **sigara 118 kare** ✓ | 0 ✓ | 4 |
 | video_2 | **car** ✓ | **34TC8532 CONFIRMED** ✓ | **telefon 110 kare** ✓ | 0 ✓ | — |
 | video_3 | **car** ✓ | `pending` (uzak/bulanık) | temiz ✓ | **119 kare** ✓ | 1 |
 
 Çapraz-FP sıfır (video_1'de telefon 0, video_2'de sigara 0). JSON özetlerine karar
 şeffaflığı için `plate_raw_valid_weighted` (ağırlıklı format-geçerli dağılım) ve
-`class_changes` (sınıf titremesi izi) eklendi — jüri "neden bu sonuç?" diye sorabilir.
+`class_changes` (sınıf izi) eklendi — jüri "neden bu sonuç?" diye sorabilir.
 
-**Dürüst sınırlar:** video_1/3 plakası uzaktan/bulanık olduğundan OCR T↔I ve 3↔2'yi
-ayıramıyor; sistem bunları kasıtlı olarak CONFIRMED yapmaz (yanlış pozitif üretmemek
-için). Plaka kimliği **video_2'de kesin doğrulanır** ve üç videoda aynı araçtır.
+**Dürüst sınırlar:** video_3 plakası uzaktan/bulanık olduğundan OCR `3→2` ve `T→I`
+yapıyor ve hiçbir pozisyon güvenli ayrılmıyor → sistem `pending` der (yanlış pozitif yok).
+Plaka kimliği **video_1 ve video_2'de CONFIRMED** (`34TC8532`). video_1/2'de araç ilk
+~1-2 sn uzaktayken model ham tespitte `truck` görüyor (ham-tespit sınırı); sistem
+yakınlaşınca `car`'a yakınsayıp sabit kalıyor — kalıcı çözüm `cigarette`/araç-tipi
+dengeli v5 fine-tune (`train/` hazır).
 
 ## 14. Kalite (13 Haz)
-- **133 unit test** yeşil; yeni: `test_class_vote` (7), genişletilmiş `test_plate_normalize`
-  (boyut-ağırlığı + karakter füzyonu + regresyon koruması).
+- **137 unit test** yeşil; yeni/genişletilmiş: `test_class_vote` (9, alan-ağırlığı dahil),
+  `test_plate_normalize` (pozisyon-margin füzyonu + regresyon koruması).
 - `ruff` + `black` temiz. `tools/show_cabin_rois.py` → `show_driver_rois.py` (pipeline-eş).
-- Docs güncel: CHANGELOG (2.2.0), `docs/mimari.md`, `config/README.md`, `pyproject` 2.2.0.
+- Docs güncel: CHANGELOG (2.2.1), `docs/mimari.md`, `config/README.md`, `pyproject` 2.2.1.
+
+## 15. İkinci Geri Bildirim Düzeltmesi ("bozdun; stabilite düzelmedi; plaka daha iyiydi")
+
+Kullanıcının ikinci geri bildirimi gerçek eval ölçümüyle kök çözüme kavuşturuldu —
+tahmin değil, ölçüm: her video için ham per-frame sınıf + ağırlıklı plaka dağılımı çıkarıldı.
+
+- **Plaka regresyonu (ilk-karakter `3↔0`):** ÖLÇÜM — OCR aynı plakayı `34TC8532`/`04TC8532`/
+  `34IC8532` diye bölüyor; hiçbiri tek başına `ratio`'yu geçmiyor, ayrı-aday hangisi
+  baskınsa onu (koşuma göre yanlış `04`) seçiyordu. ÇÖZÜM — **pozisyon-margin füzyonu onaya**:
+  pos0'da çoğunluk `3` (34TC+34IC > 04), pos2'de `T` net → **`34TC8532` CONFIRMED**.
+  Belirsiz pozisyon → pending (video_3). `consensus_ratio` 0.6'ya geri alındı.
+- **Stabilite (sınıf salınımı):** ÖLÇÜM — model video_2'de ilk 53 kareyi ham tespitte
+  `truck` görüyor (uzak araç); ilk denememdeki `decay<1` + alan-ağırlığı video_3'te
+  GEÇ büyük-alan tespitine **salınım** (car→truck→car) yaratmıştı. ÇÖZÜM — **alan-ağırlıklı
+  oy** (yakın/büyük araç daha güvenilir) + **`decay=1.0`** (saf kümülatif): video_3 tek
+  sınıf `car` (salınım yok); video_1/2 car'a yakınsayıp sabit. İlk uzak-araç truck dönemi
+  modelin ham-tespit sınırı (dürüstçe belgelendi).
+- **Eval kanıtı:** kullanıcının isteğiyle `tools/test_video.py` (3 video, annotated + JSON)
+  ve `tools/show_driver_rois.py` (3 video, sürücü ROI grid) yeniden koşuldu — `eval_results/`.
