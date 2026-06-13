@@ -1,22 +1,24 @@
-"""Sürücü kimlik kilidi (Driver Lock).
+"""Sürücü/Yolcu atama (Driver Lock).
 
-Kural (kullanıcı talebi):
-  1. Araç kabininde **sağ-alttaki ilk kişiyi** sürücü adayı kabul et.
-  2. Aynı kişi (ByteTrack ID'si) **confirm_frames (vars. 5) ardışık karede** sürücü
-     adayı kalırsa, o kişinin ID'sini **araca kilitle**.
-  3. Kilit sonrası **başka hiç kimse** o aracın sürücüsü olamaz (aday değişse bile).
-  4. **Global dışlama:** Bir kişi yalnızca **GERÇEKTEN içinde olduğu TEK araca**
-     kilitlenir. Örtüşen/yan yana araçlarda aynı kişi iki aracın sürücüsü olamaz;
-     kare başına her kişi en iyi (en çok örtüşen + merkeze en yakın) araca atanır.
+Kural (kullanıcı talebi — gözden geçirilmiş mekanik):
+  1. Araç kabininde **en alttaki — berabere kalırsa en sağdaki — görünen kişi
+     HER ZAMAN sürücüdür** (DİKEY öncelikli köşe kuralı). Sürücü kimliğe KİLİTLENMEZ;
+     her kare konuma göre yeniden seçilir → track-ID titrese de görünen sürücü her
+     zaman 'sürücü' etiketlenir (eski 'sürücüyü kilitle' mekaniğinin track kaybında
+     gerçek sürücüyü 'yolcu' göstermesi böyle çözülür).
+  2. Sürücü dışındaki herkes **yolcudur**. Bir kişi **confirm_frames (vars. 3)
+     ardışık karede yolcu** kalırsa **YOLCU olarak kilitlenir**: artık o araçta
+     sürücü adayı olamaz (anlık konum gürültüsüyle sürücü etiketini çalamaz).
+  3. **Global dışlama:** kilitli bir yolcu yalnızca **TEK araca** (kilitlendiği)
+     aittir; örtüşen araçlarda iki aracın havuzuna birden giremez. Serbest (kilitsiz)
+     kişiler kare başına en iyi (örtüşme + merkez yakınlığı) araca atanır.
 
-Tasarım: ID-merkezli (kare-merkezli değil). Kişiler Stage-1'de YOLO+ByteTrack ile
-tüm karede tespit edilip takip edilir; bu modül kişileri araç kutusuna eşler, sağ-alt
-adayı seçer, tutarlılığı sayar ve kilidi yönetir. Modelden bağımsız, saf hesap.
+Tasarım: ID-merkezli değil KONUM-merkezli sürücü + ID-merkezli yolcu kilidi. Kişiler
+Stage-1'de YOLO+ByteTrack ile tüm karede tespit edilip takip edilir; bu modül kişileri
+araç kutusuna eşler, sağ-en-alt sürücüyü seçer ve yolcuları kilitler. Saf hesap.
 
-Tek-araç (`update`) ve global (`assign_frame`) olmak üzere iki giriş noktası vardır;
-pipeline her kare bir kez `assign_frame` çağırır (araçlar arası çift-sahiplenmeyi
-ancak tüm araçları aynı anda görerek engelleyebiliriz). `update` geriye dönük
-uyumluluk için (tek araç) korunur.
+Tek-araç (`update`) ve global (`assign_frame`) iki giriş noktası vardır; pipeline her
+kare bir kez `assign_frame` çağırır. `update` geriye dönük uyumluluk için korunur.
 
 "sağ-alt" yönü config ile değiştirilebilir (`driver_lock.corner`): Türkiye soldan
 direksiyondur; kamera açısına göre sürücü görüntüde farklı köşeye düşebilir.
@@ -25,7 +27,7 @@ direksiyondur; kamera açısına göre sürücü görüntüde farklı köşeye d
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from aura.detection.detector import Person
 from aura.schema import BBox
@@ -43,15 +45,17 @@ _CORNERS = {
 
 @dataclass
 class DriverAssignment:
-    """Bir araç için sürücü kilidi anlık durumu."""
+    """Bir araç için sürücü/yolcu atamasının anlık durumu."""
 
     vehicle_id: int
-    driver_id: int | None = None  # kilitliyse kilitli kişi; değilse mevcut aday
-    locked: bool = False
-    candidate_id: int | None = None  # bu karedeki sağ-alt aday
-    streak: int = 0  # adayın üst üste kaç karedir tutulduğu
-    newly_locked: bool = False  # bu karede yeni mi kilitlendi (event tetikler)
-    driver_bbox: BBox | None = None  # kilitli/aday sürücünün BU karedeki kutusu (ROI için)
+    driver_id: int | None = None  # bu kareki sağ-en-alt sürücü (pozisyonel; kilitli DEĞİL)
+    locked: bool = False  # sürücü KURULDU mu (≥confirm_frames ardışık sürücü-varlığı; yapışkan)
+    candidate_id: int | None = None  # = driver_id (geriye dönük uyum)
+    streak: int = 0  # sürücü-varlık streak'i (üst üste kaç karedir bir sürücü var)
+    newly_locked: bool = False  # sürücü bu karede ilk kez mi kuruldu (DRIVER_LOCKED event)
+    driver_bbox: BBox | None = None  # bu kareki sürücünün kutusu (Stage-2 ROI için)
+    passenger_ids: list[int] = field(default_factory=list)  # sürücü-dışı herkes (kilitli+aday yolcu)
+    locked_passenger_ids: list[int] = field(default_factory=list)  # YOLCU olarak kilitlenmiş olanlar
 
 
 def _containment(person: BBox, vehicle: BBox) -> float:
@@ -65,11 +69,11 @@ def _containment(person: BBox, vehicle: BBox) -> float:
 
 
 class DriverLock:
-    """Araç başına sürücü adayı seçimi, tutarlılık sayımı ve kalıcı kilit."""
+    """Araç başına KONUM-bazlı sürücü seçimi + ardışık-kare YOLCU kilidi."""
 
     def __init__(self, cfg):
         self.enabled = bool(cfg.get("driver_lock.enabled", True))
-        self.confirm_frames = max(1, int(cfg.get("driver_lock.confirm_frames", 5)))
+        self.confirm_frames = max(1, int(cfg.get("driver_lock.confirm_frames", 3)))
         corner = str(cfg.get("driver_lock.corner", "bottom_right")).lower()
         self.target = _CORNERS.get(corner, _CORNERS["bottom_right"])
         self.min_containment = float(cfg.get("driver_lock.min_containment", 0.5))
@@ -78,12 +82,18 @@ class DriverLock:
         # olduğunda (kişi iki kutuya da tam giriyorsa) merkezi daha yakın aracı seçer.
         self.center_bias = float(cfg.get("driver_lock.center_bias", 0.25))
 
-        # vehicle_id -> kilitli sürücü person_id
-        self._locked: dict[int, int] = {}
-        # person_id -> vehicle_id: bir sürücü yalnızca TEK araca sahip olabilir (global dışlama)
-        self._driver_vehicle: dict[int, int] = {}
-        # vehicle_id -> [aday_person_id, streak]
-        self._cand: dict[int, list[int]] = {}
+        # vehicle_id -> YOLCU olarak kilitlenmiş person_id'ler (sürücü adayı olamazlar)
+        self._passenger_locked: dict[int, set[int]] = {}
+        # vehicle_id -> {person_id: ardışık yolcu kare sayısı}
+        self._passenger_streak: dict[int, dict[int, int]] = {}
+        # person_id -> vehicle_id: kilitli yolcu yalnızca TEK araca aittir (global dışlama)
+        self._passenger_owner: dict[int, int] = {}
+        # vehicle_id -> ardışık 'sürücü var' kare sayısı (sürücü-kuruldu event'i için)
+        self._driver_streak: dict[int, int] = {}
+        # sürücüsü kurulmuş (DRIVER_LOCKED yayınlanmış) araçlar — yapışkan
+        self._established: set[int] = set()
+        # vehicle_id -> en son atanan sürücü person_id (driver_of sorgusu için)
+        self._last_driver: dict[int, int] = {}
         # vehicle_id -> en son görüldüğü kare (prune için)
         self._last_seen: dict[int, int] = {}
 
@@ -96,34 +106,30 @@ class DriverLock:
             if p.track_id is not None and _containment(p.bbox, vehicle) >= self.min_containment
         ]
 
-    def _bbox_of(self, person_id: int, persons: list[Person]) -> BBox | None:
-        """Verilen takip ID'sine sahip kişinin bu kareki kutusu (yoksa None)."""
-        return next((p.bbox for p in persons if p.track_id == person_id), None)
-
-    def _owned_by_other(self, person_id: int | None, vehicle_id: int) -> bool:
-        """Bu kişi BAŞKA bir araca kilitli mi? (kendi aracına kilitliyse engel değil)"""
-        owner = self._driver_vehicle.get(person_id)
-        return owner is not None and owner != vehicle_id
-
     def _pick_corner(self, vehicle: BBox, pool: list[Person]) -> Person | None:
-        """Önceden filtrelenmiş havuzdan hedef köşeye (vars. sağ-alt) en yakın kişiyi seç."""
+        """Havuzdan sürücüyü seç: DİKEY öncelikli köşe kuralı (kullanıcı kararı).
+
+        Kural: hedef köşenin (vars. sağ-alt) **dikey** hizasına en yakın kişi BİRİNCİL
+        ('en alt' önce gelir); **yatay** hiza (sağ/sol) yalnızca dikeyde berabere
+        kalanları ayırır ('sonra en sağ'). Tam eşitlikte küçük track_id.
+        """
         if not pool:
             return None
         tx, ty = self.target
         vw, vh = max(vehicle.width, 1e-6), max(vehicle.height, 1e-6)
 
-        def corner_score(p: Person) -> float:
+        def rank(p: Person) -> tuple[float, float, int]:
             cx, cy = p.bbox.center
             nx = (cx - vehicle.x1) / vw  # 0..1 (araç içinde)
             ny = (cy - vehicle.y1) / vh
-            # hedef köşeye uzaklık küçükse skor büyük → max alınır
-            return -((nx - tx) ** 2 + (ny - ty) ** 2)
+            v_prox = -abs(ny - ty)  # hedef dikey hizaya yakınlık — BİRİNCİL
+            h_prox = -abs(nx - tx)  # hedef yatay hizaya yakınlık — İKİNCİL
+            return (v_prox, h_prox, -p.track_id)
 
-        # eşitlikte deterministik: önce skor, sonra küçük track_id
-        return max(pool, key=lambda p: (corner_score(p), -p.track_id))
+        return max(pool, key=rank)
 
     def select_candidate(self, vehicle: BBox, persons: list[Person]) -> Person | None:
-        """Araç içindeki kişiler arasından hedef köşeye (vars. sağ-alt) en yakın olanı seç."""
+        """Araç içindeki kişilerden sürücüyü seç: en alttaki (berabere → en sağdaki)."""
         return self._pick_corner(vehicle, self.persons_in_vehicle(vehicle, persons))
 
     def _assign_score(self, person: BBox, vehicle: BBox) -> float | None:
@@ -143,87 +149,76 @@ class DriverLock:
         dn = (((pcx - vcx) / vw) ** 2 + ((pcy - vcy) / vh) ** 2) ** 0.5
         return c - self.center_bias * dn
 
-    # --- kilit çekirdeği (dışlamalı havuz üzerinde tek araç) --------------- #
-    def _lock_step(
-        self,
-        vehicle_id: int,
-        vehicle: BBox,
-        pool: list[Person],
-        persons: list[Person],
+    # --- atama çekirdeği (dışlamalı havuz üzerinde tek araç) --------------- #
+    def _assign_step(
+        self, vehicle_id: int, vehicle: BBox, pool: list[Person], frame_idx: int
     ) -> DriverAssignment:
-        """Bu araç için adayı seç, tutarlılığı say ve gerekiyorsa kilitle.
+        """Bu araç için sürücüyü (pozisyonel) seç, yolcuları say/kilitle.
 
-        `pool`  → bu araca ÖZEL (dışlamalı) aday kişiler (başka araca kilitli olanlar yok).
-        `persons` → tüm kişiler; yalnızca kilitli sürücünün kutusunu bulmak için kullanılır.
+        `pool` → bu araca atanmış kişiler (başka araca kilitli yolcular hariç).
+        Sürücü = kilitli-yolcu OLMAYAN kişiler arasında sağ-en-alt; her kare yeniden.
         """
-        # 1) Zaten kilitliyse: kilitli sürücüyü döndür, başka adayı YOK SAY.
-        #    ROI için kilitli kişinin bu kareki kutusunu da getir (kaybolduysa None).
-        if vehicle_id in self._locked:
-            locked_id = self._locked[vehicle_id]
-            return DriverAssignment(
-                vehicle_id=vehicle_id,
-                driver_id=locked_id,
-                locked=True,
-                candidate_id=locked_id,
-                streak=self.confirm_frames,
-                driver_bbox=self._bbox_of(locked_id, persons),
-            )
+        plock = self._passenger_locked.setdefault(vehicle_id, set())
+        pstreak = self._passenger_streak.setdefault(vehicle_id, {})
 
-        # 2) Kilit yok: havuzdan sağ-alt adayı seç.
-        cand = self._pick_corner(vehicle, pool)
-        if cand is None:
-            # Bu karede araca atanmış kişi yok → tutarlılık sıfırlanır.
-            self._cand.pop(vehicle_id, None)
-            return DriverAssignment(vehicle_id=vehicle_id)
+        # 1) Sürücü = kilitli-yolcu OLMAYAN kişiler arasında sağ-en-alt (pozisyonel).
+        eligible = [p for p in pool if p.track_id not in plock]
+        driver = self._pick_corner(vehicle, eligible)
+        driver_id = driver.track_id if driver is not None else None
+        driver_bbox = driver.bbox if driver is not None else None
 
-        cand_id = cand.track_id
-        prev = self._cand.get(vehicle_id)
-        if prev is not None and prev[0] == cand_id:
-            prev[1] += 1
+        # 2) Sürücü dışındaki herkes yolcu; yolcu kaldıkça streak artar, eşikte kilitlenir.
+        passengers: list[int] = []
+        for p in pool:
+            if p.track_id == driver_id:
+                pstreak[p.track_id] = 0  # sürücü → yolcu sayacı sıfırlanır
+                continue
+            passengers.append(p.track_id)
+            if p.track_id not in plock:
+                pstreak[p.track_id] = pstreak.get(p.track_id, 0) + 1
+                if pstreak[p.track_id] >= self.confirm_frames:
+                    plock.add(p.track_id)
+                    self._passenger_owner[p.track_id] = vehicle_id
+                    log.info(
+                        "Yolcu kilitlendi: araç=%s yolcu=%s (%d kare)",
+                        vehicle_id,
+                        p.track_id,
+                        self.confirm_frames,
+                    )
+
+        # 3) Sürücü-varlık streak'i → 'sürücü kuruldu' tek-seferlik event + yapışkan locked.
+        if driver is not None:
+            self._driver_streak[vehicle_id] = self._driver_streak.get(vehicle_id, 0) + 1
+            self._last_driver[vehicle_id] = driver_id
         else:
-            self._cand[vehicle_id] = [cand_id, 1]
-        streak = self._cand[vehicle_id][1]
+            self._driver_streak[vehicle_id] = 0
+        streak = self._driver_streak[vehicle_id]
+        newly = False
+        if streak >= self.confirm_frames and vehicle_id not in self._established:
+            self._established.add(vehicle_id)
+            newly = True
+            log.info("Sürücü kuruldu: araç=%s sürücü=%s (%d kare)", vehicle_id, driver_id, streak)
 
-        # 3) confirm_frames sağlandıysa KİLİTLE (ve kişiyi bu araca sahiplen).
-        if streak >= self.confirm_frames:
-            self._locked[vehicle_id] = cand_id
-            self._driver_vehicle[cand_id] = vehicle_id  # kişi → araç sahipliği (global dışlama)
-            self._cand.pop(vehicle_id, None)
-            log.info(
-                "Sürücü kilitlendi: araç=%s sürücü=%s (%d kare)",
-                vehicle_id,
-                cand_id,
-                self.confirm_frames,
-            )
-            return DriverAssignment(
-                vehicle_id=vehicle_id,
-                driver_id=cand_id,
-                locked=True,
-                candidate_id=cand_id,
-                streak=streak,
-                newly_locked=True,
-                driver_bbox=cand.bbox,
-            )
-
-        # Henüz kilit yok → güncel aday (geçici). ROI aday kutusundan kesilebilir.
         return DriverAssignment(
             vehicle_id=vehicle_id,
-            driver_id=cand_id,
-            locked=False,
-            candidate_id=cand_id,
+            driver_id=driver_id,
+            locked=vehicle_id in self._established,
+            candidate_id=driver_id,
             streak=streak,
-            driver_bbox=cand.bbox,
+            newly_locked=newly,
+            driver_bbox=driver_bbox,
+            passenger_ids=passengers,
+            locked_passenger_ids=[pid for pid in passengers if pid in plock],
         )
 
     # --- giriş noktası: tek araç (geriye dönük uyumluluk) ------------------ #
     def update(
         self, vehicle_id: int, vehicle: BBox, persons: list[Person], frame_idx: int
     ) -> DriverAssignment:
-        """Tek bir araç için kilidi güncelle ve güncel atamayı döndür.
+        """Tek bir araç için atamayı güncelle ve döndür.
 
-        Aday havuzu: araç kabinindeki kişiler eksi BAŞKA araca kilitli olanlar.
-        (Çok-araçlı kareler için `assign_frame` tercih edilir; o, çift-sahiplenmeyi
-        araçları aynı anda görerek baştan engeller.)
+        Havuz: araç kabinindeki kişiler eksi BAŞKA araca kilitli YOLCULAR.
+        (Çok-araçlı kareler için `assign_frame` tercih edilir.)
         """
         self._last_seen[vehicle_id] = frame_idx
         if not self.enabled:
@@ -231,25 +226,23 @@ class DriverLock:
         pool = [
             p
             for p in self.persons_in_vehicle(vehicle, persons)
-            if not self._owned_by_other(p.track_id, vehicle_id)
+            if self._passenger_owner.get(p.track_id, vehicle_id) == vehicle_id
         ]
-        return self._lock_step(vehicle_id, vehicle, pool, persons)
+        return self._assign_step(vehicle_id, vehicle, pool, frame_idx)
 
     # --- giriş noktası: global / dışlamalı (pipeline bunu kullanır) -------- #
     def assign_frame(
         self, vehicles: list[tuple[int, BBox]], persons: list[Person], frame_idx: int
     ) -> list[DriverAssignment]:
-        """Kare içindeki TÜM araç↔sürücü eşleşmesini global ve dışlamalı çöz.
+        """Kare içindeki TÜM araç↔kişi eşleşmesini global ve dışlamalı çöz.
 
         `vehicles` : (vehicle_id, araç_bbox) listesi — pipeline'daki tespit sırası.
         Dönüş      : aynı sıradaki `DriverAssignment` listesi (vehicles[i] ↔ out[i]).
 
-        Çift-sahiplenme engeli:
-          • Zaten kilitli sürücüler yalnızca kendi araçlarına rezerve edilir; başka
-            hiçbir aracın aday havuzuna girmezler.
-          • Serbest (kilitsiz) her kişi, eşiği geçen araçlar arasında TEK bir araca
-            (en iyi skor: örtüşme + merkez yakınlığı) atanır — iki aracın havuzunda
-            birden bulunamaz, dolayısıyla aynı karede iki araca kilitlenemez.
+        Dışlama:
+          • Kilitli yolcular yalnızca sahibi oldukları aracın havuzuna girer.
+          • Serbest her kişi, eşiği geçen araçlar arasından TEK bir araca (en iyi skor:
+            örtüşme + merkez yakınlığı) atanır — iki aracın havuzunda birden bulunmaz.
         """
         for vid, _ in vehicles:
             self._last_seen[vid] = frame_idx
@@ -261,9 +254,9 @@ class DriverLock:
         pools: list[list[Person]] = [[] for _ in vehicles]
 
         for p in valid:
-            owner = self._driver_vehicle.get(p.track_id)
+            owner = self._passenger_owner.get(p.track_id)
             if owner is not None:
-                # Kilitli sürücü: SADECE sahibi olan aracın havuzuna (başka araçlardan dışlanır).
+                # Kilitli yolcu: SADECE sahibi olan aracın havuzuna (başka araçlardan dışlanır).
                 for i, (vid, _) in enumerate(vehicles):
                     if vid == owner:
                         pools[i].append(p)
@@ -281,25 +274,33 @@ class DriverLock:
                 pools[best_i].append(p)
 
         return [
-            self._lock_step(vid, vbbox, pools[i], persons)
+            self._assign_step(vid, vbbox, pools[i], frame_idx)
             for i, (vid, vbbox) in enumerate(vehicles)
         ]
 
     # --- sorgu / bakım ----------------------------------------------------- #
     def driver_of(self, vehicle_id: int) -> int | None:
-        """Araca kilitli sürücü ID'si (yoksa None)."""
-        return self._locked.get(vehicle_id)
+        """Araca en son atanan sürücü ID'si (pozisyonel; yoksa None)."""
+        return self._last_driver.get(vehicle_id)
 
     def is_locked(self, vehicle_id: int) -> bool:
-        return vehicle_id in self._locked
+        """Sürücü KURULDU mu (≥confirm_frames ardışık sürücü-varlığı)."""
+        return vehicle_id in self._established
+
+    def passengers_of(self, vehicle_id: int) -> set[int]:
+        """Araçta YOLCU olarak kilitlenmiş kişilerin ID'leri."""
+        return set(self._passenger_locked.get(vehicle_id, set()))
 
     def prune(self, frame_idx: int) -> None:
-        """max_age'den uzun süredir görünmeyen araçların kilidini/adayını/sahipliğini unut."""
+        """max_age'den uzun süredir görünmeyen araçların tüm durumunu unut."""
         dead = [vid for vid, seen in self._last_seen.items() if frame_idx - seen > self.max_age]
         for vid in dead:
-            drv = self._locked.pop(vid, None)
-            # Bu araca ait sürücü sahipliğini serbest bırak (kişi yeniden atanabilsin).
-            if drv is not None and self._driver_vehicle.get(drv) == vid:
-                self._driver_vehicle.pop(drv, None)
-            self._cand.pop(vid, None)
+            for pid in self._passenger_locked.pop(vid, set()):
+                # Bu araca ait yolcu sahipliğini serbest bırak (kişi yeniden atanabilsin).
+                if self._passenger_owner.get(pid) == vid:
+                    self._passenger_owner.pop(pid, None)
+            self._passenger_streak.pop(vid, None)
+            self._driver_streak.pop(vid, None)
+            self._established.discard(vid)
+            self._last_driver.pop(vid, None)
             self._last_seen.pop(vid, None)

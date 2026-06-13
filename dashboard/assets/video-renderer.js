@@ -77,6 +77,27 @@ export class VideoRenderer {
       }
     }
 
+    // --- Kişiler: SÜRÜCÜ (yeşil, düz) / YOLCU (turuncu, kesik) -------------- //
+    // Sürücü kilidinin kararı; insanlar 'person' olarak değil rolüyle gösterilir.
+    for (const p of anno.persons || []) {
+      const [px1, py1, px2, py2] = p.bbox;
+      const isDriver = p.role === "driver";
+      const color = isDriver ? "#00ff88" : "#ff9933";
+      ctx.lineWidth = 2;
+      ctx.setLineDash(isDriver ? [] : [6, 4]);
+      ctx.strokeStyle = color;
+      ctx.strokeRect(px1, py1, px2 - px1, py2 - py1);
+      ctx.setLineDash([]);
+
+      const lbl = isDriver ? (p.locked ? "SÜRÜCÜ 🔒" : "SÜRÜCÜ") : "YOLCU";
+      ctx.font = "bold 13px ui-monospace, monospace";
+      const tw = ctx.measureText(lbl).width;
+      ctx.fillStyle = color;
+      ctx.fillRect(px1, py2, tw + 8, 17); // etiket kutunun ALTINDA (araç ID'si üstte; çakışmaz)
+      ctx.fillStyle = "#06231a";
+      ctx.fillText(lbl, px1 + 4, py2 + 13);
+    }
+
     // --- Trafik tabelaları (sahne-seviyesi; bir araca bağlı değil) ---------- //
     for (const s of anno.signs || []) {
       const [sx1, sy1, sx2, sy2] = s.bbox;
