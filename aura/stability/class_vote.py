@@ -1,44 +1,54 @@
-"""Track başına araç-sınıfı oylaması (çoğunluk + güven ağırlığı + hafif unutma).
+"""Track başına araç-sınıfı oylaması (çoğunluk + güven & alan ağırlığı + unutma).
 
 Neden var?
     Fine-tune dedektör aynı fiziksel aracı kareler arasında farklı sınıflarla
-    görebiliyor (gerçek video ölçümü: video_1/2'de araç İLK karede 0.79-0.84
-    güvenle 'truck', sonra kalıcı 'car'; video_3'te yakın plandaki otomobil tek
-    tek karelerde 'truck'a dönüyor). Son-tespit-kazanır yaklaşımı bu titremeyi
-    dashboard'a, hız kalibrasyonuna (sınıf-bazlı genişlik önseli) ve event
-    payload'larına taşıyordu.
+    görebiliyor. Gerçek video ÖLÇÜMÜ (13 Haz): video_2'de ana araç İLK 53 kare
+    ham tespitte 'truck' (uzakta/arkadan car silüeti truck'a benziyor, conf 0.84),
+    sonra yakınlaşınca kalıcı 'car'. Son-tespit-kazanır VEYA saf çoğunluk bu
+    titremeyi dashboard'a, hız kalibrasyonuna (sınıf-bazlı genişlik önseli) ve
+    event payload'larına taşıyordu.
 
-Tasarım:
-    Her track için sınıf→ağırlık sözlüğü tutulur; her karede o karenin tespit
-    güveni sınıfın ağırlığına eklenir ve EN AĞIR sınıf döndürülür. Hafif üstel
-    unutma (decay) erken yanlış oyların sonsuza dek baskın kalmasını önler —
-    araç gerçekte sınıf değiştirmez ama İLK kareler en uzak/en bulanık
-    karelerdir (en güvenilmez kanıt). Eşitlikte alfabetik küçük sınıf seçilir
-    (deterministik çıktı). K-004: kural videoya değil takip istatistiğine bağlı.
+Tasarım — ALAN-AĞIRLIKLI oy (kilit içgörü):
+    Her track için sınıf→ağırlık sözlüğü tutulur. Her kareni oyu
+    ``conf × alan_faktörü`` ile ağırlıklanır: YAKIN/BÜYÜK araç daha net görünür,
+    sınıfı daha güvenilirdir; UZAK/KÜÇÜK araç sınıfı belirsizdir (en güvenilmez
+    kanıt). Böylece birkaç yakın 'car' karesi, onlarca uzak 'truck' karesini
+    devralır — plaka 'boyut-farkında kanıt'ıyla aynı felsefe. Hafif üstel unutma
+    (decay) eski oyların baskınlığını ayrıca zayıflatır. Eşitlikte alfabetik küçük
+    sınıf (deterministik). K-004: kural videoya değil takip+ölçek istatistiğine bağlı.
 """
 
 from __future__ import annotations
 
 
 class TrackClassVoter:
-    """Kümülatif, güven-ağırlıklı sınıf oyu; ``update`` çoğunluk sınıfını döndürür."""
+    """Kümülatif, güven & alan ağırlıklı sınıf oyu; ``update`` çoğunluk sınıfını döndürür."""
 
     def __init__(self, cfg):
         cv = cfg.get("tracking.class_vote", {}) or {}
         self.enabled = bool(cv.get("enabled", True))
-        # Kare başına unutma çarpanı: 0.98 ≈ ~34 karede eski oyların yarısı söner.
-        # Gerçek ölçüm (video_1): araç uzaktayken ONLARCA kare üst üste 'truck'
-        # görülebiliyor — unutma yavaşsa (0.995) yakın/net 'car' kanıtı baskınlığı
-        # geç devralıyordu. 0.98 tek-kare flip'leri yine rahat bastırır (tek 0.9'luk
-        # oy, son ~50 karenin birikimini geçemez). 1.0 = saf kümülatif.
-        self.decay = float(cv.get("decay", 0.98))
+        # Kare başına unutma çarpanı. VARSAYILAN 1.0 = saf kümülatif: araç sınıfı
+        # fiziksel olarak değişmez, tüm ömür-boyu kanıt birikir. Gerçek video dersi:
+        # decay<1 + alan-ağırlığı, GEÇ gelen büyük-alan (yakın) yanlış-sınıf
+        # tespitlerine aşırı tepki verip salınıma yol açıyordu (video_3: car→truck→car).
+        # Yanlış-ERKEN kanıt zaten alan-ağırlığıyla (uzak=küçük=düşük ağırlık) zayıf;
+        # decay'e gerek yok. (<1 yapılırsa unutma açılır — özel durumlar için.)
+        self.decay = float(cv.get("decay", 1.0))
+        # Alan faktörü tabanı: bbox alanı / kare alanı bunun altındaysa bile bu kadar
+        # ağırlık verilir (çok uzak araç oyu sıfırlanmasın, sadece çok zayıf kalsın).
+        self.area_floor = float(cv.get("area_floor", 0.0008))
         self._votes: dict[int, dict[str, float]] = {}
 
-    def update(self, track_id: int | None, cls: str, conf: float = 1.0) -> str:
-        """Bu karenin (sınıf, güven) oyunu işle ve track'in kararlı sınıfını döndür.
+    def update(
+        self, track_id: int | None, cls: str, conf: float = 1.0, area_norm: float | None = None
+    ) -> str:
+        """Bu karenin oyunu işle ve track'in kararlı sınıfını döndür.
 
-        Takipsiz tespitler (``track_id`` None/negatif) oylanmaz — kimliksiz kutuya
-        geçmiş bağlanamaz; o karenin ham sınıfı aynen geri verilir.
+        ``conf``: tespit güveni. ``area_norm``: bbox alanı / kare alanı (0..1) —
+        verilirse oy ``conf × max(area_norm, area_floor)`` ile ağırlıklanır (yakın/net
+        araca daha çok güven). Verilmezse yalnız ``conf`` kullanılır (geriye uyum).
+        Takipsiz tespitler (``track_id`` None/negatif) oylanmaz — o karenin ham
+        sınıfı aynen geri verilir.
         """
         if not self.enabled or not cls or track_id is None or track_id < 0:
             return cls
@@ -46,7 +56,10 @@ class TrackClassVoter:
         if self.decay < 1.0:
             for k in votes:
                 votes[k] *= self.decay
-        votes[cls] = votes.get(cls, 0.0) + max(float(conf), 1e-3)
+        w = max(float(conf), 1e-3)
+        if area_norm is not None:
+            w *= max(float(area_norm), self.area_floor)
+        votes[cls] = votes.get(cls, 0.0) + w
         # Eşitlikte deterministik: önce ağırlık, sonra alfabetik küçük ad.
         return max(votes.items(), key=lambda kv: (kv[1], kv[0]))[0]
 

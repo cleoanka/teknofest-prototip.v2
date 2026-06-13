@@ -48,6 +48,7 @@ class PlateReader:
             fix2_weight=float(pv.get("fix2_weight", 0.20)),
             substring_weight=float(pv.get("substring_weight", 0.25)),
             char_consensus=bool(pv.get("char_consensus", True)),
+            char_margin=float(pv.get("char_margin", 1.5)),
         )
         self.ocr = ocr if ocr is not None else build_ocr(cfg)
         self.qod = qod
