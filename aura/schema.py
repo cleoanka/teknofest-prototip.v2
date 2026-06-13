@@ -154,6 +154,9 @@ class AnnotationFrame(BaseModel):
     frame_id: int
     ts: float = Field(default_factory=time.time)
     tracks: list[dict] = Field(default_factory=list)  # bbox + label + track_id + risk_flags
+    persons: list[dict] = Field(
+        default_factory=list
+    )  # kişiler: bbox + role ("driver"/"passenger") + track_id + vehicle_id + locked
     signs: list[dict] = Field(
         default_factory=list
     )  # sahne tabelaları: bbox + cls + speed_limit_kmh

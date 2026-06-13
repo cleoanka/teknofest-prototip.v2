@@ -87,13 +87,14 @@ models:
     fuse_detections: true
     aux_classes: [phone, smoking]
 
-# Sürücü kimlik kilidi: araç kabininde sağ-alttaki kişiyi sürücü kabul et,
-# confirm_frames boyunca aynı kişi sürücüyse o kişinin takip ID'sini araca KİLİTLE.
-# Kilitlendikten sonra başka kişi o aracın sürücüsü olamaz.
+# Sürücü/Yolcu atama: araç kabininde EN ALTTAKİ (berabere → en sağdaki) kişi HER ZAMAN
+# sürücüdür (dikey öncelikli, POZİSYONEL — kimliğe kilitlenmez). Diğer herkes yolcu; bir
+# kişi confirm_frames ardışık karede yolcu kalırsa YOLCU olarak kilitlenir (artık o araçta
+# sürücü adayı olamaz). Böylece track-ID titrese de görünen sağ-en-alt kişi hep sürücüdür.
 driver_lock:
   enabled: true
-  confirm_frames: 5             # kaç ardışık karede aynı aday → kilit
-  corner: bottom_right          # sürücü konumu: bottom_right | bottom_left | top_right | top_left
+  confirm_frames: 3             # kaç ardışık karede yolcu → YOLCU kilidi (kullanıcı kararı: 3)
+  corner: bottom_right          # sürücü konumu (dikey öncelikli): bottom_right | bottom_left | top_right | top_left
   person_classes: [person]      # Stage-1'de kişi olarak sayılan sınıf adları
   min_containment: 0.5          # kişi kutusunun araç kutusuyla min örtüşme oranı
   roi_pad: 0.10                 # sürücü ROI'si kesilirken kenarlardan bırakılan pay (+%10 — minimum alan)

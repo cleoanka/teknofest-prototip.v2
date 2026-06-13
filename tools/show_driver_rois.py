@@ -31,8 +31,11 @@ TILE_W, TILE_H = 320, 240  # her sürücü ROI tile boyutu (px)
 GRID_COLS = 3  # yan yana kaç tile
 
 
-def _make_tile(cv2, roi, track_id, ds, crop_box, tile_w, tile_h):
-    """Tek araç için tile: sürücü ROI + iç sıkı-kırpık kutusu + ham bayrak başlığı."""
+def _make_tile(cv2, roi, track_id, ds, crop_box, tile_w, tile_h, assign=None):
+    """Tek araç için tile: sürücü ROI + iç sıkı-kırpık kutusu + ham bayrak başlığı.
+
+    Başlık ayrıca sürücü kilidi durumunu (KILIT/aday/-) ve yolcu sayısını (y:N) gösterir.
+    """
     tile = cv2.resize(roi, (tile_w, tile_h))
     if crop_box is not None and roi.shape[0] and roi.shape[1]:
         sx, sy = tile_w / roi.shape[1], tile_h / roi.shape[0]
@@ -58,7 +61,14 @@ def _make_tile(cv2, roi, track_id, ds, crop_box, tile_w, tile_h):
     }
     flags = [tr_map[f] for f in ("phone", "smoking", "no_seatbelt", "fatigue") if getattr(ds, f)]
     header_color = (0, 60, 200) if flags else (0, 150, 0)
-    header = f"ID{track_id} ham: " + ("  ".join(flags) if flags else "temiz")
+    if assign is not None:
+        # Sürücü pozisyoneldir (sağ-en-alt, her kare); '+' = sürücü kuruldu (>=confirm).
+        drv = ("SURUCU+" if assign.locked else "SURUCU") if assign.driver_id is not None else "-"
+        npass = len(assign.passenger_ids)
+        prefix = f"ID{track_id} {drv} y:{npass}"
+    else:
+        prefix = f"ID{track_id} ham:"
+    header = prefix + " " + ("  ".join(flags) if flags else "temiz")
     cv2.rectangle(tile, (0, 0), (tile_w, 22), header_color, -1)
     cv2.putText(
         tile, header, (4, 15), cv2.FONT_HERSHEY_SIMPLEX, 0.45, (255, 255, 255), 1, cv2.LINE_AA
@@ -144,7 +154,7 @@ def main(argv=None):
                 continue
             ds = classifier.infer(roi, track_id=tid)
             crop_box = getattr(classifier, "last_crop_box", None)
-            tiles.append(_make_tile(cv2, roi, tid, ds, crop_box, TILE_W, TILE_H))
+            tiles.append(_make_tile(cv2, roi, tid, ds, crop_box, TILE_W, TILE_H, assign))
 
         if not tiles:
             blank = np.zeros((TILE_H, TILE_W, 3), dtype="uint8")

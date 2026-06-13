@@ -3,6 +3,50 @@
 Bu projedeki tüm önemli değişiklikler bu dosyada belgelenir.
 Format [Keep a Changelog](https://keepachangelog.com/tr/1.0.0/) temellidir.
 
+## [2.3.0] — 2026-06-13 (sürücü/yolcu mekaniği — pozisyonel sürücü + yolcu kilidi)
+
+Sürücü kilidi mekaniği, gerçek video (video_3) kanıtıyla ortaya çıkan bir regresyon
+nedeniyle yeniden tasarlandı: araç-içi kişiler artık "person" olarak değil **SÜRÜCÜ /
+YOLCU** rolüyle çiziliyor ve sürücü seçimi kimliğe kilitlenmek yerine **pozisyonel** hale
+getirildi.
+
+### Değişenler
+- **Sürücü artık KİMLİĞE KİLİTLENMİYOR — her kare POZİSYONEL seçiliyor** (`aura/identity/driver_lock.py`,
+  baştan yazıldı). Eski mekanik sürücüyü 3 karede track-ID'ye kilitliyor ve "bir daha
+  sürücü arama" diyordu; ByteTrack ID titremesiyle kilitli track kaybolunca **görünen
+  gerçek sürücü YOLCU olarak etiketleniyordu** (kare-189 regresyonu: v4/ReID yokken karanlık
+  ön-cam arkasında track sık parçalanıyor). Yeni kural: araçtaki **en alttaki (berabere →
+  en sağdaki) kişi HER ZAMAN sürücü** — her kare yeniden seçilir, kimliğe bağlı değil →
+  track-ID değişse de görünen sürücü hep "sürücü".
+- **Bunun yerine YOLCULAR kilitleniyor**: bir kişi `confirm_frames` ardışık karede yolcu
+  kalırsa **YOLCU olarak kilitlenir** ve o araçta artık sürücü adayı olamaz (anlık konum
+  gürültüsüyle sürücü etiketini çalamaz). Kilitli yolcu global dışlamaya tabi (tek araca ait).
+- **Dikey-öncelikli sürücü seçimi**: eski diyagonal köşe-mesafesi (x, y eşit ağırlık) yerine
+  "**önce en alt, sonra en sağ**" — sürücü/yolcu hizası daha deterministik ayrışıyor.
+- **`confirm_frames` 5 → 3** (config: artık YOLCU kilidi için ardışık-kare eşiği).
+- **`DRIVER_LOCKED` event'i** artık "sürücü kuruldu" (≥`confirm_frames` ardışık kare sürücü-varlığı)
+  anlamında; `DriverAssignment.locked` yapışkan.
+
+### Eklenenler
+- **Annotation'da kişi rolleri** (`aura/schema.py` `AnnotationFrame.persons`, `aura/pipeline/pipeline.py`):
+  pipeline her kare araç-içi kişileri **sürücü/yolcu** rolüyle yayınlıyor
+  (`bbox + role + track_id + vehicle_id + locked`). Renderer-bağımsız tek kaynak.
+- **Dashboard SÜRÜCÜ/YOLCU çizimi** (`dashboard/assets/video-renderer.js`): insanlar artık
+  "person" olarak değil sürücü kilidinin kararıyla **SÜRÜCÜ** (yeşil, düz) / **YOLCU**
+  (turuncu, kesik çizgi) çiziliyor; sürücü kurulduysa `SÜRÜCÜ 🔒`. Etiketler kutunun altında
+  (araç ID'siyle çakışmaz).
+- **`DriverAssignment.passenger_ids` + `locked_passenger_ids`**: araçtaki sürücü-dışı kişiler
+  ve YOLCU olarak kilitlenmiş olanlar; `DriverLock.passengers_of(vehicle_id)` sorgusu.
+- **`tools/show_driver_rois.py` başlığı** sürücü durumu + yolcu sayısını gösteriyor
+  (`ID{n} {SURUCU/SURUCU+/-} y:{yolcu}`; `+` = sürücü kuruldu).
+
+### Doğrulama
+- **Kare-189 (video_3)**: eski mekanikte kilitli sürücü track'i kaybolduğundan görünen sürücü
+  **YOLCU** etiketleniyordu; yeni pozisyonel mekanikte sağ-en-alt görünen kişi doğru şekilde
+  **SÜRÜCÜ** (yeşil) seçiliyor, diğerleri YOLCU. Stage-2 ROI artık doğru sürücüyü besliyor.
+- **`tests/test_driver_lock.py` yeniden yazıldı (13 test)**: pozisyonel sürücü, yolcu kilidi,
+  kilitli-yolcu dışlama, dikey-öncelikli seçim, global eşleştirme. Tüm suite yeşil, ruff temiz.
+
 ## [2.2.1] — 2026-06-13 (geri bildirim düzeltmesi — plaka ilk-karakter + sınıf salınımı)
 
 İkinci geri bildirim ("bozdun; stabilite düzelmedi; eskiden plaka daha iyi okunuyordu;
