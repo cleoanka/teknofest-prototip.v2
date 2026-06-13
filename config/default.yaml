@@ -44,7 +44,9 @@ models:
     imgsz: 320
     classes: [phone, smoking, no_seatbelt, fatigue]
     # --- pose backend ayarları ---
-    pose_path: weights/yolo26s-pose.pt
+    # l-pose: minimum alana (sürücü kırpığı) maksimum model — kullanıcı kararı.
+    # Diskte yoksa koda gömülü LOGLU fallback stok yolo26s-pose.pt'ye düşer.
+    pose_path: weights/yolo26l-pose.pt
     pose_conf: 0.25               # pose kişi tespiti min güveni
     pose_kp_conf: 0.30            # keypoint görünürlük eşiği
     pose_imgsz: 640
@@ -53,6 +55,16 @@ models:
     roi_min_side: 320             # sürücü ROI kısa kenarı bu boyuta büyütülür (max 4x)
     roi_max_upscale: 4.0
     roi_enhance: true             # CLAHE + gamma (cam arkası karanlık kabini açar)
+    # --- sürücü-içi sıkı kırpma ---
+    # Modele giden alan MINIMUM olmalı: kabin fallback'i (araç üst %55'i, ön cam +
+    # yolcu yansımaları dahil) önce SÜRÜCÜNÜN kişi kutusuna (+pad_ratio) daraltılır;
+    # pose + v4 nesne kanıtı yalnız bu kırpıkta koşar. Kutu track başına önbelleğe
+    # alınır (sürücü araç içinde sabit oturur) → kare başına TEK pose geçişi korunur.
+    driver_crop:
+      enabled: true
+      pad_ratio: 0.10             # sürücü kutusu etrafına bırakılan pay (+%10)
+      redetect_every: 15          # önbellekteki kutu bu kadar karede bir tazelenir
+      min_gain: 1.25              # ROI/kutu alan oranı bunun altındaysa kırpma atlanır (ROI zaten dar)
     # --- hibrit ROI nesne kanıtı (pose backend ile) ---
     # Fine-tune dedektör (vars: models.detector.path) sürücü ROI'sinde ayrıca koşar;
     # phone NESNESİ görülürse doğrudan bayrak + latch_frames boyunca geçerli kalır
@@ -84,16 +96,24 @@ driver_lock:
   corner: bottom_right          # sürücü konumu: bottom_right | bottom_left | top_right | top_left
   person_classes: [person]      # Stage-1'de kişi olarak sayılan sınıf adları
   min_containment: 0.5          # kişi kutusunun araç kutusuyla min örtüşme oranı
-  roi_pad: 0.15                 # sürücü ROI'si kesilirken kenarlardan bırakılan pay
+  roi_pad: 0.10                 # sürücü ROI'si kesilirken kenarlardan bırakılan pay (+%10 — minimum alan)
   max_age: 30                   # araç bu kadar kare görünmezse kilit unutulur
   mock_synthetic_person: false  # mock dedektörde demo için sentetik sürücü üret (test/sunum)
 
 tracking:
   tracker: bytetrack            # bytetrack | botsort
   reid_model: null              # weights/yolo26s-reid.pt (opsiyonel)
-  # Ağır aşama kapısı: track bu kadar kare yaşamadan driver/plaka aşamalarına girmez
-  # (tek-kare hayalet tespitler OCR/pose maliyeti yaratmasın — hidden min-track-hits dersi).
+  # Ağır aşama + ÇIKTI kapısı: track bu kadar kare yaşamadan driver/plaka aşamalarına
+  # girmediği gibi annotation/event de üretmez (gerçek video_3 dersi: ByteTrack
+  # parçalanması 2-karelik hayalet 'truck' track'leri doğuruyor — çıktıya sızmamalı).
   min_track_frames: 3
+  # Track başına sınıf oylaması: tek-kare 'car↔truck' titremesi (NMS sınıf-bazlı,
+  # fine-tune model aynı araca iki sınıf verebiliyor) güven-ağırlıklı çoğunlukla
+  # düzeltilir. decay: kare başına unutma çarpanı (1.0 = saf kümülatif) — uzak
+  # karelerin onlarca karelik yanlış birikimini yakın/net kanıt ~1-2 sn'de devralır.
+  class_vote:
+    enabled: true
+    decay: 0.98
 
 preprocessing:
   headlight_suppression: true
@@ -126,6 +146,11 @@ plate:
     conf: 0.30
     imgsz: 640
     pad_ratio: 0.08             # sıkı kutu etrafına bırakılan pay
+  # Boyut-farkında kanıt politikası (gerçek video dersi: uzak karelerin sistematik
+  # misread'leri — '041C8532', T→I ile formatça GEÇERLİ '34IC8532' — sayıca üstünlük
+  # kurup konsensüsü kilitliyordu; QoD da ilk consensus_fail'e kadar uyuyordu):
+  lp_vote_min_px: 13            # sıkı LP kırpığı bundan ALÇAKSA okuma oylamaya girmez
+  lp_qod_below_px: 26           # bundan alçak LP görüldüğü AN 'plate_too_small' kalite tetiği
   ocr_second_variant: true      # okuma güveni düşükse CLAHE+2x varyantıyla ikinci deneme
   ocr_second_variant_below: 0.5 # bu güvenin altındaki okumalarda varyant devreye girer
   # Format-öncelikli KALICI oy havuzu (aura/plate/normalize.py):
@@ -140,6 +165,17 @@ plate:
     fix1_weight: 0.45
     fix2_weight: 0.20
     substring_weight: 0.25
+    # Okumanın kanıt ağırlığı = OCR güveni × kaynak kalitesi (LP kırpık yüksekliği):
+    size_full_px: 40            # LP yüksekliği >= bu → tam ağırlık (1.0)
+    size_floor: 0.15            # küçük-ama-oylanabilir okumanın taban ağırlığı
+    no_lp_weight: 0.5           # LP dedektörü plakayı bulamadıysa (geniş-crop okuması) ağırlık
+    # Pozisyon-hizalı karakter füzyonu: ayrı-aday kararı başarısızsa (iki format-
+    # geçerli okuma tek karakterde ayrışıyor — ör. T↔I, 3↔0 misread'i) aynı yapıdaki
+    # okumalar pozisyon pozisyon birleşir; her pozisyon char_ratio payını geçerse onay.
+    # Pozisyon-hizalı karakter füzyonu YALNIZ 'partial' (kanıt izi) için; CONFIRMED
+    # kararına katılmaz. Uzak/bulanık karede OCR sistematik yanlış okuyabilir; füzyonla
+    # onaylamak yanlış plakayı kesinleştirir — 'pending + en iyi tahmin' daha dürüst.
+    char_consensus: true
 
 speed:
   mode: metric                  # metric | tripwire | ipm | disabled

@@ -89,6 +89,17 @@ class QoDController:
             self._last_release[track_id] = self._now
             self._pending.append(make_event(track_id, "QOD_RELEASE", {"profile": s["profile"]}))
 
+    def release_quality(self, track_id: int) -> None:
+        """Yalnızca KALİTE oturumunu bırak (optimize oturumlarına dokunma).
+
+        Plaka onaylandığı an HIGH_THROUGHPUT'u tutmaya devam etmek kaynak israfıdır
+        (şartname: 'yalnızca kritik anlarda' + sorumlu bırakma kanıtı). Aynı track'te
+        swerving/approach kaynaklı LOW_LATENCY oturumu varsa o yaşamaya devam eder.
+        """
+        s = self._sessions.get(track_id)
+        if s and s.get("kind") == "quality":
+            self.release(track_id)
+
     # --- durum / drain ----------------------------------------------------- #
     def state(self, track_id: int) -> tuple[bool, str | None]:
         s = self._sessions.get(track_id)

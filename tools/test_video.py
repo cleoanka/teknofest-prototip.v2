@@ -157,6 +157,9 @@ def main(argv: list[str] | None = None) -> int:
     qod_reasons: Counter = Counter()
     # Tanılama: track başına yanal yörünge (kare, cx, genişlik) — swerving analizi için
     trajectories: dict[int, list] = defaultdict(list)
+    # Tanılama: track başına sınıf-DEĞİŞİM izi [(kare, sınıf), ...] — sınıf oylamasının
+    # 'car↔truck' titremesini gerçekten bastırdığının kanıtı (yalnız değişimler yazılır).
+    class_changes: dict[int, list] = defaultdict(list)
     frames_done = 0
     t0 = time.time()
 
@@ -183,6 +186,9 @@ def main(argv: list[str] | None = None) -> int:
                 trajectories[t["track_id"]].append(
                     [anno.frame_id, round((bx[0] + bx[2]) / 2, 1), round(bx[2] - bx[0], 1)]
                 )
+                cc = class_changes[t["track_id"]]
+                if not cc or cc[-1][1] != t.get("cls"):
+                    cc.append([anno.frame_id, t.get("cls")])
             frames_done += 1
             if frames_done % 50 == 0:
                 el = time.time() - t0
@@ -196,6 +202,18 @@ def main(argv: list[str] | None = None) -> int:
     tracks = []
     for rec in pipe.acc.active_tracks():
         votes = Counter(rec.plate.votes).most_common(5)
+        # Karar şeffaflığı (jüri kanıtı + debug): oy havuzunun GERÇEK ağırlıklı
+        # format-geçerli (ikamesiz) dağılımı — kararın neden verildiğini gösterir.
+        raw_valid_w: dict[str, float] = {}
+        pool = pipe.plate._pools.get(rec.track_id)
+        if pool is not None:
+            from aura.plate.normalize import normalize_tr as _nt
+
+            for _txt, _w in pool.raw_reads:
+                _c, _fx = _nt(_txt)
+                if _c is not None and _fx == 0:
+                    raw_valid_w[_c] = raw_valid_w.get(_c, 0.0) + _w
+            raw_valid_w = dict(sorted(raw_valid_w.items(), key=lambda kv: kv[1], reverse=True)[:6])
         tracks.append(
             {
                 "track_id": rec.track_id,
@@ -206,9 +224,11 @@ def main(argv: list[str] | None = None) -> int:
                 "plate_partial": rec.plate.partial,
                 "plate_confidence": rec.plate.confidence,
                 "plate_top_votes": dict(votes),
+                "plate_raw_valid_weighted": {k: round(v, 2) for k, v in raw_valid_w.items()},
                 "driver_flag_frames": dict(driver_frames.get(rec.track_id, {})),
                 "swerving_frames": int(swerve_frames.get(rec.track_id, 0)),
                 "risk_flags": rec.risk_flags,
+                "class_changes": class_changes.get(rec.track_id, []),
                 "trajectory": trajectories.get(rec.track_id, []),
             }
         )

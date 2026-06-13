@@ -53,12 +53,24 @@ def _weight_exists(cfg, key: str, default: str) -> bool:
     return weight.exists()
 
 
+def _pose_weight_exists(cfg) -> bool:
+    """Yapılandırılan pose ağırlığı VEYA stok s-pose fallback'i diskte mi?
+
+    PoseDriverClassifier yapılandırılan ağırlık yoksa s-pose'a loglu düşer;
+    backend seçimi de aynı gerçeği görmeli (l-pose inmemiş diye yolo'ya düşmesin).
+    """
+    return (
+        _weight_exists(cfg, "models.driver_state.pose_path", "weights/yolo26l-pose.pt")
+        or (Path(__file__).resolve().parents[2] / "weights/yolo26s-pose.pt").exists()
+    )
+
+
 def resolve_driver_mode(cfg) -> str:
     mode = str(cfg.get("runtime.ai_mode", "auto")).lower()
     if mode in ("real", "mock"):
         return mode
     has_yolo = _weight_exists(cfg, "models.driver_state.path", "weights/yolo26l.pt")
-    has_pose = _weight_exists(cfg, "models.driver_state.pose_path", "weights/yolo26s-pose.pt")
+    has_pose = _pose_weight_exists(cfg)
     if not (_ultralytics_available() and (has_yolo or has_pose)):
         return "mock"
     # auto + ağırlık var: sentetik örnekte gerçek YOLO26l anlamlı sürücü-durumu
@@ -78,8 +90,7 @@ def resolve_driver_backend(cfg) -> str:
     backend = str(cfg.get("models.driver_state.backend", "auto")).lower()
     if backend in ("pose", "yolo"):
         return backend
-    has_pose = _weight_exists(cfg, "models.driver_state.pose_path", "weights/yolo26s-pose.pt")
-    return "pose" if has_pose else "yolo"
+    return "pose" if _pose_weight_exists(cfg) else "yolo"
 
 
 def build_driver_classifier(cfg) -> DriverClassifier:
