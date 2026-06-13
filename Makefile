@@ -1,4 +1,4 @@
-# AURA — geliştirme kısayolları (cross-platform: macOS/Linux. Windows'ta run_dev.ps1 kullanın.)
+# AURA — geliştirme kısayolları (cross-platform: macOS/Linux. Windows'ta setup.ps1 / run.ps1 / dev.ps1 kullanın.)
 .PHONY: setup run train eval test lint format clean help
 
 PY := .venv/bin/python
