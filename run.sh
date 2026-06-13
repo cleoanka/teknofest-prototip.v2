@@ -10,6 +10,19 @@ PY="$ROOT/.venv/bin/python"
 if [ ! -x "$PY" ]; then
   echo "▶ .venv bulunamadı — bootstrap çalıştırılıyor"
   python3 bootstrap.py
+  if [ ! -x "$PY" ]; then
+    echo "✗ bootstrap başarısız — .venv oluşturulamadı" >&2
+    exit 1
+  fi
+fi
+
+# bootstrap'ın ürettiği .env varsa AURA_* değişkenlerini yükle (oturumda elle
+# set edilen değerler ezilmez — run.ps1 ile aynı sözleşme).
+if [ -f "$ROOT/.env" ]; then
+  while IFS='=' read -r k v; do
+    case "$k" in ''|\#*) continue ;; esac
+    [ -z "${!k:-}" ] && export "$k=$v"
+  done < "$ROOT/.env"
 fi
 
 INFER_PORT="${AURA_INFERENCE_PORT:-8080}"
