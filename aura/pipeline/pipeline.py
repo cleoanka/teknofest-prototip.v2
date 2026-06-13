@@ -183,9 +183,12 @@ class Pipeline:
             # track_id yoksa -1 ile işaretle (takip kurulmamış geçici tespit).
             tid = det.track_id if det.track_id is not None else -1
             # Sınıf oyu: tek-kare 'car↔truck' titremesi track çoğunluğuyla düzeltilir.
-            # det.bbox.cls YERİNDE güncellenir → hız genişlik-önseli, accumulator,
-            # annotation ve event'ler aynı kararlı sınıfı görür (tek mutasyon noktası).
-            det.bbox.cls = self.cls_voter.update(tid, det.bbox.cls, det.bbox.conf)
+            # Oy ALAN-AĞIRLIKLI: yakın/büyük araç sınıfı daha güvenilir (uzak araç
+            # truck görünebiliyor — gerçek ölçüm). det.bbox.cls YERİNDE güncellenir →
+            # hız genişlik-önseli, accumulator, annotation, event'ler aynı kararlı sınıfı görür.
+            _h, _w = frame.shape[0], frame.shape[1]
+            _area_norm = (det.bbox.width * det.bbox.height) / max(1.0, float(_h * _w))
+            det.bbox.cls = self.cls_voter.update(tid, det.bbox.cls, det.bbox.conf, _area_norm)
 
             # Ağır aşama + ÇIKTI kapısı: yeni doğan track min_track_frames kare
             # görülmeden ne ağır aşamalara girer ne annotation/event üretir.

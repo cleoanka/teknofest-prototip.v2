@@ -68,6 +68,30 @@ def test_decay_allows_late_correction(cfg):
     assert last == "car"
 
 
+def test_area_weighted_near_overrides_far(cfg):
+    # KİLİT (gerçek video_2 dersi): araç uzaktayken ONLARCA kare yüksek-güvenli
+    # 'truck' tespit ediliyor; yakınlaşınca 'car'. Alan ağırlığı sayesinde az
+    # sayıda YAKIN (büyük bbox) 'car' karesi, çok sayıda UZAK (küçük bbox) 'truck'
+    # karesini devralır.
+    v = _voter(cfg)
+    last = "?"
+    for _ in range(30):
+        last = v.update(7, "truck", 0.84, area_norm=0.004)  # uzak, küçük bbox
+    assert last == "truck"  # henüz yalnız uzak kanıt var
+    for _ in range(10):
+        last = v.update(7, "car", 0.70, area_norm=0.05)  # yakın, büyük bbox
+    assert last == "car"  # az sayıda yakın kanıt, çok sayıda uzak kanıtı devraldı
+
+
+def test_area_floor_keeps_far_vote_alive(cfg):
+    # Çok uzak araç (area_norm ~0) bile oy üretmeli (area_floor) — tamamen yok sayılmaz.
+    v = _voter(cfg)
+    last = "?"
+    for _ in range(5):
+        last = v.update(8, "car", 0.5, area_norm=0.0)
+    assert last == "car"
+
+
 def test_prune_drops_dead_tracks(cfg):
     v = _voter(cfg)
     v.update(1, "car", 0.9)
