@@ -3,6 +3,33 @@
 Bu projedeki tüm önemli değişiklikler bu dosyada belgelenir.
 Format [Keep a Changelog](https://keepachangelog.com/tr/1.0.0/) temellidir.
 
+## [2.2.1] — 2026-06-13 (geri bildirim düzeltmesi — plaka ilk-karakter + sınıf salınımı)
+
+İkinci geri bildirim ("bozdun; stabilite düzelmedi; eskiden plaka daha iyi okunuyordu;
+ilk sayıların 0 okunması kronik") gerçek eval ölçümüyle kök çözüme kavuşturuldu.
+
+### Düzeltmeler
+- **Plaka ilk-karakter (`3↔0`) ve `T↔I` — pozisyon-hizalı füzyon artık ONAYA katılıyor**
+  (`normalize.py:_char_consensus`, güvenli sürüm): OCR aynı plakayı varyantlara bölüyor
+  (`34TC8532`/`04TC8532`/`34IC8532`); ayrı-aday kararı bunlar arasında bölünüp **hangi
+  varyant baskınsa onu — bazen yanlış `04` — onaylıyordu** (kullanıcının gördüğü regresyon).
+  Çözüm: aynı yapıdaki okumalar pozisyon pozisyon birleşir; ONAY için **her pozisyonda**
+  kazanan karakter ikinciyi `char_margin` MUTLAK ağırlıkla geçmeli. Bir pozisyon
+  belirsizse (0↔3 eşit, ya da uzaktan I↔T) → dürüst `pending` (yanlış plaka ASLA
+  onaylanmaz). **Sonuç: video_1 artık `34TC8532` CONFIRMED** (ayrı-aday yanlış `04` seçerdi;
+  pos0'da çoğunluk `3`, pos2'de `T` net). `consensus_ratio` 0.6'ya geri alındı.
+- **Sınıf oyu ALAN-AĞIRLIKLI** (`stability/class_vote.py`): oy `conf × bbox_alan/kare_alan`
+  — yakın/büyük araç sınıfı daha güvenilir (gerçek ölçüm: araç uzaktayken ham tespit
+  `truck`, yakınlaşınca `car`). `decay=1.0` (saf kümülatif): `decay<1` + alan-ağırlığı
+  GEÇ gelen büyük-alan yanlış tespite **salınım** yaratıyordu (video_3: car→truck→car) —
+  giderildi. **Sonuç: video_3 tek sınıf `car`** (salınım yok); video_1/2 car'a yakınsayıp
+  sabit kalıyor (ilk uzak-araç truck dönemi modelin ham-tespit sınırı, v5 fine-tune ile çözülür).
+
+### Doğrulama (gerçek video, hile yok)
+- **video_1**: `car` · plaka **`34TC8532` CONFIRMED** · sigara 118 kare + 4 RISK_ALERT · swerving 0
+- **video_2**: `car` · plaka **`34TC8532` CONFIRMED** · telefon 110 kare · swerving 0
+- **video_3**: `car` (salınım yok) · plaka `pending` (uzak/bulanık, OCR 3→2 & T→I; yanlış onay yok) · swerving 119 kare + RISK_ALERT
+
 ## [2.2.0] — 2026-06-13 (geri bildirim turu — sürücü ROI, stabilite, plaka ilk-karakter, Windows)
 
 Kullanıcı geri bildirimi (gerçek video kanıtlarına dayalı 5 madde) köklerinden çözüldü.

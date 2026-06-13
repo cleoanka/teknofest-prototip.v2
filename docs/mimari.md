@@ -86,12 +86,16 @@ karede gördüğü `phone`/`smoking` nesneleri de araca düşüyorsa füzyon edi
 kırpma + l-pose ile 118 kare; telefon: video_2 — 110+ kare; çapraz-FP yok).
 
 **Araç-sınıfı kararlılığı (`tracking.class_vote`):** Fine-tune dedektör aynı aracı
-kareler arasında farklı sınıflarla görebiliyor (ölçüm: araç ilk/uzak karelerde
-`truck`, sonra kalıcı `car`). Track başına **güven-ağırlıklı sınıf oyu + hafif unutma**
-tek-kare titremeyi düzeltir; sınıf pipeline'da tek noktada (`det.bbox.cls`) güncellenir
-→ hız genişlik-önseli, accumulator, annotation ve event'ler aynı kararlı sınıfı görür.
-Ayrıca `min_track_frames` artık bir **çıktı kapısı**: genç (2-karelik hayalet) track'ler
-annotation/event üretmez (gerçek video_3'te phantom `truck` track'leri çıktıya sızmıyordu).
+kareler arasında farklı sınıflarla görüyor — gerçek ölçüm (13 Haz): video_2'de ana araç
+İLK 53 kare ham tespitte yüksek-güvenli (0.84) `truck`, yakınlaşınca kalıcı `car`
+(uzakta/arkadan car silüeti truck'a benziyor). Track başına **alan-ağırlıklı sınıf oyu**
+(`conf × bbox_alan/kare_alan`) bunu çözer: yakın/büyük araç sınıfı daha güvenilir, az
+sayıda yakın `car` karesi çok sayıda uzak `truck` karesini devralır (plaka boyut-farkında
+kanıtıyla aynı felsefe) + hafif unutma (`decay`). Sınıf pipeline'da tek noktada
+(`det.bbox.cls`) güncellenir → hız genişlik-önseli, accumulator, annotation, event'ler aynı
+kararlı sınıfı görür. Ayrıca `min_track_frames` artık bir **çıktı kapısı**: genç (2-karelik
+hayalet) track'ler annotation/event üretmez (gerçek video_3'te phantom `truck` track'leri
+çıktıya sızmıyordu).
 
 ## 5. Plaka Okuma ve Konsensüs Döngüsü
 Hesap yükü en yüksek parça; katı kaynak yönetimiyle çalışır.
@@ -112,19 +116,21 @@ Hesap yükü en yüksek parça; katı kaynak yönetimiyle çalışır.
   yalnızca **ikamesiz format-geçerli ham okumalarla**, her okuma **güven × kaynak
   kalitesiyle ağırlıklanarak** verilir (min ağırlık + ikinciye fark + oran — erken/yanlış
   kilit koruması). Kesik okumalar (`8532`) alt-dizi kanıtı olarak adaylara destek verir.
-- **Pozisyon-hizalı karakter füzyonu (YALNIZ `partial` — kanıt izi):** birden çok
-  format-geçerli okuma varsa aynı YAPIDAKİ okumalar pozisyon pozisyon birleşip en olası
-  tek tahmini üretir. **Bu CONFIRMED kararına KATILMAZ.** Gerçek video dersi: uzak/bulanık
-  karelerde OCR sistematik yanlış okuyabilir (T→I, 3→2) ve doğru okuma hiç gelmeyebilir;
-  böyle bir okumayı "onaylamak" yanlış plakayı kesinleştirir — `pending + en iyi tahmin`
-  daha dürüst (jüri için "kesin değil" sinyali). Onay yalnız katı ayrı-aday konsensüsüyle.
-- **Karar:** **katı ayrı-aday** konsensüsü (min ağırlık + ikinciye fark + oran) → plakayı
-  ID'ye kalıcı yaz, OCR kapat (erken çıkış), `PLATE_CONFIRMED` + kalite QoD oturumu **hemen
-  bırakılır**. Ret → `QOD_TRIGGER` (kalite) + birikime devam. Konsensüs yokken en güçlü
-  aday `PlateState.partial` alanında **kanıt izi** olarak taşınır (şartname 4.5).
-  Post-validasyon: Türk plaka regex `^\d{2}[A-Z]{1,3}\d{2,4}$`. Gerçek videoda: **video_2'de
-  `34TC8532` net kanıtla CONFIRMED**; video_1/3'te plaka uzak/bulanık → dürüst `pending` +
-  partial (aynı araç olduğu video_2'den kesin bilinir).
+- **Pozisyon-hizalı karakter füzyonu (CONFIRMED'e katılır — pozisyon-margin):** OCR aynı
+  plakayı varyantlara böler (`34TC8532`/`04TC8532`/`34IC8532` — `3↔0`, `T↔I` misread'i);
+  ayrı-aday kararı bunlar arasında bölünüp hangi varyant baskınsa onu (bazen yanlış `04`)
+  seçebiliyordu. Füzyon aynı YAPIDAKİ okumaları pozisyon pozisyon birleştirir; **onay için
+  HER pozisyonda kazanan karakter ikinciyi `char_margin` MUTLAK ağırlıkla geçmeli.** Bir
+  pozisyon belirsizse (`0↔3` eşit, ya da uzaktan `I↔T`) → dürüst `pending` (yanlış plaka
+  ASLA onaylanmaz). Doğru plaka varyantlara bölünmüş olsa bile her pozisyonun çoğunluğu
+  doğruysa onaylanır.
+- **Karar:** ayrı-aday konsensüsü (min ağırlık + fark + oran) VEYA pozisyon-margin füzyonu
+  → plakayı ID'ye kalıcı yaz, OCR kapat (erken çıkış), `PLATE_CONFIRMED` + kalite QoD
+  oturumu **hemen bırakılır**. Konsensüs yokken en güçlü aday `PlateState.partial` alanında
+  **kanıt izi** (kesin değil) olarak taşınır (şartname 4.5). Post-validasyon: TR plaka regex
+  `^\d{2}[A-Z]{1,3}\d{2,4}$`. Gerçek videoda: **video_1 ve video_2'de `34TC8532` CONFIRMED**
+  (video_1'de füzyon `3→0`/`T→I` bölünmesini birleştirdi); video_3'te plaka uzak/bulanık
+  (OCR `3→2` & `T→I`) → dürüst `pending` (yanlış onay yok; aynı araç video_2'den kesin).
 
 ## 6. QoD — Dinamik Kaynak Yönetimi (CAMARA QoD)
 5G'yi statik bant genişliği değil, talep üzerine şekillenen dinamik kaynak havuzu olarak
