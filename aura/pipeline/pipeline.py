@@ -43,12 +43,11 @@ from aura.scene.sign_tracker import SignTracker
 from aura.schema import (
     AnnotationFrame,
     AuraEvent,
-    DriverState,
-    PlateState,
     TrackRecord,
     make_event,
 )
 from aura.speed.estimator import SpeedEstimator
+from aura.stability.class_vote import TrackClassVoter
 from aura.stability.state_machine import StabilityTracker
 
 # Bu blok yalnızca tip-denetleyiciler (mypy vb.) için çalışır, çalışma anında atlanır;
@@ -102,6 +101,9 @@ class Pipeline:
         self.detector = build_detector(cfg)  # 2. aşama: araçları (ve kişileri) tespit + takip eder
         # bayrak titreşimini bastıran 16/8 kararlılık süzgeci
         self.stability = StabilityTracker(cfg)
+        # Track başına sınıf oylaması: tek-kare 'car↔truck' titremesini çoğunlukla düzeltir
+        # (gerçek video ölçümü: araç ilk karede 0.8 güvenle 'truck', sonra kalıcı 'car').
+        self.cls_voter = TrackClassVoter(cfg)
         self.driver = build_driver_classifier(cfg)  # Stage-2 sürücü davranış sınıflandırıcısı
         self.driver_lock = DriverLock(cfg)  # sürücüyü araca kilitleyen kimlik takipçisi
         # Sürücü kutusunu kırparken etrafa eklenen oran (varsayılan %15 dolgu).
@@ -180,6 +182,21 @@ class Pipeline:
         for det, assign in zip(detections, driver_assignments, strict=True):
             # track_id yoksa -1 ile işaretle (takip kurulmamış geçici tespit).
             tid = det.track_id if det.track_id is not None else -1
+            # Sınıf oyu: tek-kare 'car↔truck' titremesi track çoğunluğuyla düzeltilir.
+            # det.bbox.cls YERİNDE güncellenir → hız genişlik-önseli, accumulator,
+            # annotation ve event'ler aynı kararlı sınıfı görür (tek mutasyon noktası).
+            det.bbox.cls = self.cls_voter.update(tid, det.bbox.cls, det.bbox.conf)
+
+            # Ağır aşama + ÇIKTI kapısı: yeni doğan track min_track_frames kare
+            # görülmeden ne ağır aşamalara girer ne annotation/event üretir.
+            # (Gerçek video_3 dersi: ByteTrack parçalanması 2-karelik hayalet 'truck'
+            # track'leri doğuruyor — bunlar kanıt videosuna/dashboard'a sızmamalı.)
+            age = self._track_age[tid] = self._track_age.get(tid, 0) + 1
+            if age < self.min_track_frames:
+                # Hız geçmişi yine de biriksin: gerçek track ise km/h erken otursun.
+                self.speed.update(tid, det.bbox, idx, frame.shape)
+                continue
+
             # Araç kutusundan iki ROI kes: kabin (sürücü bölgesi) ve plaka bölgesi.
             cabin, plate_roi = crop_rois(frame, det.bbox)
 
@@ -192,14 +209,9 @@ class Pipeline:
             else:
                 driver_roi = cabin
 
-            # Ağır aşama kapısı: yeni doğan (muhtemelen hayalet) track'ler ilk
-            # min_track_frames karede driver/plaka aşamalarına girmez.
-            age = self._track_age[tid] = self._track_age.get(tid, 0) + 1
-            heavy_ok = age >= self.min_track_frames
-
             # Stage-2 sürücü durumu → 16/8 kararlılık süzgeci (alan-bazında)
             # ham tahmin: telefon/sigara/kemer/yorgunluk (track_id: latch belleği için)
-            driver = self.driver.infer(driver_roi, track_id=tid) if heavy_ok else DriverState()
+            driver = self.driver.infer(driver_roi, track_id=tid)
             # Stage-1 yardımcı kanıt füzyonu: dedektörün tam karede gördüğü
             # phone/smoking nesnesi BU aracın kutusuna düşüyorsa bayrağa OR'lanır.
             # (Kanıt da 16/8 süzgecinden geçer — tek-kare nesne FP'si event olamaz.)
@@ -222,10 +234,7 @@ class Pipeline:
                 setattr(driver, f, bool(stable))  # ham değeri kararlı (süzülmüş) değerle değiştir
 
             # Plaka OCR: ilgili ROI'den oku; track'e göre sonucu biriktirir/günceller.
-            if heavy_ok:
-                plate = self.plate.update(tid, plate_roi, det.bbox, frame.shape, frame=frame)
-            else:
-                plate = self.plate.get(tid) or PlateState()
+            plate = self.plate.update(tid, plate_roi, det.bbox, frame.shape, frame=frame)
             # Hız tahmini: bbox'ın kareler arası hareketinden km/s ve göreli hız bayrağı.
             speed = self.speed.update(tid, det.bbox, idx, frame.shape)
             # göreli hız bayrağını da 16/8 süzgecinden geçir (eşik civarı salınımı önle)

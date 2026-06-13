@@ -98,3 +98,92 @@ def test_pool_confidence_weighting_beats_systematic_misread():
         p.add("34TC8532", conf=0.95)  # toplam 3.8
     value, _ = p.consensus()
     assert value == "34TC8532"
+
+
+def test_pool_size_weight_beats_far_format_valid_misread():
+    # Gerçek video_1 kilidi (12 Haz akşamı): T→I misread'i '34IC8532' formatça
+    # GEÇERLİ bir rakip aday üretir ve uzak karelerde sayıca üstünlük kurar
+    # (42 vs 30) → ratio 0.38'e düşer, konsensüs HİÇ oluşmaz. Kaynak-kalitesi
+    # ağırlığı (LP kırpık yüksekliği) uzak okumaları kısar: yakın/net okumalar
+    # kararı dürüstçe verir.
+    p = _pool()
+    for _ in range(12):
+        p.add("34IC8532", conf=0.55, weight=0.2)  # uzak kareler: toplam 1.32
+    for _ in range(8):
+        p.add("34TC8532", conf=0.85, weight=1.0)  # yakın kareler: toplam 6.8
+    value, _ = p.consensus()
+    assert value == "34TC8532"
+
+
+def test_pool_low_weight_alone_cannot_confirm():
+    # Yalnızca uzak/kalitesiz kanıt varken karar VERİLMEZ (erken-yanlış-kilit
+    # koruması): ağırlık çarpanı min_weight eşiğini dolduramaz.
+    p = _pool()
+    for _ in range(10):
+        p.add("34TC8532", conf=0.9, weight=0.15)  # toplam 1.35 < min_weight 2.0
+    assert p.consensus()[0] is None
+
+
+def test_pool_weight_default_is_backwards_compatible():
+    p = _pool()
+    for _ in range(3):
+        p.add("34TC8532", conf=0.9)  # weight verilmedi → 1.0 (eski davranış)
+    assert p.consensus()[0] == "34TC8532"
+
+
+# --- Karakter füzyonu: YALNIZ best_partial (kanıt izi), CONFIRMED'e KATILMAZ ---
+def test_char_fuse_only_partial_not_confirm_on_scattered_misread():
+    # KRİTİK regresyon koruması (gerçek video_1/3 dersi): OCR sistematik yanlış
+    # okuyor (T→I) ve yanlış okuma dağınık varyantlarla TOPLAMDA baskın. Sistem bunu
+    # CONFIRMED yapMAMALI (yanlış plakayı kesinleştirmek 'okuyamadım'dan kötü) — ama
+    # 'partial' alanında en olası tahmini kanıt izi olarak verebilir.
+    p = _pool()
+    for _ in range(4):
+        p.add("34IC8532", conf=0.7)  # OCR'ın baskın (yanlış) okuması
+    for _ in range(4):
+        p.add("34IC0532", conf=0.7)  # aynı yanlış pos2, farklı sonek
+    for _ in range(3):
+        p.add("34TC8532", conf=0.6)  # doğru ama azınlık
+    assert p.consensus()[0] is None  # ASLA confirmed (margin/ratio sağlanmaz)
+    assert p.best_partial() is not None  # ama kanıt izi (en iyi tahmin) üretir
+
+
+def test_dominant_correct_read_still_confirms():
+    # Doğru okuma NET baskınsa (ayrı-aday margin + ratio) normal onay sürer.
+    p = _pool()
+    for _ in range(8):
+        p.add("34TC8532", conf=0.85)
+    for _ in range(3):
+        p.add("34IC8532", conf=0.6)  # azınlık misread
+    assert p.consensus()[0] == "34TC8532"
+
+
+def test_competing_distinct_plates_never_confirm():
+    # İki GERÇEKTEN farklı plaka birleştirilmez, onaylanmaz (belirsizlik korunur).
+    p = _pool()
+    for _ in range(4):
+        p.add("34ABC123")
+    for _ in range(3):
+        p.add("06XY999")
+    assert p.consensus()[0] is None
+
+
+def test_char_fuse_partial_picks_dominant_per_position():
+    # best_partial füzyonu: pozisyon başına en baskın karakter (eşiksiz kanıt izi).
+    p = _pool()
+    for _ in range(5):
+        p.add("34IC8532", conf=0.8)
+    for _ in range(2):
+        p.add("34IC0532", conf=0.7)  # pos5 azınlık (0)
+    # pos5'te 8 baskın → birleşik partial 34IC8532
+    assert p.best_partial() == "34IC8532"
+
+
+def test_char_consensus_off_falls_back_to_weights():
+    p = PlateVotePool(min_weight=2.0, margin_weight=1.5, ratio=0.6, char_consensus=False)
+    for _ in range(3):
+        p.add("34IC8532", conf=0.8)
+    for _ in range(2):
+        p.add("34IC0532", conf=0.7)
+    # füzyon kapalı → en ağır tek aday (ağırlık) döner, birleştirme yok
+    assert p.best_partial() == "34IC8532"

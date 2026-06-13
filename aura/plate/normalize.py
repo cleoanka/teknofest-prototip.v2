@@ -124,6 +124,7 @@ class PlateVotePool:
         fix1_weight: float = 0.45,
         fix2_weight: float = 0.20,
         substring_weight: float = 0.25,
+        char_consensus: bool = True,
         max_reads: int = 400,
     ):
         self.min_weight = float(min_weight)
@@ -131,12 +132,30 @@ class PlateVotePool:
         self.ratio = float(ratio)
         self.fix_w = {0: 1.0, 1: float(fix1_weight), 2: float(fix2_weight)}
         self.substring_w = float(substring_weight)
+        # Pozisyon-hizalı karakter füzyonu: ayrı-aday kararı başarısız olursa
+        # (iki format-geçerli okuma yarışıyor, ör. T↔I misread'i 34TC8532 vs
+        # 34IC8532) aynı YAPIDAKİ okumalar pozisyon pozisyon birleştirilir.
+        # Pozisyon-hizalı karakter füzyonu YALNIZ best_partial (kanıt izi) içindir;
+        # CONFIRMED kararına KATILMAZ. Gerçek video dersi: uzak/bulanık karelerde OCR
+        # sistematik yanlış okuyor (T→I, 3→2) ve doğru okuma hiç gelmiyor; füzyonla
+        # 'onaylamak' yanlış plakayı kesinleştirir — 'okuyamadım' (pending + partial)
+        # daha dürüst. Onay yalnız katı ayrı-aday konsensüsüyle verilir.
+        self.char_consensus = bool(char_consensus)
         self.max_reads = int(max_reads)
-        self.raw_reads: list[tuple[str, float]] = []  # (metin, ocr_güveni)
+        self.raw_reads: list[tuple[str, float]] = []  # (metin, etkin kanıt ağırlığı)
 
-    def add(self, text: str | None, conf: float = 1.0) -> None:
+    def add(self, text: str | None, conf: float = 1.0, weight: float = 1.0) -> None:
+        """Okuma ekle. ``weight``: kaynak-kalitesi çarpanı (0..1).
+
+        Gerçek video dersi (12 Haz akşam ölçümü): UZAK kareden gelen sistematik
+        misread'ler ("041C8532", "34IC8532"≡T→I formatça GEÇERLİ!) sayıca üstünlük
+        kurup konsensüsü kilitliyordu. Okumanın kanıt değeri OCR güveni × kaynak
+        kalitesidir (plaka kırpık yüksekliğinden türetilir, reader hesaplar);
+        yakın/net okuma uzak/bulanık okumayı hem güvenle hem ağırlıkla ezer.
+        """
         if text and len(self.raw_reads) < self.max_reads:
-            self.raw_reads.append((text, max(0.0, min(1.0, float(conf)))))
+            eff = max(0.0, min(1.0, float(conf))) * max(0.0, min(1.0, float(weight)))
+            self.raw_reads.append((text, eff))
 
     # --- iç hesap ----------------------------------------------------------- #
     def _weights(self) -> dict[str, float]:
@@ -163,12 +182,50 @@ class PlateVotePool:
         return dict(Counter(t for t, _ in self.raw_reads))
 
     def best_partial(self) -> str | None:
-        """Konsensüs yokken raporlanacak en güçlü aday (kanıt izi)."""
+        """Konsensüs yokken raporlanacak en güçlü aday (yalnızca KANIT İZİ).
+
+        ÖNEMLİ: Bu yalnız 'en olası tahmin'dir — KESİN DEĞİLDİR (PlateState.partial,
+        status hâlâ 'pending'). char_consensus açıksa pozisyon-hizalı karakter
+        füzyonu (eşiksiz) en olası birleşik plakayı verir; yoksa ağırlık-sıralı en
+        güçlü adaya düşer. Karara (CONFIRMED) ASLA katılmaz; o yalnız katı ayrı-aday
+        konsensüsüyle verilir (yanlış onay üretmemek için — gerçek video dersi:
+        uzak/bulanık karelerde OCR sistematik yanlış okuyor, bunu CONFIRMED yapmak
+        'okuyamadım' demekten kötü).
+        """
+        raw_valid: dict[str, float] = {}
+        for raw, conf in self.raw_reads:
+            cand, fixes = normalize_tr(raw)
+            if cand is not None and fixes == 0:
+                raw_valid[cand] = raw_valid.get(cand, 0.0) + conf
+        if self.char_consensus and len(raw_valid) > 1:
+            fused = self._char_fuse_best(raw_valid)
+            if fused is not None:
+                return fused
         w = self._weights()
         if w:
             return max(w, key=lambda k: w[k])
         c = Counter(t for t, _ in self.raw_reads)
         return c.most_common(1)[0][0] if c else None
+
+    def _char_fuse_best(self, raw_valid: dict[str, float]) -> str | None:
+        """Eşiksiz pozisyonel füzyon (best_partial için): en ağır yapı grubunda
+        pozisyon başına en baskın karakter — onay eşiği aramaz, kanıt izi üretir."""
+        groups: dict[tuple, list[tuple[str, float]]] = {}
+        for text, w in raw_valid.items():
+            pattern = tuple("D" if c.isdigit() else "L" for c in text)
+            groups.setdefault(pattern, []).append((text, w))
+        if not groups:
+            return None
+        best_pattern = max(groups, key=lambda p: sum(w for _, w in groups[p]))
+        members = groups[best_pattern]
+        out = []
+        for i in range(len(best_pattern)):
+            char_w: dict[str, float] = {}
+            for text, w in members:
+                char_w[text[i]] = char_w.get(text[i], 0.0) + w
+            out.append(max(char_w.items(), key=lambda kv: (kv[1], kv[0]))[0])
+        cand = "".join(out)
+        return cand if TR_PLATE_RE.match(cand) else None
 
     def consensus(self) -> tuple[str | None, float]:
         """(kazanan|None, güven 0..1).

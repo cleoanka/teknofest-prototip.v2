@@ -25,9 +25,13 @@ class FakeOCR:
 class FakeQoD:
     def __init__(self):
         self.calls = []
+        self.released = []
 
     def request_quality(self, track_id, reason):
         self.calls.append((track_id, reason))
+
+    def release_quality(self, track_id):
+        self.released.append(track_id)
 
 
 def _center_bbox():  # sweet-spot içi (cx≈320, cy≈235)
