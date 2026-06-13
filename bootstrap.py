@@ -57,8 +57,14 @@ WEIGHTS: dict[str, dict] = {
         "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26l.pt",
         "sha256": None,  # Resmi hash yok → ilk indirmede kilitle
     },
-    "yolo26s-pose.pt": {  # Pose modeli — sürücü davranışı keypoint geometrisi
+    "yolo26s-pose.pt": {  # Pose modeli (small) — l-pose inmezse loglu fallback
         "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26s-pose.pt",
+        "sha256": None,  # Resmi hash yok → ilk indirmede kilitle
+    },
+    "yolo26l-pose.pt": {  # Pose modeli (large) — sürücü davranışı keypoint geometrisi
+        # Sürücü-içi sıkı kırpma ile modele giden alan minimum olduğundan büyük
+        # model affordable (kullanıcı kararı: minimum alana maksimum model).
+        "url": "https://github.com/ultralytics/assets/releases/download/v8.4.0/yolo26l-pose.pt",
         "sha256": None,  # Resmi hash yok → ilk indirmede kilitle
     },
     "lp_yolo11n.pt": {  # Plaka dedektörü (YOLOv11n fine-tune) — sıkı plaka kırpma
@@ -436,9 +442,14 @@ def fetch_weights(skip: bool) -> dict[str, str]:
                 status[FINETUNE_WEIGHT] = "present"
                 break
         else:
+            # İpucu platforma göre: '~' Windows cmd/git'te genişlemez (%USERPROFILE% gerekir).
+            v1_path = (
+                "%USERPROFILE%\\teknofest-prototip" if os.name == "nt" else "~/teknofest-prototip"
+            )
             warn(
                 f"{FINETUNE_WEIGHT} bulunamadı — detector stok yolo26s.pt'ye düşer (loglu). "
-                "Edinmek için: git -C ~/teknofest-prototip lfs pull"
+                f'Edinmek için: git lfs install && git -C "{v1_path}" lfs pull '
+                "(git-lfs kurulu olmalı: https://git-lfs.com)"
             )
             status[FINETUNE_WEIGHT] = "missing"
 

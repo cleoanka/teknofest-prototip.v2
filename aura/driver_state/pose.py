@@ -52,9 +52,16 @@ class PoseDriverClassifier(DriverClassifier):
     def __init__(self, cfg):
         from ultralytics import YOLO
 
+        # Varsayılan yolo26l-pose (kullanıcı kararı: minimum alana büyük model);
+        # yapılandırılan ağırlık diskte yoksa stok s-pose'a LOGLU fallback.
         path = resolve_repo_path(
-            cfg.get("models.driver_state.pose_path", "weights/yolo26s-pose.pt")
+            cfg.get("models.driver_state.pose_path", "weights/yolo26l-pose.pt")
         )
+        if not path.exists():
+            fallback = resolve_repo_path("weights/yolo26s-pose.pt")
+            if fallback.exists():
+                log.warning("Pose ağırlığı yok (%s) → stok %s kullanılıyor", path, fallback)
+                path = fallback
         self.model = YOLO(str(path))
         self.conf = float(cfg.get("models.driver_state.pose_conf", 0.25))
         self.kp_conf = float(cfg.get("models.driver_state.pose_kp_conf", 0.30))
@@ -69,6 +76,31 @@ class PoseDriverClassifier(DriverClassifier):
         self.roi_max_upscale = float(cfg.get("models.driver_state.roi_max_upscale", 4.0))
         self.roi_enhance = bool(cfg.get("models.driver_state.roi_enhance", True))
         self.device = resolve_device(cfg.get("runtime.device", "auto"))
+        # --- sürücü-içi sıkı kırpma ------------------------------------------ #
+        # Modele giden alan MINIMUM olmalı (kullanıcı kararı): gelen ROI (kabin
+        # fallback'inde araç kutusunun üst %55'i — ön cam + yolcu yansımaları)
+        # önce SÜRÜCÜNÜN kişi kutusuna (+pad_ratio) daraltılır; pose ve v4 nesne
+        # kanıtı yalnız bu dar kırpıkta koşar. Kutu track başına önbelleğe alınır
+        # (normalize koordinat; sürücü araç içinde sabit oturur) ve redetect_every
+        # karede bir tazelenir → kare başına TEK pose geçişi korunur.
+        dc = cfg.get("models.driver_state.driver_crop", {}) or {}
+        self.crop_enabled = bool(dc.get("enabled", True))
+        self.crop_pad = float(dc.get("pad_ratio", 0.10))
+        self.crop_redetect = int(dc.get("redetect_every", 15))
+        # ROI zaten dar ise (ör. DriverLock kişi kutusundan kesilmiş) kırpma katma
+        # değersizdir: alan kazancı bu çarpanın altındaysa ROI olduğu gibi kullanılır.
+        self.crop_min_gain = float(dc.get("min_gain", 1.25))
+        # Sürücü tarafı seçimi DriverLock ile aynı sözleşmeyi kullanır (vars. sağ-alt).
+        corner = str(cfg.get("driver_lock.corner", "bottom_right")).lower()
+        self.corner_target = {
+            "bottom_right": (1.0, 1.0),
+            "bottom_left": (0.0, 1.0),
+            "top_right": (1.0, 0.0),
+            "top_left": (0.0, 0.0),
+        }.get(corner, (1.0, 1.0))
+        self._crop_cache: dict[int, list] = {}  # track_id -> [normalize kutu, yaş]
+        self.last_crop_box: tuple[int, int, int, int] | None = None  # teşhis/görselleştirici
+        self._last_person_seen = False  # geometri geçişinde kişi kutusu görüldü mü
         # --- ROI nesne kanıtı (hibrit) -------------------------------------- #
         # Geometri tek başına yetmez: telefon kulağa değil AĞZIN ÖNÜNE tutulursa
         # (hoparlör) el-ağız yakınlığı sigara gibi görünür; telefon tutan bilek
@@ -116,13 +148,17 @@ class PoseDriverClassifier(DriverClassifier):
 
     # --- ROI ön-işleme ------------------------------------------------------ #
     def _prep_roi(self, roi: np.ndarray) -> np.ndarray:
+        return self._prep_roi_scaled(roi)[0]
+
+    def _prep_roi_scaled(self, roi: np.ndarray) -> tuple[np.ndarray, float]:
+        """ROI'yi büyüt + parlat; uygulanan ölçeği de döndür (koordinat geri-eşleme)."""
         import cv2
         import numpy as np  # noqa: F811 - runtime import (TYPE_CHECKING bloğu lazy)
 
         h, w = roi.shape[:2]
         short = min(h, w)
         if short <= 0:
-            return roi
+            return roi, 1.0
         scale = min(self.roi_max_upscale, max(1.0, self.roi_min_side / short))
         if scale > 1.01:
             roi = cv2.resize(roi, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_CUBIC)
@@ -136,7 +172,78 @@ class PoseDriverClassifier(DriverClassifier):
             inv_gamma = 1.0 / 1.6
             table = ((np.arange(256) / 255.0) ** inv_gamma * 255).astype("uint8")
             roi = cv2.LUT(roi, table)
-        return roi
+        return roi, scale
+
+    # --- sürücü-içi sıkı kırpma ---------------------------------------------- #
+    def _locate_driver(self, roi: np.ndarray) -> tuple[int, int, int, int] | None:
+        """ROI'de sürücünün kişi kutusunu bul (ham ROI koordinatlarında).
+
+        Pose modeli ön-işlenmiş ROI'de koşulur; birden çok kişi varsa (yolcu,
+        cam yansıması) DriverLock ile aynı sözleşmeyle SÜRÜCÜ KÖŞESİNE en yakın
+        kutu seçilir — en yüksek conf değil (yansıma/yolcu daha 'net' olabilir).
+        """
+        prepped, scale = self._prep_roi_scaled(roi)
+        results = self.model.predict(
+            prepped, conf=self.conf, imgsz=self.imgsz, device=self.device, verbose=False
+        )
+        if not results:
+            return None
+        boxes = getattr(results[0], "boxes", None)
+        if boxes is None or len(boxes) == 0:
+            return None
+        ph, pw = prepped.shape[:2]
+        tx, ty = self.corner_target
+
+        def corner_score(b) -> tuple[float, float]:
+            x1, y1, x2, y2 = b.xyxy[0].tolist()
+            nx = (x1 + x2) / 2.0 / max(pw, 1)
+            ny = (y1 + y2) / 2.0 / max(ph, 1)
+            return (-((nx - tx) ** 2 + (ny - ty) ** 2), float(b.conf.item()))
+
+        best = max(boxes, key=corner_score)
+        x1, y1, x2, y2 = (v / scale for v in best.xyxy[0].tolist())
+        return int(x1), int(y1), int(x2), int(y2)
+
+    def _driver_crop(
+        self, roi: np.ndarray, key: int
+    ) -> tuple[np.ndarray, tuple[int, int, int, int] | None]:
+        """ROI'yi sürücü kutusuna (+crop_pad) daralt; (kırpık, kutu|None) döndür.
+
+        Önbellek normalize koordinat tutar: araç kutusu kareler arasında
+        büyüyüp küçülse de sürücünün araç-içi GÖRELİ konumu sabittir.
+        """
+        h, w = roi.shape[:2]
+        if h <= 0 or w <= 0:
+            return roi, None
+        cached = self._crop_cache.get(key)
+        if cached is not None and cached[1] < self.crop_redetect:
+            cached[1] += 1
+            nx1, ny1, nx2, ny2 = cached[0]
+            x1, y1 = max(0, int(nx1 * w)), max(0, int(ny1 * h))
+            x2, y2 = min(w, int(nx2 * w)), min(h, int(ny2 * h))
+            crop = roi[y1:y2, x1:x2]
+            if crop.size:
+                return crop, (x1, y1, x2, y2)
+        self._crop_cache.pop(key, None)
+
+        box = self._locate_driver(roi)
+        if box is None:
+            return roi, None  # kişi yok → dürüstçe tüm ROI (geometri zaten çekimser kalır)
+        bx1, by1, bx2, by2 = box
+        pad_x = (bx2 - bx1) * self.crop_pad
+        pad_y = (by2 - by1) * self.crop_pad
+        x1, y1 = max(0, int(bx1 - pad_x)), max(0, int(by1 - pad_y))
+        x2, y2 = min(w, int(bx2 + pad_x)), min(h, int(by2 + pad_y))
+        if x2 <= x1 or y2 <= y1:
+            return roi, None
+        # Kazanç kontrolü: ROI zaten dar (DriverLock kişi kutusu) ise kırpma anlamsız.
+        if (w * h) / max((x2 - x1) * (y2 - y1), 1) < self.crop_min_gain:
+            return roi, None
+        crop = roi[y1:y2, x1:x2]
+        if not crop.size:
+            return roi, None
+        self._crop_cache[key] = [(x1 / w, y1 / h, x2 / w, y2 / h), 0]
+        return crop, (x1, y1, x2, y2)
 
     # --- ROI nesne kanıtı ----------------------------------------------------- #
     def _object_evidence(self, roi: np.ndarray, ds: DriverState) -> None:
@@ -164,14 +271,25 @@ class PoseDriverClassifier(DriverClassifier):
         ds = DriverState()
         if cabin_roi is None or cabin_roi.size == 0:
             return ds
-        roi = self._prep_roi(cabin_roi)
+        key = -1 if track_id is None else track_id
+        # 1) Sürücü-içi sıkı kırpma: pose + nesne kanıtı yalnız sürücü kutusunda koşar
+        #    (tüm kabin gereksiz — ön cam/yolcu yansımaları FP kaynağıydı).
+        if self.crop_enabled:
+            roi, crop_box = self._driver_crop(cabin_roi, key)
+        else:
+            roi, crop_box = cabin_roi, None
+        self.last_crop_box = crop_box
+        roi = self._prep_roi(roi)
         geo = self._geometry(roi)
+        # Önbellek hijyeni: kırpıkta artık kişi görünmüyorsa kutu bayatlamıştır
+        # (sürücü kaydı/araç döndü) → düşür, sonraki karede yeniden tespit edilir.
+        if crop_box is not None and not self._last_person_seen:
+            self._crop_cache.pop(key, None)
         if self.obj_model is not None:
             self._object_evidence(roi, ds)
         # Bastırma latch'i: telefon nesnesi BU karede görüldüyse zamanlayıcıyı doldur;
         # zamanlayıcı aktifken geometrik 'sigara' bastırılır (ağız önündeki el
         # telefondur) — ama telefon bayrağı İLERİ TAŞINMAZ (FP amplifikasyonu yok).
-        key = -1 if track_id is None else track_id
         if ds.phone and ds.confidence.get("phone", 0.0) >= self.obj_suppress_conf:
             self._smoke_suppress[key] = self.obj_suppress_frames
         sup = self._smoke_suppress.get(key, 0)
@@ -187,6 +305,7 @@ class PoseDriverClassifier(DriverClassifier):
     def _geometry(self, roi: np.ndarray) -> DriverState:
         """Pose keypoint geometrisinden telefon/sigara çıkarımı (v1 K-012 portu)."""
         ds = DriverState()
+        self._last_person_seen = False
         results = self.model.predict(
             roi, conf=self.conf, imgsz=self.imgsz, device=self.device, verbose=False
         )
@@ -197,6 +316,7 @@ class PoseDriverClassifier(DriverClassifier):
         boxes = getattr(r, "boxes", None)
         if kps is None or boxes is None or len(boxes) == 0:
             return ds
+        self._last_person_seen = True
 
         # ROI'deki en belirgin kişi = sürücü adayı (ROI zaten sürücü kutusundan kesik)
         best_i = max(range(len(boxes)), key=lambda i: float(boxes[i].conf.item()))

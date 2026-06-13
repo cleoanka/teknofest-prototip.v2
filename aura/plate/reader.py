@@ -47,6 +47,7 @@ class PlateReader:
             fix1_weight=float(pv.get("fix1_weight", 0.45)),
             fix2_weight=float(pv.get("fix2_weight", 0.20)),
             substring_weight=float(pv.get("substring_weight", 0.25)),
+            char_consensus=bool(pv.get("char_consensus", True)),
         )
         self.ocr = ocr if ocr is not None else build_ocr(cfg)
         self.qod = qod
@@ -68,14 +69,31 @@ class PlateReader:
         self._lp_path = str(lp.get("path", "weights/lp_yolo11n.pt"))
         self._lp_model = None  # lazy yüklenir
         self._lp_failed = False
+        # Boyut-farkında kanıt politikası (gerçek video dersi: uzak karelerin
+        # sistematik misread'leri sayıca üstünlük kurup konsensüsü kilitliyordu):
+        #   lp_h <  vote_min_px  → okuma OYLAMAYA GİRMEZ (+ erken QoD tetiği)
+        #   lp_h <  qod_below_px → görüldüğü AN 'plate_too_small' kalite tetiği
+        #                          (consensus_fail beklenmez — havuz zehirlenmeden)
+        #   ağırlık = clamp(lp_h / size_full_px, size_floor, 1.0)
+        self.lp_vote_min_px = int(cfg.get("plate.lp_vote_min_px", 13))
+        self.lp_qod_below_px = int(cfg.get("plate.lp_qod_below_px", 26))
+        self._size_full_px = float(pv.get("size_full_px", 40))
+        self._size_floor = float(pv.get("size_floor", 0.15))
+        self._no_lp_weight = float(pv.get("no_lp_weight", 0.5))
         self._state: dict[int, PlateState] = {}
         self._pools: dict[int, PlateVotePool] = {}
         self._reads_since_eval: dict[int, int] = {}
 
     # --- sıkı plaka kırpma --------------------------------------------------- #
-    def _lp_crop(self, plate_roi: np.ndarray | None) -> np.ndarray | None:
+    def _lp_crop(self, plate_roi: np.ndarray | None) -> tuple[np.ndarray | None, int | None]:
+        """(kırpık, plaka_yüksekliği_px | None) döndür.
+
+        Yükseklik upscale ÖNCESİ gerçek piksel yüksekliğidir — okumanın kanıt
+        ağırlığı ve QoD 'plate_too_small' tetiği bunun üzerinden hesaplanır.
+        LP dedektörü kapalı/başarısız/tespitsiz ise None (kaynak kalitesi bilinmiyor).
+        """
         if plate_roi is None or not self._lp_enabled or self._lp_failed:
-            return plate_roi
+            return plate_roi, None
         if self._lp_model is None:
             try:
                 from ultralytics import YOLO
@@ -92,7 +110,7 @@ class PlateReader:
             except Exception as e:  # noqa: BLE001 - ağırlık/ultralytics yok → geniş crop
                 log.warning("LP dedektörü kullanılamıyor (%s) — geniş crop ile devam", e)
                 self._lp_failed = True
-                return plate_roi
+                return plate_roi, None
         try:
             r = self._lp_model.predict(
                 plate_roi,
@@ -103,22 +121,23 @@ class PlateReader:
             )[0]
         except Exception as e:  # noqa: BLE001 - tek kare hatası tüm hattı durdurmasın
             log.debug("LP tahmini başarısız: %s", e)
-            return plate_roi
+            return plate_roi, None
         boxes = getattr(r, "boxes", None)
         if boxes is None or len(boxes) == 0:
-            return plate_roi
+            return plate_roi, None
         best = max(boxes, key=lambda b: float(b.conf.item()))
         x1, y1, x2, y2 = (int(v) for v in best.xyxy[0].tolist())
+        lp_h = max(0, y2 - y1)  # gerçek plaka yüksekliği (upscale öncesi)
         pad = int(self._lp_pad * max(x2 - x1, y2 - y1))
         h, w = plate_roi.shape[:2]
         crop = plate_roi[max(0, y1 - pad) : min(h, y2 + pad), max(0, x1 - pad) : min(w, x2 + pad)]
         if crop.size == 0:
-            return plate_roi
+            return plate_roi, None
         if crop.shape[0] < 48:  # küçük plaka: OCR öncesi 2x büyüt
             import cv2
 
             crop = cv2.resize(crop, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
-        return crop
+        return crop, lp_h
 
     @staticmethod
     def _enhance(img: np.ndarray) -> np.ndarray:
@@ -173,10 +192,24 @@ class PlateReader:
             x2, y2 = int(vehicle_bbox.x2), int(vehicle_bbox.y2)
             vehicle_crop = frame[y1:y2, x1:x2]
 
-        crop = self._lp_crop(plate_roi)
+        crop, lp_h = self._lp_crop(plate_roi)
+        size_w = 1.0  # kaynak-kalitesi çarpanı (LP yüksekliğinden)
+        if lp_h is not None:
+            if self.qod and lp_h < self.lp_qod_below_px:
+                # ERKEN kalite tetiği: plaka görüldü ama OCR için küçük — QoD
+                # consensus_fail BEKLEMEDEN devreye girer (havuz zehirlenmeden;
+                # gerçek video ölçümü: eski akışta ilk tetikten önce 12-14 çöp oy).
+                self.qod.request_quality(track_id, reason="plate_too_small")
+            if lp_h < self.lp_vote_min_px:
+                return st  # kanıt değeri yok: çöp okuma havuza oy yazamaz
+            size_w = max(self._size_floor, min(1.0, lp_h / max(self._size_full_px, 1.0)))
+        elif self._lp_enabled and not self._lp_failed and self._lp_model is not None:
+            # LP dedektörü çalışıyor ama plakayı bulamadı → geniş-crop okuması
+            # düşük güvenilirlik sınıfıdır (kanıt tamamen atılmaz, ağırlığı kısılır).
+            size_w = self._no_lp_weight
         text, conf = self.ocr.read(crop, vehicle_crop)
         pool = self._pools.setdefault(track_id, PlateVotePool(**self._pool_kwargs))
-        pool.add(text, conf)
+        pool.add(text, conf, weight=size_w)
         if (
             self._second_variant
             and crop is not None
@@ -184,7 +217,7 @@ class PlateReader:
             and (text is None or conf < self._second_variant_below)
         ):
             t2, c2 = self.ocr.read(self._enhance(crop), vehicle_crop)
-            pool.add(t2, c2)
+            pool.add(t2, c2, weight=size_w)
             if t2 and not text:
                 text = t2  # okuma sayacı için (kanıt geldi)
         st.votes = pool.counts()
@@ -203,6 +236,10 @@ class PlateReader:
                 st.confidence = frac
                 st.status = "confirmed"
                 st.ocr_disabled = True
+                if self.qod:
+                    # Plaka çözüldü → kalite oturumu amacına ulaştı, HEMEN bırak
+                    # (eski akış: onaydan ~31 kare sonra zaman aşımıyla kapanıyordu).
+                    self.qod.release_quality(track_id)
             return st
         # Konsensüs yok: her `buffer_size` okumada bir 'rejected' döngüsü işlet —
         # event + QoD kalite tetiği üretir ama OYLAR SIFIRLANMAZ (kalıcı birikim,
