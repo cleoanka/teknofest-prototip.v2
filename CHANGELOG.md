@@ -3,6 +3,30 @@
 Bu projedeki tüm önemli değişiklikler bu dosyada belgelenir.
 Format [Keep a Changelog](https://keepachangelog.com/tr/1.0.0/) temellidir.
 
+## [2.2.0] — 2026-06-13 (geri bildirim turu — sürücü ROI, stabilite, plaka ilk-karakter, Windows)
+
+Kullanıcı geri bildirimi (gerçek video kanıtlarına dayalı 5 madde) köklerinden çözüldü.
+
+### Eklenenler
+- **Sürücü-içi sıkı kırpma** (`aura/driver_state/pose.py` → `_driver_crop`): pose + v4 nesne kanıtı artık tüm kabin yerine yalnız **sürücünün kişi kutusu (+%10)** üzerinde koşar (ön cam/yolcu yansımaları FP kaynağıydı). Kutu track başına önbelleğe alınır (`driver_crop.redetect_every`), kare başına tek pose geçişi korunur. ROI zaten darsa (`min_gain`) kırpma atlanır. Sürücü tarafı `driver_lock.corner` ile aynı sözleşmeyi kullanır.
+- **Pose modeli yükseltmesi**: `yolo26s-pose` → **`yolo26l-pose`** (varsayılan; bootstrap indirir, `weights.lock.json`'a kilitlenir). Alan minimum olduğundan büyük model affordable (kullanıcı kararı: minimum alana maksimum model). Diskte yoksa s-pose'a **loglu** fallback (`_pose_weight_exists`).
+- **Track başına araç-sınıfı oylaması** (`aura/stability/class_vote.py`, `TrackClassVoter`): güven-ağırlıklı çoğunluk + hafif unutma (`decay`) tek-kare `car↔truck` titremesini düzeltir. Sınıf pipeline'da **tek noktada** (`det.bbox.cls` yerinde) güncellenir → hız genişlik-önseli, accumulator, annotation ve event'ler aynı kararlı sınıfı görür. `tests/test_class_vote.py`.
+- **Pozisyon-hizalı plaka karakter füzyonu** (`aura/plate/normalize.py` → `_char_fuse_best`): birden çok format-geçerli okuma varsa aynı YAPIDAKİ okumalar pozisyon pozisyon birleşip en olası tek tahmini üretir. **YALNIZ `partial` (kanıt izi) için — CONFIRMED kararına KATILMAZ.** Gerçek video dersi (önemli): uzak/bulanık karelerde OCR sistematik yanlış okuyabilir (T→I, 3→2) ve doğru okuma hiç gelmeyebilir; böyle bir okumayı onaylamak yanlış plakayı kesinleştirir → `pending + en iyi tahmin` daha dürüst. Onay yalnız katı ayrı-aday konsensüsüyle (min ağırlık + margin + oran).
+- **Boyut-farkında plaka kanıtı** (`aura/plate/reader.py`): okuma ağırlığı = OCR güveni × kaynak kalitesi (LP kırpık yüksekliği). Çok küçük LP (`lp_vote_min_px`) oylamaya girmez; küçük LP (`lp_qod_below_px`) görüldüğü AN `plate_too_small` QoD kalite tetiği (consensus_fail beklemeden — havuz zehirlenmeden). Uzak/bulanık karelerin sistematik misread'leri artık yakın/net okumayı ezemez.
+- **QoD erken bırakma** (`aura/qod/client.py` → `release_quality`): plaka onaylandığı an HIGH_THROUGHPUT bırakılır (eski akış: onaydan ~31 kare sonra zaman aşımı). Aynı track'teki swerving/approach LOW_LATENCY oturumuna dokunmaz.
+- **Windows araç paritesi**: `dev.ps1` (test/lint/format/train/eval/video-test/clean — Makefile eşleniği); `tools/test_video.py` JSON özetine `class_changes` izi (sınıf titremesinin gerçekten bastırıldığının kanıtı); `tools/show_cabin_rois.py` → **`show_driver_rois.py`** (pipeline ile aynı bileşenler: gerçek sürücü ROI + l-pose ham bayrakları + iç kırpık kutusu).
+- **`min_track_frames` artık ÇIKTI kapısı**: genç (muhtemelen hayalet) track'ler ağır aşamalara girmediği gibi **annotation/event de üretmez** (video_3'teki 2-karelik phantom `truck` track'leri çıktıya sızmıyordu).
+
+### Düzeltmeler
+- **run.ps1 / setup.ps1 (PS 5.1)**: `$ErrorActionPreference='Stop'` + native stderr yönlendirmesi modül-yok dalını çökertiyordu → probe geçici `Continue` ile sarıldı; `Wait-Process` boş/çökmüş süreçte tüm servisleri öldürüyordu → `-EA SilentlyContinue` + sayı guard'ı; bare `python` (Store stub) → `py -3` fallback + çıkış-kodu doğrulama; `Set-Location` → `Push/Pop-Location` (çağıranın dizini bozulmasın); UTF-8 BOM (Türkçe karakter); `.env` yükleme (run.sh ile parite).
+- **bootstrap.py**: git-lfs ipucu platforma göre (`%USERPROFILE%` / `~`) + git-lfs kurulum notu.
+- `Makefile` başlığı: olmayan `run_dev.ps1` → `setup.ps1 / run.ps1 / dev.ps1`.
+
+### Doğrulama (gerçek video, hile yok)
+- **video_1**: araç `car` (kare 37'de truck→car, kalıcı) ✓ · sigara **118 kare** (l-pose + sürücü kırpma; eski 23'ten yükseldi) · plaka **34TC8532** (ilk-karakter düzeltildi) · phone 0 · swerving 0
+- **video_2**: `car` ✓ · plaka **34TC8532 CONFIRMED** ✓ · telefon 110+ kare · sigara 0 · swerving 0
+- **video_3**: `car` (phantom truck track'leri elendi) ✓ · swerving 119 kare + RISK_ALERT · davranış bayrakları temiz · plaka uzak/bulanık (dürüst `pending` + partial)
+
 ## [2.1.0] — 2026-06-12 (gece bakım + yenileme oturumu — detay: `fable.md`, plan: `plan.md`)
 
 ### Eklenenler

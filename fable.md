@@ -170,3 +170,79 @@ c6dfb8c docs: 12 Haziran yenileme oturumu — plan, mimari, izlenebilirlik, refe
 
 *Gece boyu tüm kararların gerekçeleri ve ara ölçümler `plan.md` §0/§7.5'te;
 bu oturum "ölç → düzelt → yeniden ölç" döngüsüyle yürütüldü (v1'in ölçüm-önce kültürü).*
+
+---
+
+# 13 Haziran 2026 — Geri Bildirim Turu (v2.2.0)
+
+Kullanıcı, eval kanıtlarına dayalı **5 somut madde** verdi; hepsi köklerinden çözüldü.
+Yöntem yine "ölç → düzelt → yeniden ölç", hile yok (`sakın hile yapma` ilkesi).
+
+## 12. Geri Bildirim → Kök Çözüm
+
+### 12.1 "cabin değil sürücü ROI olmalı; modele giden alan minimum; yolo26l yap"
+- **Sürücü-içi sıkı kırpma** (`pose.py:_driver_crop`): pose + nesne kanıtı artık tüm
+  kabin yerine yalnız **sürücünün kişi kutusu (+%10)** üzerinde koşar. Kutu track başına
+  önbelleğe alınır (`driver_crop.redetect_every`), kare başına TEK pose geçişi korunur.
+- **Pose modeli `yolo26s-pose` → `yolo26l-pose`** (bootstrap indirir, lock'a yazıldı;
+  diskte yoksa s-pose'a loglu fallback). Alan minimum olduğundan büyük model affordable.
+- **Sonuç:** sigara tespiti video_1'de **23 → 118 kare** (önceki turun phone-FP
+  bastırma tradeoff'u da ortadan kalktı — gerçek sigara artık net görünüyor).
+
+### 12.2 "stabilite sorunlarını çöz" (car↔truck titremesi)
+- **Track başına sınıf oylaması** (`stability/class_vote.py`): güven-ağırlıklı çoğunluk
+  + hafif unutma (`decay=0.98`). Sınıf pipeline'da TEK noktada (`det.bbox.cls`) güncellenir
+  → hız genişlik-önseli, accumulator, annotation, event'ler aynı kararlı sınıfı görür.
+- **`min_track_frames` artık ÇIKTI kapısı**: 2-karelik phantom `truck` track'leri
+  (video_3'te ByteTrack parçalanmasından) artık annotation/event üretmiyor.
+- **Sonuç:** üç videoda da araç kalıcı `car`; `class_changes` izi (JSON özetinde) titremenin
+  bastırıldığını kanıtlıyor (video_1: kare 37'de truck→car, sonra sabit).
+
+### 12.3 "plakanın ilk harfi 0 okunuyor" (3→0, ve T→I)
+- **Boyut-farkında kanıt** (`reader.py`): okuma ağırlığı = OCR güveni × kaynak kalitesi
+  (LP kırpık yüksekliği). Çok küçük LP oylamaya girmez; küçük LP görüldüğü an
+  `plate_too_small` QoD tetiği (consensus_fail beklemeden — havuz zehirlenmeden).
+- **QoD erken bırakma**: plaka onaylanır onaylanmaz HIGH_THROUGHPUT bırakılır.
+- **Pozisyon-hizalı karakter füzyonu** (`normalize.py:_char_fuse_best`): birden çok
+  format-geçerli okuma pozisyon pozisyon birleşip en olası tahmini verir — **ama YALNIZ
+  `partial` (kanıt izi) için; CONFIRMED'e KATILMAZ.**
+- **Dürüstlük kararı (önemli):** Gerçek ölçüm gösterdi ki video_1/3'te OCR plakayı
+  sistematik yanlış okuyor (T→I, 3→2) ve **doğru okuma neredeyse hiç gelmiyor** (uzak/
+  bulanık). Bunu "düzeltmek" videoya-özgü zorlama = hile olurdu. İlk denememde char-füzyon
+  bunları yanlış CONFIRMED yaptı (34IC8532 / 24IC8532) — bu bir **regresyondu** ve geri
+  alındı. Doğru davranış: **video_2'de net kanıtla `34TC8532` CONFIRMED** (ki bu aynı
+  aracın plakasını kesinleştirir); video_1/3'te **dürüst `pending` + en iyi tahmin partial**.
+  Yanlış plakayı kesinleştirmek "okuyamadım"dan kötüdür.
+
+### 12.4 "aracın doğru tanımlanmasını sağla"
+- 12.2'deki sınıf oylaması + çıktı kapısı ile çözüldü; üç videoda da `car`.
+
+### 12.5 "windows betiğini kontrol et"
+- `run.ps1`/`setup.ps1` PS 5.1 hataları: `$ErrorActionPreference='Stop'` + native stderr
+  modül-probe'u çökertiyordu (geçici `Continue` ile sarıldı); `Wait-Process` boş/çökmüş
+  süreçte tüm servisleri öldürüyordu (`-EA SilentlyContinue` + guard); bare `python`
+  (Store stub) → `py -3` fallback + çıkış-kodu doğrulama; `Push/Pop-Location`; UTF-8 BOM;
+  `.env` yükleme (run.sh parite). Yeni **`dev.ps1`** (test/lint/format/eval/video-test —
+  Makefile eşleniği). `bootstrap.py` git-lfs ipucu platforma göre (`%USERPROFILE%`/`~`).
+
+## 13. Doğrulama Matrisi (13 Haz, gerçek video, hile yok)
+
+| Video | Araç | Plaka | Sürücü | Swerving | RISK_ALERT |
+|---|---|---|---|---|---|
+| video_1 | **car** ✓ | `pending`, partial **34TC8532** | **sigara 118 kare** ✓ | 0 ✓ | 4 |
+| video_2 | **car** ✓ | **34TC8532 CONFIRMED** ✓ | **telefon 110 kare** ✓ | 0 ✓ | — |
+| video_3 | **car** ✓ | `pending` (uzak/bulanık) | temiz ✓ | **119 kare** ✓ | 1 |
+
+Çapraz-FP sıfır (video_1'de telefon 0, video_2'de sigara 0). JSON özetlerine karar
+şeffaflığı için `plate_raw_valid_weighted` (ağırlıklı format-geçerli dağılım) ve
+`class_changes` (sınıf titremesi izi) eklendi — jüri "neden bu sonuç?" diye sorabilir.
+
+**Dürüst sınırlar:** video_1/3 plakası uzaktan/bulanık olduğundan OCR T↔I ve 3↔2'yi
+ayıramıyor; sistem bunları kasıtlı olarak CONFIRMED yapmaz (yanlış pozitif üretmemek
+için). Plaka kimliği **video_2'de kesin doğrulanır** ve üç videoda aynı araçtır.
+
+## 14. Kalite (13 Haz)
+- **133 unit test** yeşil; yeni: `test_class_vote` (7), genişletilmiş `test_plate_normalize`
+  (boyut-ağırlığı + karakter füzyonu + regresyon koruması).
+- `ruff` + `black` temiz. `tools/show_cabin_rois.py` → `show_driver_rois.py` (pipeline-eş).
+- Docs güncel: CHANGELOG (2.2.0), `docs/mimari.md`, `config/README.md`, `pyproject` 2.2.0.
