@@ -131,21 +131,42 @@ def test_pool_weight_default_is_backwards_compatible():
     assert p.consensus()[0] == "34TC8532"
 
 
-# --- Karakter füzyonu: YALNIZ best_partial (kanıt izi), CONFIRMED'e KATILMAZ ---
-def test_char_fuse_only_partial_not_confirm_on_scattered_misread():
-    # KRİTİK regresyon koruması (gerçek video_1/3 dersi): OCR sistematik yanlış
-    # okuyor (T→I) ve yanlış okuma dağınık varyantlarla TOPLAMDA baskın. Sistem bunu
-    # CONFIRMED yapMAMALI (yanlış plakayı kesinleştirmek 'okuyamadım'dan kötü) — ama
-    # 'partial' alanında en olası tahmini kanıt izi olarak verebilir.
+# --- Pozisyon-hizalı karakter füzyonu (CONFIRMED kararı, pozisyon-margin) ---
+def test_position_fusion_confirms_split_correct_plate():
+    # Gerçek video_1 dersi: OCR doğru plakayı varyantlara böler (34TC8532/04TC8532/
+    # 34IC8532). Hiçbiri tek başına ayrı-aday onayını geçemez (ratio düşük), AMA her
+    # pozisyonun çoğunluğu doğru → füzyon 34TC8532'yi onaylar.
     p = _pool()
+    for _ in range(5):
+        p.add("34TC8532", conf=0.7)  # doğru
     for _ in range(4):
-        p.add("34IC8532", conf=0.7)  # OCR'ın baskın (yanlış) okuması
-    for _ in range(4):
-        p.add("34IC0532", conf=0.7)  # aynı yanlış pos2, farklı sonek
+        p.add("04TC8532", conf=0.5)  # 3→0 misread
     for _ in range(3):
-        p.add("34TC8532", conf=0.6)  # doğru ama azınlık
-    assert p.consensus()[0] is None  # ASLA confirmed (margin/ratio sağlanmaz)
-    assert p.best_partial() is not None  # ama kanıt izi (en iyi tahmin) üretir
+        p.add("34IC8532", conf=0.5)  # T→I misread
+    # pos0: 3 (34TC+34IC) net > 0 (04TC); pos2: T (34TC+04TC) net > I (34IC)
+    assert p.consensus()[0] == "34TC8532"
+
+
+def test_position_fusion_pending_on_ambiguous_leading_digit():
+    # KRİTİK: ilk karakter 0↔3 neredeyse eşit okunuyorsa (kullanıcının 'kronik'
+    # dediği sorun) o pozisyon belirsizdir → yanlış '04' ASLA onaylanmaz, pending.
+    p = _pool()
+    for _ in range(5):
+        p.add("34TC8532", conf=0.6)
+    for _ in range(5):
+        p.add("04TC8532", conf=0.6)  # 0 ve 3 eşit ağırlık
+    assert p.consensus()[0] is None  # pos0 belirsiz → dürüst pending
+    assert p.best_partial() is not None  # ama tahmin (kanıt izi) verilir
+
+
+def test_position_fusion_pending_on_far_letter_ambiguity():
+    # Gerçek video_3 dersi: uzaktan I↔T ayrılamıyor (fark < char_margin) → pending.
+    p = _pool()
+    for _ in range(3):
+        p.add("24IC8532", conf=0.8)
+    for _ in range(2):
+        p.add("24TC8532", conf=0.6)  # pos2 I vs T yakın
+    assert p.consensus()[0] is None  # pos2 belirsiz → pending (yanlış plaka onaylanmaz)
 
 
 def test_dominant_correct_read_still_confirms():

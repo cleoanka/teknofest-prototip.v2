@@ -125,6 +125,7 @@ class PlateVotePool:
         fix2_weight: float = 0.20,
         substring_weight: float = 0.25,
         char_consensus: bool = True,
+        char_margin: float = 1.5,
         max_reads: int = 400,
     ):
         self.min_weight = float(min_weight)
@@ -135,12 +136,15 @@ class PlateVotePool:
         # Pozisyon-hizalı karakter füzyonu: ayrı-aday kararı başarısız olursa
         # (iki format-geçerli okuma yarışıyor, ör. T↔I misread'i 34TC8532 vs
         # 34IC8532) aynı YAPIDAKİ okumalar pozisyon pozisyon birleştirilir.
-        # Pozisyon-hizalı karakter füzyonu YALNIZ best_partial (kanıt izi) içindir;
-        # CONFIRMED kararına KATILMAZ. Gerçek video dersi: uzak/bulanık karelerde OCR
-        # sistematik yanlış okuyor (T→I, 3→2) ve doğru okuma hiç gelmiyor; füzyonla
-        # 'onaylamak' yanlış plakayı kesinleştirir — 'okuyamadım' (pending + partial)
-        # daha dürüst. Onay yalnız katı ayrı-aday konsensüsüyle verilir.
+        # Pozisyon-hizalı karakter füzyonu. OCR aynı plakayı varyantlara böler
+        # (34TC8532/04TC8532/34IC8532 — 3↔0, T↔I); ayrı-aday kararı bunlar arasında
+        # bölünür ve hangi varyant baskınsa onu (bazen yanlış 04) seçer. Füzyon
+        # pozisyon pozisyon en güçlü karakteri alır; ONAY için her pozisyonda kazanan
+        # ikinciyi 'char_margin' MUTLAK ağırlıkla geçmeli — bir pozisyon belirsizse
+        # dürüst 'pending' (ASLA yanlış plaka onaylanmaz). char_consensus=False ise
+        # füzyon yalnız best_partial kanıt izinde kalır, onaya girmez.
         self.char_consensus = bool(char_consensus)
+        self.char_margin = float(char_margin)
         self.max_reads = int(max_reads)
         self.raw_reads: list[tuple[str, float]] = []  # (metin, etkin kanıt ağırlığı)
 
@@ -182,15 +186,12 @@ class PlateVotePool:
         return dict(Counter(t for t, _ in self.raw_reads))
 
     def best_partial(self) -> str | None:
-        """Konsensüs yokken raporlanacak en güçlü aday (yalnızca KANIT İZİ).
+        """Konsensüs yokken raporlanacak en güçlü aday (KANIT İZİ — KESİN DEĞİL).
 
-        ÖNEMLİ: Bu yalnız 'en olası tahmin'dir — KESİN DEĞİLDİR (PlateState.partial,
-        status hâlâ 'pending'). char_consensus açıksa pozisyon-hizalı karakter
-        füzyonu (eşiksiz) en olası birleşik plakayı verir; yoksa ağırlık-sıralı en
-        güçlü adaya düşer. Karara (CONFIRMED) ASLA katılmaz; o yalnız katı ayrı-aday
-        konsensüsüyle verilir (yanlış onay üretmemek için — gerçek video dersi:
-        uzak/bulanık karelerde OCR sistematik yanlış okuyor, bunu CONFIRMED yapmak
-        'okuyamadım' demekten kötü).
+        ``PlateState.partial`` hâlâ 'pending' iken raporlanan 'en olası tahmin'.
+        char_consensus açıksa pozisyon-hizalı füzyonun EŞİKSİZ sürümünü (her pozisyonda
+        en baskın karakter) kullanır; yoksa ağırlık-sıralı en güçlü adaya düşer.
+        (Onay için EŞİKLİ sürüm ``consensus`` içinde — bir pozisyon belirsizse pending.)
         """
         raw_valid: dict[str, float] = {}
         for raw, conf in self.raw_reads:
@@ -256,4 +257,54 @@ class PlateVotePool:
             and w_top / total >= self.ratio
         ):
             return top, round(min(1.0, w_top / total), 2)
+        # Tek-varyant kararı yok: OCR aynı plakayı varyantlara bölmüş olabilir
+        # (3↔0, T↔I). Pozisyon-hizalı füzyonu dene — her pozisyon NET ise onayla.
+        if self.char_consensus:
+            cand, conf = self._char_consensus(raw_valid)
+            if cand is not None:
+                return cand, conf
         return None, round(w_top / max(total, 1e-9), 2)
+
+    def _char_consensus(self, raw_valid: dict[str, float]) -> tuple[str | None, float]:
+        """Pozisyon-hizalı karakter füzyonu (CONFIRMED kararı için, güvenli).
+
+        Aynı YAPIDAKİ (uzunluk + rakam/harf deseni) ham-geçerli okumalar pozisyon
+        pozisyon birleştirilir. ONAY için HER pozisyonda kazanan karakter, ikinciyi
+        ``char_margin`` MUTLAK ağırlıkla geçmeli + grup toplamı ``min_weight``'i
+        tutmalı. Bir pozisyon belirsizse (ör. 0↔3 neredeyse eşit, ya da uzaktan I↔T)
+        ``None`` döner → dürüst ``pending`` (yanlış plaka ASLA onaylanmaz). Bu,
+        OCR'ın doğru plakayı birden çok varyanta böldüğü (34TC8532/04TC8532/34IC8532)
+        ama her pozisyonun çoğunluğunun doğru olduğu durumu çözer — K-004: kural
+        videoya değil pozisyon-istatistiğine bağlı.
+        """
+        groups: dict[tuple, list[tuple[str, float]]] = {}
+        for text, w in raw_valid.items():
+            pattern = tuple("D" if c.isdigit() else "L" for c in text)
+            groups.setdefault(pattern, []).append((text, w))
+        if not groups:
+            return None, 0.0
+        best_pattern = max(groups, key=lambda p: sum(w for _, w in groups[p]))
+        members = groups[best_pattern]
+        # Tek-üye grup ayrı-aday kararının kopyasıdır (füzyon yeni bilgi vermez);
+        # ayrıca tek-üyeli rakip plakaların (34ABC123 vs 06XY999) yanlış onayını önler.
+        if len(members) < 2:
+            return None, 0.0
+        group_w = sum(w for _, w in members)
+        if group_w < self.min_weight:
+            return None, 0.0
+        out: list[str] = []
+        for i in range(len(best_pattern)):
+            char_w: dict[str, float] = {}
+            for text, w in members:
+                char_w[text[i]] = char_w.get(text[i], 0.0) + w
+            ranked = sorted(char_w.items(), key=lambda kv: (kv[1], kv[0]), reverse=True)
+            top_c, top_w = ranked[0]
+            second_w = ranked[1][1] if len(ranked) > 1 else 0.0
+            if (top_w - second_w) < self.char_margin:
+                return None, 0.0  # bu pozisyon belirsiz → dürüst çekimserlik
+            out.append(top_c)
+        cand = "".join(out)
+        if not TR_PLATE_RE.match(cand) or not 1 <= int(cand[:2]) <= 81:
+            return None, 0.0
+        total = sum(raw_valid.values())
+        return cand, round(min(1.0, group_w / max(total, 1e-9)), 2)

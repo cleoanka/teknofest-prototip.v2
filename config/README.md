@@ -45,12 +45,12 @@ tutarlıysa yazılır (flicker koruması).
 `lp_detector.*` (sıkı plaka kırpma — özel YOLOv11n plaka modeli; yoksa loglu fallback),
 `lp_vote_min_px` / `lp_qod_below_px` (boyut-farkında kanıt: çok küçük LP oylamaya
 girmez; küçük LP görüldüğü an `plate_too_small` QoD tetiği — consensus_fail beklemeden),
-`voting.*` (kalıcı, güven-ağırlıklı oy havuzu: `min_weight`, `margin_weight`,
-`fix1/fix2_weight`, `substring_weight`; `size_full_px`/`size_floor`/`no_lp_weight` =
-okuma ağırlığı OCR güveni × kaynak kalitesi; `char_consensus`/`char_margin` =
-pozisyon-hizalı karakter füzyonu (en güçlü tek okuma çapa; ikinciyi `char_margin`
-ile geçmeli), T↔I / 3↔0 misread'ini çoğunlukla düzeltir —
-bkz. `aura/plate/normalize.py`).
+`voting.*` (kalıcı oy havuzu: `min_weight` = min kanıt, `margin_weight` = kazananla
+ikinci arasındaki min **mutlak** fark (ASIL ayrım kriteri); `consensus_ratio` düşük
+tutulur, 0.35 — dağınık misread'ler toplamı şişirip oranı düşürdüğünden margin esas
+alınır; `fix1/fix2_weight`, `substring_weight`; `size_full_px`/`size_floor`/`no_lp_weight`
+= okuma ağırlığı OCR güveni × kaynak kalitesi; `char_consensus` = pozisyon-hizalı karakter
+füzyonu YALNIZ `partial` (kanıt izi) için, CONFIRMED'e katılmaz — bkz. `aura/plate/normalize.py`).
 
 ### `models.driver_state` (backend seçimi)
 `backend: auto|pose|yolo` — pose: YOLO26-pose keypoint geometrisi (`pose_path` =
@@ -71,8 +71,10 @@ nesneleri araca düşüyorsa sürücü bayrağına OR'lanır.
 ### `tracking`
 `tracker`, `reid_model`, `min_track_frames` (ağır aşama + ÇIKTI kapısı: track bu kadar
 kare yaşamadan OCR/pose çalışmaz VE annotation/event üretmez — tek/iki-kare hayalet
-track koruması). `class_vote.*` (track başına araç-sınıfı oylaması: `enabled`, `decay` —
-tek-kare `car↔truck` titremesini güven-ağırlıklı çoğunlukla düzeltir).
+track koruması). `class_vote.*` (track başına **alan-ağırlıklı** araç-sınıfı oylaması:
+`enabled`, `decay` = yardımcı unutma, `area_floor` = uzak araç oy tabanı — oy
+`conf × bbox_alan/kare_alan` ile ağırlıklanır: yakın/büyük araç sınıfı daha güvenilir,
+uzak araç onlarca kare `truck` görünse de yakındaki `car` kanıtı devralır).
 Ek: `models.detector.dedup_iou` — aynı araca üretilen kopya kutuları bastırır.
 
 ### `qod`

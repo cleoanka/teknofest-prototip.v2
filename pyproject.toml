@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aura"
-version = "2.2.0"
+version = "2.2.1"
 description = "AURA — 5G & YZ ile Akıllı Yol Güvenliği (TEKNOFEST 2026) YZ çekirdeği ve servisleri"
 readme = "README.md"
 requires-python = ">=3.10"

@@ -107,13 +107,17 @@ tracking:
   # girmediği gibi annotation/event de üretmez (gerçek video_3 dersi: ByteTrack
   # parçalanması 2-karelik hayalet 'truck' track'leri doğuruyor — çıktıya sızmamalı).
   min_track_frames: 3
-  # Track başına sınıf oylaması: tek-kare 'car↔truck' titremesi (NMS sınıf-bazlı,
-  # fine-tune model aynı araca iki sınıf verebiliyor) güven-ağırlıklı çoğunlukla
-  # düzeltilir. decay: kare başına unutma çarpanı (1.0 = saf kümülatif) — uzak
-  # karelerin onlarca karelik yanlış birikimini yakın/net kanıt ~1-2 sn'de devralır.
+  # Track başına sınıf oylaması: tek-kare 'car↔truck' titremesini düzeltir. Oy
+  # ALAN-AĞIRLIKLI (conf × bbox_alan/kare_alan): yakın/büyük araç sınıfı daha
+  # güvenilir — gerçek ölçüm: uzak araç onlarca kare 'truck' görünüyor, yakınlaşınca
+  # 'car'; alan ağırlığı yakın net kanıtın uzak belirsiz kanıtı devralmasını sağlar.
+  # decay=1.0 (saf kümülatif): araç sınıfı fiziksel sabit, tüm ömür kanıtı birikir;
+  # decay<1 + alan-ağırlığı GEÇ gelen büyük-alan yanlış tespite salınım yaratıyordu
+  # (video_3 car→truck→car). area_floor: çok uzak araç oyu sıfırlanmasın diye taban.
   class_vote:
     enabled: true
-    decay: 0.98
+    decay: 1.0
+    area_floor: 0.0008
 
 preprocessing:
   headlight_suppression: true
@@ -131,7 +135,7 @@ plate:
   # (eski 0.30-0.70, sağdan yaklaşan aracı hiç okuyamıyordu — gerçek video_3 dersi).
   sweet_spot: {x1: 0.18, y1: 0.40, x2: 0.85, y2: 0.90}
   voting_buffer_size: 7         # bu kadar okumada bir konsensüs değerlendirilir (rejected event kadansı)
-  consensus_ratio: 0.6
+  consensus_ratio: 0.6          # tek-varyant ayrı-aday kararı için kazananın toplam pay eşiği
   ocr_lang: [tr]
   regex: '^\d{2}[A-Z]{1,3}\d{2,4}$'
   min_pixel_height: 16          # bu yükseklik altındaki plaka ROI'leri kalite tetikler
@@ -172,10 +176,15 @@ plate:
     # Pozisyon-hizalı karakter füzyonu: ayrı-aday kararı başarısızsa (iki format-
     # geçerli okuma tek karakterde ayrışıyor — ör. T↔I, 3↔0 misread'i) aynı yapıdaki
     # okumalar pozisyon pozisyon birleşir; her pozisyon char_ratio payını geçerse onay.
-    # Pozisyon-hizalı karakter füzyonu YALNIZ 'partial' (kanıt izi) için; CONFIRMED
-    # kararına katılmaz. Uzak/bulanık karede OCR sistematik yanlış okuyabilir; füzyonla
-    # onaylamak yanlış plakayı kesinleştirir — 'pending + en iyi tahmin' daha dürüst.
+    # Pozisyon-hizalı karakter füzyonu: OCR aynı plakayı varyantlara böldüğünde
+    # (34TC8532 / 04TC8532 / 34IC8532 — 3↔0, T↔I misread'i) pozisyon pozisyon
+    # birleştirir. ONAY için her pozisyonda kazanan ikinciyi 'char_margin' MUTLAK
+    # ağırlıkla geçmeli; bir pozisyon belirsizse (ör. video_1'de 0↔3 neredeyse eşit,
+    # veya video_3'te uzaktan I↔T) → dürüst 'pending' (ASLA yanlış plaka onaylanmaz).
+    # Net olduğunda doğru plakayı onaylar (video_2: 34TC8532). char_consensus=false
+    # ise füzyon yalnız 'partial' kanıt izinde kalır, onaya girmez.
     char_consensus: true
+    char_margin: 1.5            # bir pozisyonda kazananın ikinciyi geçmesi gereken min mutlak ağırlık farkı
 
 speed:
   mode: metric                  # metric | tripwire | ipm | disabled
