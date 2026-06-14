@@ -60,6 +60,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--max-frames", type=int, default=None, help="En fazla bu kadar kare işle")
     p.add_argument(
+        "--conf",
+        type=float,
+        default=None,
+        help="Dedektör güven eşiği override (stok yolo26s fallback için ~0.10 önerilir)",
+    )
+    p.add_argument(
         "--output",
         default=None,
         metavar="PATH",
@@ -135,6 +141,8 @@ def main(argv: list[str] | None = None) -> int:
     cfg.data["runtime"]["source"] = args.source
     if args.device:
         cfg.data["runtime"]["device"] = args.device
+    if args.conf is not None:
+        cfg.data["models"]["detector"]["conf"] = args.conf
 
     src = Path(args.source).expanduser()
     if not src.exists():
