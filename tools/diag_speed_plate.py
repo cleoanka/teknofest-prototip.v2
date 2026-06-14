@@ -106,8 +106,10 @@ def main(argv=None) -> int:
     print("\n=== ÖZET ===")
     print(f"  plaka beslemeleri      : {base['plate_feeds']} → {impr['plate_feeds']}")
     print(f"  ölçek örnekleri        : {base['scale_samples']} → {impr['scale_samples']}")
-    print(f"  ilk kalibre kare (ısınma): {base['first_calibrated_frame']} → "
-          f"{impr['first_calibrated_frame']} (küçük = daha erken)")
+    print(
+        f"  ilk kalibre kare (ısınma): {base['first_calibrated_frame']} → "
+        f"{impr['first_calibrated_frame']} (küçük = daha erken)"
+    )
     print(f"  son km/h               : {base['last_kmh']} → {impr['last_kmh']}")
     return 0
 
