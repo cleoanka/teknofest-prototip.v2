@@ -92,7 +92,12 @@ class SpeedEstimator:
 
     # --- ana giriş --------------------------------------------------------- #
     def update(
-        self, track_id: int, bbox: BBox, frame_idx: int, frame_shape: tuple[int, ...] | None = None
+        self,
+        track_id: int,
+        bbox: BBox,
+        frame_idx: int,
+        frame_shape: tuple[int, ...] | None = None,
+        plate_bbox: BBox | None = None,
     ) -> SpeedState:
         h = frame_shape[0] if frame_shape else 1.0
         cy_norm = bbox.center[1] / h if h else 0.0
@@ -103,7 +108,7 @@ class SpeedEstimator:
         swerving = self._swerving_flag(track_id, bbox, frame_idx)
 
         if self.mode == "metric":
-            st = self._metric_update(track_id, bbox, frame_idx, rel_flag, frame_shape)
+            st = self._metric_update(track_id, bbox, frame_idx, rel_flag, frame_shape, plate_bbox)
         elif self.mode == "tripwire":
             value = self._tripwire(track_id, cy_norm, frame_idx)
             st = SpeedState(mode="tripwire", value_kmh=value, relative_velocity_flag=rel_flag)
@@ -179,6 +184,7 @@ class SpeedEstimator:
         frame_idx: int,
         rel_flag: bool,
         frame_shape: tuple[int, ...] | None,
+        plate_bbox: BBox | None = None,
     ) -> SpeedState:
         from aura.speed.calibration import SpeedTrack
 
@@ -203,7 +209,11 @@ class SpeedEstimator:
             self._tracks[track_id] = track
         track.update(((bbox.x1 + bbox.x2) / 2.0, bbox.y2), ts)
 
-        # Ölçek-alanını besle (araç genişliği; plaka bbox geldiğinde observe_plate eklenebilir)
+        # Ölçek-alanını besle: plaka (520 mm referans, ağırlık 1.0) varsa en kesin ppm
+        # kaynağıdır; LP dedektörü plakayı bulduğunda gelir. Araç genişliği (ağırlık
+        # 0.25) her zaman yedek olarak eklenir → ısınma hızlanır, km/h daha doğru oturur.
+        if plate_bbox is not None:
+            self._metric.observe_plate(plate_bbox)
         self._metric.observe_vehicle(bbox, bbox.cls)
         self._metric.maybe_fit()
         value, is_cal = self._metric.estimate(track)
