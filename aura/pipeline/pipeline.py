@@ -239,7 +239,11 @@ class Pipeline:
             # Plaka OCR: ilgili ROI'den oku; track'e göre sonucu biriktirir/günceller.
             plate = self.plate.update(tid, plate_roi, det.bbox, frame.shape, frame=frame)
             # Hız tahmini: bbox'ın kareler arası hareketinden km/s ve göreli hız bayrağı.
-            speed = self.speed.update(tid, det.bbox, idx, frame.shape)
+            # LP dedektörü bu karede plakayı bulduysa (last_plate_bbox), 520 mm referanslı
+            # en kesin ppm örneğini oto-kalibrasyona besle → daha hızlı/doğru km/h.
+            speed = self.speed.update(
+                tid, det.bbox, idx, frame.shape, plate_bbox=self.plate.last_plate_bbox
+            )
             # göreli hız bayrağını da 16/8 süzgecinden geçir (eşik civarı salınımı önle)
             speed.relative_velocity_flag = bool(
                 self.stability.update(f"{tid}:speed.rel", speed.relative_velocity_flag)

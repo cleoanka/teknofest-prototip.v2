@@ -83,18 +83,26 @@ class PlateReader:
         self._no_lp_weight = float(pv.get("no_lp_weight", 0.5))
         self._state: dict[int, PlateState] = {}
         self._pools: dict[int, PlateVotePool] = {}
+        # Son karede LP dedektörünün bulduğu plaka kutusu (FRAME koordinatında) — hız
+        # oto-kalibrasyonunun en kesin ppm kaynağı (520 mm referans). Her update()
+        # başında sıfırlanır; pipeline bunu hemen ardından speed.update'e geçirir.
+        self.last_plate_bbox: BBox | None = None
         self._reads_since_eval: dict[int, int] = {}
 
     # --- sıkı plaka kırpma --------------------------------------------------- #
-    def _lp_crop(self, plate_roi: np.ndarray | None) -> tuple[np.ndarray | None, int | None]:
-        """(kırpık, plaka_yüksekliği_px | None) döndür.
+    def _lp_crop(
+        self, plate_roi: np.ndarray | None
+    ) -> tuple[np.ndarray | None, int | None, tuple[int, int, int, int] | None]:
+        """(kırpık, plaka_yüksekliği_px | None, plaka_kutusu | None) döndür.
 
         Yükseklik upscale ÖNCESİ gerçek piksel yüksekliğidir — okumanın kanıt
         ağırlığı ve QoD 'plate_too_small' tetiği bunun üzerinden hesaplanır.
+        Plaka_kutusu = sıkı (pad'siz) (x1, y1, x2, y2), plate_roi-yerel koordinatta;
+        hız oto-kalibrasyonu (observe_plate) frame'e çevirip kullanır.
         LP dedektörü kapalı/başarısız/tespitsiz ise None (kaynak kalitesi bilinmiyor).
         """
         if plate_roi is None or not self._lp_enabled or self._lp_failed:
-            return plate_roi, None
+            return plate_roi, None, None
         if self._lp_model is None:
             try:
                 from ultralytics import YOLO
@@ -111,7 +119,7 @@ class PlateReader:
             except Exception as e:  # noqa: BLE001 - ağırlık/ultralytics yok → geniş crop
                 log.warning("LP dedektörü kullanılamıyor (%s) — geniş crop ile devam", e)
                 self._lp_failed = True
-                return plate_roi, None
+                return plate_roi, None, None
         try:
             r = self._lp_model.predict(
                 plate_roi,
@@ -122,23 +130,24 @@ class PlateReader:
             )[0]
         except Exception as e:  # noqa: BLE001 - tek kare hatası tüm hattı durdurmasın
             log.debug("LP tahmini başarısız: %s", e)
-            return plate_roi, None
+            return plate_roi, None, None
         boxes = getattr(r, "boxes", None)
         if boxes is None or len(boxes) == 0:
-            return plate_roi, None
+            return plate_roi, None, None
         best = max(boxes, key=lambda b: float(b.conf.item()))
         x1, y1, x2, y2 = (int(v) for v in best.xyxy[0].tolist())
         lp_h = max(0, y2 - y1)  # gerçek plaka yüksekliği (upscale öncesi)
+        lp_box = (x1, y1, x2, y2)  # sıkı kutu (plate_roi-yerel) — oto-kalibrasyon için
         pad = int(self._lp_pad * max(x2 - x1, y2 - y1))
         h, w = plate_roi.shape[:2]
         crop = plate_roi[max(0, y1 - pad) : min(h, y2 + pad), max(0, x1 - pad) : min(w, x2 + pad)]
         if crop.size == 0:
-            return plate_roi, None
+            return plate_roi, None, None
         if crop.shape[0] < 48:  # küçük plaka: OCR öncesi 2x büyüt
             import cv2
 
             crop = cv2.resize(crop, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
-        return crop, lp_h
+        return crop, lp_h, lp_box
 
     @staticmethod
     def _enhance(img: np.ndarray) -> np.ndarray:
@@ -167,6 +176,7 @@ class PlateReader:
         frame_shape: tuple[int, ...],
         frame: np.ndarray | None = None,
     ) -> PlateState:
+        self.last_plate_bbox = None  # bu kare için sıfırla (önceki track'ten sızmasın)
         st = self._state.setdefault(track_id, PlateState())
         if st.status == "confirmed":
             return st  # erken çıkış (OCR kapalı)
@@ -193,7 +203,23 @@ class PlateReader:
             x2, y2 = int(vehicle_bbox.x2), int(vehicle_bbox.y2)
             vehicle_crop = frame[y1:y2, x1:x2]
 
-        crop, lp_h = self._lp_crop(plate_roi)
+        crop, lp_h, lp_box = self._lp_crop(plate_roi)
+        # Hız oto-kalibrasyonu için plaka kutusunu FRAME koordinatına çevir. plate_roi
+        # araç bbox'ının alt diliminden (frame[split:y2, x1:x2]) DOĞRUDAN kesildiğinden
+        # offset araç bbox'ı + crop yüksekliğinden türetilir (cabin_ratio gerekmez).
+        # Yalnız SR kapalıyken: SR plate_roi'yi ölçekler → piksel genişliği/ppm bozulur.
+        if lp_box is not None and self.sr is None and plate_roi is not None:
+            ox = max(0, int(vehicle_bbox.x1))
+            oy = min(int(frame_shape[0]), int(vehicle_bbox.y2)) - plate_roi.shape[0]
+            lx1, ly1, lx2, ly2 = lp_box
+            self.last_plate_bbox = BBox(
+                x1=float(ox + lx1),
+                y1=float(oy + ly1),
+                x2=float(ox + lx2),
+                y2=float(oy + ly2),
+                conf=1.0,
+                cls="plate",
+            )
         size_w = 1.0  # kaynak-kalitesi çarpanı (LP yüksekliğinden)
         if lp_h is not None:
             if self.qod and lp_h < self.lp_qod_below_px:
