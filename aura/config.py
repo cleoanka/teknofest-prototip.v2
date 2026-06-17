@@ -15,6 +15,7 @@ import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CONFIG = ROOT / "config" / "default.yaml"
+PROFILES_DIR = ROOT / "config" / "profiles"  # default.yaml üzerine derin-merge edilen overlay'ler
 SAMPLE_VIDEO = ROOT / "data" / "samples" / "ornek.mp4"  # pakete gömülü sentetik demo
 
 log = logging.getLogger("aura.config")
@@ -23,9 +24,10 @@ log = logging.getLogger("aura.config")
 class Config:
     """Noktalı erişimli (`cfg.get("plate.voting_buffer_size")`) ince sözlük sarmalayıcı."""
 
-    def __init__(self, data: dict[str, Any], path: Path | None = None):
+    def __init__(self, data: dict[str, Any], path: Path | None = None, profile: str | None = None):
         self._data = data
         self.path = path
+        self.profile = profile  # uygulanan overlay adı (varsa) — loglama/teşhis için
 
     def get(self, dotted: str, default: Any = None) -> Any:
         node: Any = self._data
@@ -71,8 +73,53 @@ def _apply_env_overrides(data: dict[str, Any]) -> dict[str, Any]:
     return data
 
 
-def load_config(path: str | Path | None = None) -> Config:
-    """Config'i yükle. `path` verilmezse `config/default.yaml`."""
+def _deep_merge(base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
+    """`overlay`'i `base` üzerine özyinelemeli birleştir (yeni sözlük döner).
+
+    İç içe sözlükler birleştirilir; skaler/liste değerleri overlay TAMAMEN ezer
+    (ör. ``vehicle_classes`` listesi profil tarafından tümüyle değiştirilir — kısmi
+    liste birleştirme sürpriz davranış yaratırdı). Mutasyonsuz: kaynaklar değişmez.
+    """
+    out = dict(base)
+    for key, val in overlay.items():
+        if isinstance(val, dict) and isinstance(out.get(key), dict):
+            out[key] = _deep_merge(out[key], val)
+        else:
+            out[key] = val
+    return out
+
+
+def resolve_profile_path(profile: str | Path) -> Path:
+    """Profil adını/yolunu `config/profiles/<ad>.yaml`'a çöz.
+
+    - Mevcut bir dosya yolu verilirse olduğu gibi kullanılır.
+    - ``server`` gibi çıplak ad → ``config/profiles/server.yaml``.
+    """
+    p = Path(profile)
+    if p.exists():
+        return p
+    candidate = PROFILES_DIR / f"{p.name}.yaml" if p.suffix != ".yaml" else PROFILES_DIR / p.name
+    return candidate
+
+
+def available_profiles() -> list[str]:
+    """`config/profiles/` altındaki tüm profil adları (alfabetik)."""
+    if not PROFILES_DIR.is_dir():
+        return []
+    return sorted(p.stem for p in PROFILES_DIR.glob("*.yaml"))
+
+
+def load_config(path: str | Path | None = None, profile: str | None = None) -> Config:
+    """Config'i yükle: `default.yaml` (taban) + opsiyonel profil overlay + env override.
+
+    Çözüm sırası (sonraki öncekini ezer):
+      1. ``path`` (verilmezse ``config/default.yaml``) — taban katman.
+      2. Profil overlay — ``profile`` argümanı > ``AURA_PROFILE`` env >
+         taban içindeki ``profile:`` anahtarı. ``config/profiles/<ad>.yaml`` derin-merge.
+      3. Env override'lar (``AI_MODE``, ``AURA_DEVICE``, port'lar).
+
+    Profil mekanizması geriye dönük uyumludur: profil seçilmezse davranış değişmez.
+    """
     cfg_path = Path(path) if path else DEFAULT_CONFIG
     if not cfg_path.exists():
         raise FileNotFoundError(
@@ -80,8 +127,29 @@ def load_config(path: str | Path | None = None) -> Config:
         )
     with open(cfg_path, encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
+
+    # Profil çözümü: açık argüman > env > taban config'teki 'profile' anahtarı.
+    chosen = profile or os.environ.get("AURA_PROFILE") or data.get("profile")
+    applied: str | None = None
+    if chosen:
+        prof_path = resolve_profile_path(chosen)
+        if prof_path.exists():
+            with open(prof_path, encoding="utf-8") as f:
+                overlay = yaml.safe_load(f) or {}
+            overlay.pop("profile", None)  # overlay kendini tekrar tetiklemesin
+            data = _deep_merge(data, overlay)
+            applied = Path(chosen).stem
+            log.info("Config profili uygulandı: %s (%s)", applied, prof_path)
+        else:
+            log.warning(
+                "Config profili bulunamadı: %s (%s). Mevcut profiller: %s",
+                chosen,
+                prof_path,
+                ", ".join(available_profiles()) or "(yok)",
+            )
+    data.pop("profile", None)  # 'profile' anahtarı runtime verisi değil, meta
     data = _apply_env_overrides(data)
-    return Config(data, cfg_path)
+    return Config(data, cfg_path, profile=applied)
 
 
 def resolve_repo_path(path: str | Path) -> Path:

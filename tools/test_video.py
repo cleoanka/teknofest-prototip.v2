@@ -50,6 +50,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--config", default=None, metavar="PATH", help="Config (vars: config/default.yaml)"
     )
     p.add_argument(
+        "--profile",
+        default=None,
+        metavar="NAME",
+        help="Config profili: server | laptop | v4-finetune (config/profiles/*.yaml). "
+        "Dedektör A/B için pratik: --profile v4-finetune vs (varsayılan yolo26l).",
+    )
+    p.add_argument(
         "--device", choices=["auto", "cpu", "cuda", "mps"], default=None, help="İşlem birimi"
     )
     p.add_argument(
@@ -59,6 +66,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="AI modu (vars: real — gerçek video testi aracı olduğundan)",
     )
     p.add_argument("--max-frames", type=int, default=None, help="En fazla bu kadar kare işle")
+    p.add_argument(
+        "--conf",
+        type=float,
+        default=None,
+        help="Dedektör güven eşiği override (stok yolo26s fallback için ~0.10 önerilir)",
+    )
     p.add_argument(
         "--output",
         default=None,
@@ -130,11 +143,13 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     import cv2
 
-    cfg = load_config(args.config)
+    cfg = load_config(args.config, profile=args.profile)
     cfg.data.setdefault("runtime", {})["ai_mode"] = args.ai_mode
     cfg.data["runtime"]["source"] = args.source
     if args.device:
         cfg.data["runtime"]["device"] = args.device
+    if args.conf is not None:
+        cfg.data["models"]["detector"]["conf"] = args.conf
 
     src = Path(args.source).expanduser()
     if not src.exists():
@@ -234,6 +249,10 @@ def main(argv: list[str] | None = None) -> int:
         )
     summary = {
         "source": str(src),
+        "profile": cfg.profile,
+        "detector_path": cfg.get("models.detector.path"),
+        "detector_conf": cfg.get("models.detector.conf"),
+        "device": cfg.get("runtime.device"),
         "frames_processed": frames_done,
         "processing_fps": round(frames_done / elapsed, 2),
         "video_fps": pipe.fps,

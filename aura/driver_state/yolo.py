@@ -33,7 +33,7 @@ class YOLO26lDriverClassifier(DriverClassifier):
         self.conf = float(cfg.get("models.driver_state.conf", 0.40))
         self.imgsz = int(cfg.get("models.driver_state.imgsz", 320))
         self.classes = list(
-            cfg.get("models.driver_state.classes", ["phone", "smoking", "no_seatbelt", "fatigue"])
+            cfg.get("models.driver_state.classes", ["phone", "smoking", "seatbelt", "fatigue"])
         )
         self.device = resolve_device(cfg.get("runtime.device", "auto"))
         log.info("YOLO26l yüklendi: %s (imgsz=%d, device=%s)", self.path, self.imgsz, self.device)
