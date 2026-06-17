@@ -322,9 +322,51 @@ class Pipeline:
             for s in signs
         ]
 
+        # Kişileri SÜRÜCÜ/YOLCU rolüyle çıktıya ekle: dashboard insanları 'person' diye
+        # değil, sürücü kilidinin kararıyla sürücü (yeşil) ve yolcu (turuncu) olarak çizer.
+        # Sürücü = atamanın driver_bbox'ı (kilitli ya da aday); yolcular = passenger_ids.
+        person_box = {p.track_id: p.bbox for p in persons if p.track_id is not None}
+        person_dicts: list[dict] = []
+        seen_pid: set[int] = set()
+        for (vid, _), assign in zip(vehicles, driver_assignments, strict=True):
+            if (
+                assign.driver_bbox is not None
+                and assign.driver_id is not None
+                and assign.driver_id not in seen_pid
+            ):
+                b = assign.driver_bbox
+                person_dicts.append(
+                    {
+                        "bbox": [b.x1, b.y1, b.x2, b.y2],
+                        "role": "driver",
+                        "track_id": assign.driver_id,
+                        "vehicle_id": vid,
+                        "locked": assign.locked,
+                    }
+                )
+                seen_pid.add(assign.driver_id)
+            for pid in assign.passenger_ids:
+                b = person_box.get(pid)
+                if b is None or pid in seen_pid:
+                    continue
+                person_dicts.append(
+                    {
+                        "bbox": [b.x1, b.y1, b.x2, b.y2],
+                        "role": "passenger",
+                        "track_id": pid,
+                        "vehicle_id": vid,
+                        "locked": False,
+                    }
+                )
+                seen_pid.add(pid)
+
         # İki-kanal çıktı: tüm araçların kutuları tek annotation karesinde toplanır.
         anno = AnnotationFrame(
-            frame_id=idx, tracks=track_dicts, signs=sign_dicts, scene=scene.model_dump()
+            frame_id=idx,
+            tracks=track_dicts,
+            persons=person_dicts,
+            signs=sign_dicts,
+            scene=scene.model_dump(),
         )
         for e in events:
             self.emitter.emit_event(e)  # her event'i downstream'e yayınla

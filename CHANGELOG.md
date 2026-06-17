@@ -43,10 +43,23 @@ metrik üreten, FTR'ye hazır** hale getirmek. (Sunucu dağıtımı; edge için 
 > tutarlı yanlış okuyabiliyor; sistem yanlış onay yerine `pending` der. Plaka-kritik demoda
 > `--profile v4-finetune` önerilir; kalıcı çözüm perspektif düzeltme / komite footage'ı.
 
+### Sürücü/Yolcu mekaniği (takım katkısı — `feature/...` main'den entegre)
+Bu sürümde main'e gelen pozisyonel sürücü/yolcu mekaniği de korunarak birleştirildi:
+- **Sürücü KİMLİĞE değil POZİSYONA göre seçilir** (`aura/identity/driver_lock.py` yeniden yazıldı):
+  araçtaki **en alttaki (berabere → en sağdaki) kişi HER ZAMAN sürücü**; her kare yeniden
+  seçilir → ByteTrack ID titrese de görünen sürücü hep "sürücü" (kare-189 regresyonu giderildi).
+- **Yolcular kilitlenir** (`confirm_frames` ardışık kare → YOLCU; o araçta sürücü adayı olamaz).
+- **Annotation'da kişi rolleri** (`AnnotationFrame.persons`) + **dashboard SÜRÜCÜ/YOLCU çizimi**
+  (`video-renderer.js`); `DriverAssignment.passenger_ids`/`locked_passenger_ids`;
+  `tools/show_driver_rois.py` sürücü/yolcu başlığı. `tests/test_driver_lock.py` (13 test).
+
+> Not: Bu mekanik, v2.3'ün Katman B sürücü-durum motoruyla uyumludur (sürücü ROI'sini doğru
+> kişiye yönlendirir; motor o ROI'de davranış oylaması yapar).
+
 ### Kalite
-- **172+ unit test** yeşil (`pytest -m "not integration"`); yeni: `test_config` (10),
-  `test_driver_engine` (9), `test_report` (8), plaka zırh testleri, train veri-istatistiği.
-  `ruff` + `black` temiz.
+- **175 unit test** yeşil (`pytest -m "not integration"`); yeni: `test_config` (10),
+  `test_driver_engine` (9), `test_report` (8), plaka zırh testleri, train veri-istatistiği +
+  birleştirilen `test_driver_lock` (13). `ruff` + `black` temiz.
 
 ---
 
