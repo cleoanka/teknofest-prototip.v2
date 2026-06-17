@@ -235,6 +235,77 @@ class PaddleOCRReader(RealOCR):
         return PaddleOCR(lang="en")
 
 
+class _FastPlateAdapter:
+    """fast-plate-ocr (ONNX, plakaya-ÖZEL OCR) → EasyOCR `readtext` arayüzü.
+
+    fast-plate-ocr TÜM plakayı TEK bir string olarak okur (karakter-segmentasyonu
+    yok); EasyOCR `readtext(img)` → `[(box, text, conf), ...]` çoklu-kutu döndürür.
+    Bu yüzden çıktı TEK kutu olarak sarılır: box = ROI'nin dört köşesi, text =
+    okunan plaka, conf = pad-DIŞI karakter olasılıklarının ortalaması. `_merge_line`
+    bu tek kutuyu olduğu gibi geçirir; TR-normalizasyon hattı motor-bağımsız çalışır.
+
+    Model 1-kanal (gri) giriş bekler; gelen BGR/3-kanal ROI griye çevrilir.
+    """
+
+    def __init__(self, recognizer):
+        self._rec = recognizer
+
+    def readtext(self, img) -> list:
+        if img is None or getattr(img, "size", 0) == 0:
+            return []
+        import cv2
+
+        gray = img
+        if getattr(img, "ndim", 0) == 3:
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        try:
+            preds = self._rec.run(gray, return_confidence=True)
+        except Exception as exc:  # noqa: BLE001 — motor hatası okuma boşa düşmeli, hattı kırmamalı
+            log.debug("fast-plate-ocr run hatası: %s", exc)
+            return []
+        if not preds:
+            return []
+        pred = preds[0]
+        text = getattr(pred, "plate", None)
+        if not text:
+            return []
+        probs = getattr(pred, "char_probs", None)
+        if probs is not None and len(probs) > 0:
+            # plaka uzunluğu kadar (pad-dışı) karakterin olasılık ortalaması
+            n = min(len(text), len(probs))
+            conf = float(sum(float(p) for p in probs[:n]) / n) if n else 0.0
+        else:
+            conf = 0.0
+        h, w = gray.shape[:2]
+        box = [[0.0, 0.0], [float(w), 0.0], [float(w), float(h)], [0.0, float(h)]]
+        return [(box, str(text), conf)]
+
+
+class FastPlateOCRReader(RealOCR):
+    """fast-plate-ocr motoru — `RealOCR`'ın okuma/birleştirme hattını aynen kullanır.
+
+    Yalnız `__init__` motoru fast-plate-ocr'a çevirir (`self.reader` bir
+    _FastPlateAdapter olur). `read`, `_readtext`, `_merge_line` ve düşük-güven
+    CLAHE+2x varyantı RealOCR'dan miras alınır → motor değişse de OCR-sonrası
+    mantık (TR-normalizasyon, satır birleştirme, küçük-ROI ikinci şans) BİREBİR korunur.
+    """
+
+    def __init__(self, cfg):
+        from fast_plate_ocr import LicensePlateRecognizer
+
+        from aura.device import cuda_is_usable
+
+        model = str(cfg.get("plate.fastplate_model", "global-plates-mobile-vit-v2-model"))
+        # fast-plate-ocr cihazı: cuda | cpu | auto. CUDA doğrulanmazsa cpu
+        # (onnxruntime varsayılan derlemesi MPS sağlamaz → cuda olmayan makinede cpu).
+        device = "cuda" if (bool(cfg.get("plate.ocr_gpu", True)) and cuda_is_usable()) else "cpu"
+        rec = LicensePlateRecognizer(model, device=device)
+        self.reader = _FastPlateAdapter(rec)
+        self.max_side = int(cfg.get("plate.ocr_max_side", 1280))
+        self.enhance_below = int(cfg.get("plate.ocr_enhance_below_px", 64))
+        log.info("fast-plate-ocr yüklendi (model=%s, device=%s)", model, device)
+
+
 class MockOCR(OCREngine):
     """Araç rengi (BGR) → senaryo plakası. Track başına kararlı."""
 
@@ -279,17 +350,33 @@ def _paddleocr_available() -> bool:
         return False
 
 
+def _fastplate_available() -> bool:
+    try:
+        import fast_plate_ocr  # noqa: F401
+
+        return True
+    except Exception:
+        return False
+
+
 def _build_real_ocr(cfg) -> OCREngine:
     """Gerçek OCR motorunu config `plate.ocr_engine` ile seç.
 
-    `paddleocr` seçiliyse PaddleOCR'ı sarmalar; kurulu değilse LOGLU olarak
-    EasyOCR'a düşer. Varsayılan `easyocr` (MEVCUT yol birebir korunur).
+    `paddleocr` seçiliyse PaddleOCR'ı, `fastplate` seçiliyse fast-plate-ocr'ı
+    (plakaya-özel ONNX) sarmalar; kurulu değilse LOGLU olarak EasyOCR'a düşer.
+    Varsayılan `easyocr` (MEVCUT yol birebir korunur).
     """
     engine = str(cfg.get("plate.ocr_engine", "easyocr")).lower()
     if engine == "paddleocr":
         if _paddleocr_available():
             return PaddleOCRReader(cfg)
         log.warning("plate.ocr_engine=paddleocr ama paddleocr kurulu değil → EasyOCR'a düşülüyor")
+    elif engine == "fastplate":
+        if _fastplate_available():
+            return FastPlateOCRReader(cfg)
+        log.warning(
+            "plate.ocr_engine=fastplate ama fast-plate-ocr kurulu değil → EasyOCR'a düşülüyor"
+        )
     return RealOCR(cfg)
 
 

@@ -149,10 +149,17 @@ plate:
   min_pixel_height: 16          # bu yükseklik altındaki plaka ROI'leri kalite tetikler
   ocr_max_side: 1280            # OCR girişi uzun kenar sınırı (4K crop yavaşlatmasın)
   ocr_enhance_below_px: 64      # ROI yüksekliği bunun altındaysa CLAHE+2x varyantı denenir
-  # OCR motoru: easyocr (varsayılan, mevcut yol) | paddleocr. paddleocr seçiliyse
-  # PaddleOCR sarmalanır (çıktı EasyOCR readtext ile uyumlu normalize edilir);
-  # paddleocr kurulu değilse LOGLU olarak easyocr'a düşülür (pip install 'aura[paddle]').
-  ocr_engine: easyocr           # easyocr | paddleocr
+  # OCR motoru: easyocr | paddleocr | fastplate. Seçilen motor kurulu değilse her
+  # durumda LOGLU olarak easyocr'a düşülür (çıktı EasyOCR readtext sözleşmesine
+  # normalize edilir; _merge_line + TR-normalizasyon + küçük-ROI ikinci-şans motor-
+  # bağımsız çalışır). VARSAYILAN fastplate — plakaya-ÖZEL hafif ONNX modeli
+  # (global-plates-mobile-vit-v2, ~5MB; pip: fast-plate-ocr + onnxruntime).
+  # ÖLÇÜLDÜ (18 Haz 2026, 3 gerçek video, GT=34TC8532): easyocr v3'ü PENDING
+  # bırakıyordu (partial=24IC8532, CER0.25); fastplate v3'ü CONFIRMED 34TC8532'ye
+  # (CER0.0) çekti VE v1/v2 exact'ini korudu. fast-plate-ocr kurulu değilse easyocr
+  # baseline'ına düşer (K-004: config-driven, motor seçimi, videoya-özel sabit YOK).
+  ocr_engine: fastplate         # easyocr | paddleocr | fastplate
+  fastplate_model: global-plates-mobile-vit-v2-model  # fastplate motoru ilk koşuda otomatik indirir (~5MB)
   ocr_gpu: true                 # OCR'ı (EasyOCR/PaddleOCR) GPU'da çalıştır; CUDA yoksa otomatik CPU
   # OCR-öncesi görüntü hazırlama (WP-A1, karanlık/açılı otopark): dewarp + enhance,
   # LP kırpığına OCR'dan HEMEN ÖNCE bir kez uygulanır. Reader'ın düşük-güven

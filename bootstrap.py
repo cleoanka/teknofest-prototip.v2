@@ -298,6 +298,13 @@ def install_package(dev: bool, skip: bool) -> None:
     # AURA paketini düzenlenebilir (editable, -e) modda kur — kaynak değişiklikleri anında yansır.
     run([venv_python(), "-m", "pip", "install", "-e", spec])
     ok(f"pip install -e {spec} tamamlandı")
+    # Plakaya-özel OCR motoru (varsayılan plate.ocr_engine=fastplate) için fast-plate-ocr +
+    # onnxruntime — best-effort; kurulamazsa pipeline EasyOCR'a graceful düşer, çökmez.
+    try:
+        run([venv_python(), "-m", "pip", "install", "--quiet", "fast-plate-ocr", "onnxruntime"])
+        ok("fast-plate-ocr + onnxruntime kuruldu (plaka OCR motoru, fastplate)")
+    except Exception:
+        warn("fast-plate-ocr kurulamadı — plaka EasyOCR'a düşer (opsiyonel)")
 
 
 # --- 3.5 Model ağırlıkları ------------------------------------------------- #

@@ -35,6 +35,10 @@ core = []   # çekirdek bağımlılıklar zaten [project.dependencies] içinde
 # OPSİYONEL alternatif OCR motoru: plate.ocr_engine=paddleocr seçilince kullanılır.
 # ASLA zorunlu değil — kurulu değilse build_ocr loglu olarak EasyOCR'a düşer.
 paddle = ["paddleocr"]
+# OPSİYONEL plakaya-özel OCR motoru: plate.ocr_engine=fastplate (VARSAYILAN) bunu kullanır —
+# uzak/karanlık plakada EasyOCR'dan belirgin daha iyi (gerçek videoda video_3 kurtarıldı, 3/3
+# exact). Kurulu değilse build_ocr LOGLU olarak EasyOCR'a düşer (graceful fallback, çökmez).
+plate-fast = ["fast-plate-ocr", "onnxruntime"]
 dev = [
   "pytest>=8.0",
   "pytest-asyncio>=0.23",
