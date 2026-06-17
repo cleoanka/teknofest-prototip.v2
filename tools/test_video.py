@@ -50,6 +50,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--config", default=None, metavar="PATH", help="Config (vars: config/default.yaml)"
     )
     p.add_argument(
+        "--profile",
+        default=None,
+        metavar="NAME",
+        help="Config profili: server | laptop | v4-finetune (config/profiles/*.yaml). "
+        "Dedektör A/B için pratik: --profile v4-finetune vs (varsayılan yolo26l).",
+    )
+    p.add_argument(
         "--device", choices=["auto", "cpu", "cuda", "mps"], default=None, help="İşlem birimi"
     )
     p.add_argument(
@@ -130,7 +137,7 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     import cv2
 
-    cfg = load_config(args.config)
+    cfg = load_config(args.config, profile=args.profile)
     cfg.data.setdefault("runtime", {})["ai_mode"] = args.ai_mode
     cfg.data["runtime"]["source"] = args.source
     if args.device:
@@ -234,6 +241,10 @@ def main(argv: list[str] | None = None) -> int:
         )
     summary = {
         "source": str(src),
+        "profile": cfg.profile,
+        "detector_path": cfg.get("models.detector.path"),
+        "detector_conf": cfg.get("models.detector.conf"),
+        "device": cfg.get("runtime.device"),
         "frames_processed": frames_done,
         "processing_fps": round(frames_done / elapsed, 2),
         "video_fps": pipe.fps,

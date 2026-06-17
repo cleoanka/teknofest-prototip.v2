@@ -1,0 +1,23 @@
+# =============================================================================
+# PROFİL: server — maksimum doğruluk, sunucu/GPU dağıtımı (edge değil)
+# Kullanım:  python -m aura --profile server   |   AURA_PROFILE=server ...
+# default.yaml ÜZERİNE derin-merge edilir; yalnız farklılıklar burada.
+#
+# Hedef: yarışma sunucusunda en yüksek YZ doğruluğu. CUDA varsa otomatik seçilir
+# (runtime.device: auto → CUDA→MPS→CPU). Büyük imgsz + düşük conf = en yüksek recall.
+# =============================================================================
+runtime:
+  device: auto          # sunucuda CUDA otomatik seçilir
+  ai_mode: real         # sunucuda gerçek footage işlenir (sentetik-mock atlaması gerekmez)
+
+models:
+  detector:
+    path: weights/yolo26l.pt
+    conf: 0.08          # yüksek recall; FP'ler dedup + sınıf-oyu + min_track_frames ile elenir
+    imgsz: 960          # sunucu: küçük/uzak araç ve plaka için büyük girdi
+  driver_state:
+    backend: auto
+    pose_path: weights/yolo26l-pose.pt
+    pose_imgsz: 768     # sürücü ROI'sinde keypoint doğruluğu için büyük girdi
+    roi_objects:
+      imgsz: 768
