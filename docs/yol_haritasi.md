@@ -44,15 +44,12 @@ canlı video → YZ analiz → **TOGG tespiti** → **5G QoD API** tetikleme (ge
 **Number Verification**. AURA tarafında karşılıkları: `qod` (yaklaşma tetiği), `nv_mock`,
 `mobile/`, `WS /stream/events` (bkz. `ftr.md` §6). Final'de yalnız endpoint/credential değişir.
 
-## 4. ⚠️ FTR teslim tarihi — ÇELİŞKİ (acil doğrula)
-- **Şartname PDF'i** (repodaki resmi belge): **14.06.2026 17:00** → bu doğruysa tarih GEÇTİ.
-- **Gemini araştırması (17 Haz):** **22.06.2026 17:00** olduğunu ve uzatma duyurusu olmadığını
-  iddia ediyor → bu doğruysa **hâlâ ~5 gün var** ve FTR teslim edilebilir.
-- **Bunlar çelişiyor; Gemini tarih konusunda yanılabilir.** **Takım kaptanı KYS panelini +
-  e-postaları DERHAL kontrol etmeli** (resmi/bağlayıcı kaynak budur). Uzatmalar genelde
-  KYS/mail ile duyurulur. Diğer tarihler (Gemini): finalistler 31.07.2026, final Ağu–Eyl 2026.
-> Eğer FTR hâlâ açıksa: `ftr.md` doldurulabilir taslağı + `aura.eval --metrics-report` +
-> `train dataset --report` çıktıları rapora doğrudan girer (en yüksek puanlı §2 ve §4 hazır).
+## 4. ✅ FTR teslim tarihi — 28.06.2026 (ertelendi, AÇIK)
+- FTR son teslim **28.06.2026'ya ERTELENDİ** (kullanıcı 17 Haz'da teyit etti; eski şartname
+  PDF'indeki 14.06 ve Gemini'nin 22.06 tahmini geçersiz — bağlayıcı tarih 28.06).
+- Yani **FTR hâlâ açık** → `ftr.md` doldurulabilir taslağı + `aura.eval --metrics-report` +
+  `train dataset --report` çıktıları rapora doğrudan girer (en yüksek puanlı §2 ve §4 hazır).
+- Diğer tarihler: finalistler 31.07.2026, final Ağu–Eyl 2026 (KYS/mail'den teyit edin).
 
 *Kaynaklar: Gemini 3.1 Pro araştırması (docs.ultralytics.com, Roboflow Universe, Kaggle,
 teknofest.org). Tüm bağlantılar kullanım öncesi doğrulanmalı.*

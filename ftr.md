@@ -6,13 +6,10 @@
 > taslak**. Üç işlevi birden görür: (1) raporu doldurma kılavuzu, (2) finale
 > (mobil + 5G + QoD demo) hazırlık, (3) prototipin yeteneklerinin tam dokümantasyonu.
 >
-> ⚠️ **Takvim — ÇELİŞKİ, ACİL DOĞRULA:** Repodaki **şartname PDF'i 14.06.2026 17:00** diyor
-> (geçmiş). Ancak **Gemini araştırması (17 Haz) 22.06.2026 17:00** olduğunu ve uzatma duyurusu
-> olmadığını iddia ediyor → bu doğruysa **FTR hâlâ açık (~5 gün)** ve teslim edilebilir!
-> Bu iki kaynak çelişiyor; Gemini tarihte yanılabilir. **Takım kaptanı KYS panelini + mailleri
-> DERHAL kontrol etmeli** (bağlayıcı kaynak budur). FTR hâlâ açıksa bu rehber + doldurulabilir
-> taslak doğrudan kullanılır; kapandıysa final-demo hazırlığı + kalıcı dokümantasyondur.
-> (Detay + sonraki adımlar: `docs/yol_haritasi.md`.)
+> ✅ **Takvim (güncel):** FTR son teslim **28.06.2026'ya ERTELENDİ** (kullanıcı teyit etti;
+> eski şartname PDF'indeki 14.06 geçersiz). Yani **FTR HÂLÂ AÇIK** — bu rehber + aşağıdaki
+> doldurulabilir taslak doğrudan kullanılabilir. En yüksek puanlı §2 (Veri Seti) ve §4 (Sınama)
+> için sırasıyla `train dataset --report` ve `aura.eval --metrics-report` çıktıları hazır.
 
 ---
 
