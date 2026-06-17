@@ -43,6 +43,10 @@ class DriverStateEngine:
         self.window = int(cfg.get("models.driver_state.voting.window", 16))
         self.min_votes = int(cfg.get("models.driver_state.voting.min_votes", 8))
         self.max_age = int(cfg.get("models.driver_state.voting.max_age", 30))
+        # Kemer ihlali (no_seatbelt) türetme aç/kapa — VARSAYILAN KAPALI: kemer şeridi
+        # görünmeyen (cam-ardı/loş/uzak) footage'da yanlış pozitif üretmemek için. Net
+        # kemer görünümü olan kamerada açılır (config: models.driver_state.no_seatbelt.enabled).
+        self.derive_no_seatbelt = bool(cfg.get("models.driver_state.no_seatbelt.enabled", False))
         # track_id → o ID'nin zaman tamponu (ID-merkezli durum burada yaşar).
         self.voters: dict[int, TrackVoter] = {}
         log.info(
@@ -83,7 +87,26 @@ class DriverStateEngine:
             voter = TrackVoter(self.window, self.min_votes)
             self.voters[track_id] = voter
         voter.update(raw, frame_idx)
-        return voter.stable()
+        ds = voter.stable_raw()  # kararlı HAM durum (phone/smoking/seatbelt/fatigue)
+        self._derive_no_seatbelt(ds, voter)
+        return ds
+
+    def _derive_no_seatbelt(self, ds: DriverState, voter: TrackVoter) -> None:
+        """Kemer İHLALİNİ kemerin YOKLUĞUNDAN türet (model 'kemer var'ı tespit eder).
+
+        Kural: yeterince kare gözlendiyse (>= min_votes) VE kemer kararlı şekilde
+        GÖRÜLMÜYORSA → no_seatbelt ihlali. Az gözlemde (soğuk tampon) yanlış alarm
+        üretmemek için min_votes eşiği beklenir. Toggle KAPALIYKEN hiç türetilmez
+        (varsayılan — kemer görünürlüğü düşük footage'da FP koruması).
+        """
+        if not self.derive_no_seatbelt:
+            return
+        if not ds.seatbelt and voter.seen >= self.min_votes:
+            ds.no_seatbelt = True
+            # güven: kemer ne kadar az görüldüyse o kadar yüksek (0..1)
+            ds.confidence["no_seatbelt"] = round(
+                1.0 - voter.votes("seatbelt") / max(voter.seen, 1), 3
+            )
 
     def prune(self, frame_idx: int) -> None:
         """Uzun süredir görülmeyen ID'lerin tamponunu düşür (bellek sızıntısını önler)."""

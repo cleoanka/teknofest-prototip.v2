@@ -56,6 +56,17 @@ python -m train driver-state --data data/driver/data.yaml \
 > MediaPipe/landmark **kullanılmaz** (mimari kararı, `docs/mimari.md`). Eğitimli ağırlık varsa
 > `models.driver_state.backend: yolo` ile pose yerine bu kullanılır.
 
+**Kemer (seatbelt) iki-katman tasarımı:** Model ham **`seatbelt`** (kemer ŞERİDİ = kemer VAR)
+tespit eder; sınıf listesi `[phone, smoking, seatbelt, fatigue]`. **`no_seatbelt` İHLALİ Katman
+B'de kemerin yokluğundan TÜRETİLİR** (`DriverStateEngine`) ve `models.driver_state.no_seatbelt.enabled`
+ile aç/kapa edilir (**VARSAYILAN KAPALI** — kemer görünmeyen footage'da FP koruması; net kemer
+görünen kamerada açın). **Domain modeli** (`custom_driver.pt`, jui/driver-behaviors gibi) için
+`backend: yolo` + `path: weights/custom_driver.pt`; `imgsz 640` (320 küçük telefonu kaybediyordu).
+
+**Birden çok sürücü-davranış veri setini birleştirme:** `python -m train.merge_driver_datasets`
+(spec: `train/configs/driver_merge.json`) — farklı kaynakların sınıflarını AURA taksonomisine
+(phone/smoking/seatbelt/fatigue) eşleyip tek YOLO setinde toplar.
+
 ## 5. Inference'a alma (config swap / profil)
 `config/default.yaml`:
 ```yaml

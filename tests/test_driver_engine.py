@@ -42,9 +42,9 @@ def test_voter_needs_min_votes():
     v = TrackVoter(window=4, min_votes=3)
     for _ in range(2):
         v.update(_ds(phone=0.9), 0)
-    assert v.stable().phone is False  # 2 oy < 3
+    assert v.stable_raw().phone is False  # 2 oy < 3
     v.update(_ds(phone=0.9), 0)
-    assert v.stable().phone is True  # 3 oy >= 3
+    assert v.stable_raw().phone is True  # 3 oy >= 3
 
 
 def test_voter_filters_single_frame_noise():
@@ -53,14 +53,14 @@ def test_voter_filters_single_frame_noise():
     v.update(_ds(phone=0.99), 0)
     for _ in range(15):
         v.update(DriverState(), 0)
-    assert v.stable().active_flags() == []
+    assert v.stable_raw().active_flags() == []
 
 
 def test_voter_reports_mean_confidence():
     v = TrackVoter(window=4, min_votes=2)
     v.update(_ds(smoking=0.6), 0)
     v.update(_ds(smoking=0.8), 0)
-    ds = v.stable()
+    ds = v.stable_raw()
     assert ds.smoking is True
     assert abs(ds.confidence["smoking"] - 0.7) < 1e-6
 
@@ -70,10 +70,10 @@ def test_voter_window_slides_out_old_votes():
     v = TrackVoter(window=3, min_votes=2)
     v.update(_ds(phone=0.9), 0)
     v.update(_ds(phone=0.9), 0)
-    assert v.stable().phone is True
+    assert v.stable_raw().phone is True
     for _ in range(3):  # pencereyi negatiflerle doldur
         v.update(DriverState(), 0)
-    assert v.stable().phone is False
+    assert v.stable_raw().phone is False
 
 
 # --- DriverStateEngine: ID-merkezli davranış -------------------------------- #
@@ -91,13 +91,52 @@ def test_engine_is_id_centric(cfg):
 
 
 def test_engine_accumulates_over_frames(cfg):
-    """Aynı ID kareler boyunca eşiğe ulaşınca bayrak aktifleşir (önce pasif)."""
+    """Aynı ID kareler boyunca eşiğe ulaşınca HAM bayrak aktifleşir (önce pasif)."""
     eng = DriverStateEngine(cfg)
     eng.window, eng.min_votes = 16, 8
-    eng.model = _StubModel([_ds(no_seatbelt=0.9)])
-    results = [eng.process(1, object(), fi).no_seatbelt for fi in range(8)]
+    eng.model = _StubModel([_ds(phone=0.9)])  # phone ham bayrak (no_seatbelt artık türetilen)
+    results = [eng.process(1, object(), fi).phone for fi in range(8)]
     assert results[:7] == [False] * 7  # eşik altında pasif
     assert results[7] is True  # 8. oyla aktif
+
+
+# --- no_seatbelt TÜRETME (Katman B; kemerin yokluğundan) -------------------- #
+def test_no_seatbelt_derived_when_belt_absent_and_toggle_on(cfg):
+    """Toggle AÇIK + kemer hiç görülmüyor (>= min_votes gözlem) → no_seatbelt türetilir."""
+    eng = DriverStateEngine(cfg)
+    eng.window, eng.min_votes = 8, 4
+    eng.derive_no_seatbelt = True
+    eng.model = _StubModel([_ds(phone=0.9)])  # kemer YOK (seatbelt False), telefon var
+    out = None
+    for fi in range(4):
+        out = eng.process(1, object(), fi)
+    assert out.no_seatbelt is True  # kemer yokluğundan türetildi
+    assert out.confidence["no_seatbelt"] > 0.0
+
+
+def test_no_seatbelt_not_derived_when_belt_seen(cfg):
+    """Kemer kararlı görülüyorsa (seatbelt raw True) no_seatbelt türetilmez."""
+    eng = DriverStateEngine(cfg)
+    eng.window, eng.min_votes = 8, 4
+    eng.derive_no_seatbelt = True
+    eng.model = _StubModel([_ds(seatbelt=0.9)])  # kemer VAR
+    out = None
+    for fi in range(4):
+        out = eng.process(1, object(), fi)
+    assert out.seatbelt is True
+    assert out.no_seatbelt is False
+
+
+def test_no_seatbelt_toggle_off_by_default(cfg):
+    """Toggle KAPALI (varsayılan) → kemer hiç görülmese de no_seatbelt türetilmez."""
+    eng = DriverStateEngine(cfg)
+    assert eng.derive_no_seatbelt is False  # config varsayılanı: kapalı
+    eng.window, eng.min_votes = 8, 4
+    eng.model = _StubModel([_ds(phone=0.9)])
+    out = None
+    for fi in range(4):
+        out = eng.process(1, object(), fi)
+    assert out.no_seatbelt is False  # toggle kapalı → türetilmez
 
 
 def test_engine_prune_drops_stale_tracks(cfg):
