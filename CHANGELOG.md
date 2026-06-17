@@ -3,6 +3,53 @@
 Bu projedeki tüm önemli değişiklikler bu dosyada belgelenir.
 Format [Keep a Changelog](https://keepachangelog.com/tr/1.0.0/) temellidir.
 
+## [2.3.0] — 2026-06-17 (YOLO26 sunucu sürümü + konfigüre edilebilirlik + FTR hazırlığı)
+
+Hedef: prototipi **YOLO26-merkezli, sunucu-hedefli, yüksek konfigüre edilebilir,
+metrik üreten, FTR'ye hazır** hale getirmek. (Sunucu dağıtımı; edge için puan yok.)
+
+### Eklendi
+- **YOLO26 dedektör omurgası varsayılan.** Birincil Stage-1 dedektör fine-tune v4 (yolov8m)
+  yerine **stok `yolo26l`** (sunucu, doğruluk-önce; mandate). v4 seçilebilir profil olarak kalır.
+- **Config profil katmanı** (`config/profiles/*.yaml`, `default.yaml` üzerine derin-merge):
+  `server` (yolo26l/CUDA/imgsz960), `laptop` (yolo26s/MPS), `v4-finetune` (11-sınıf fine-tune).
+  `--profile` bayrağı (`aura`, `aura.eval`, `tools/test_video.py`) + `AURA_PROFILE` env.
+- **ID-merkezli iki-katmanlı sürücü motoru** (`DriverStateEngine` + `TrackVoter`): Katman A
+  zengin pose-hibrit model, Katman B per-track zaman-oylaması (eski per-alan 16/8'in yerine,
+  aynı davranış + araç çıkınca tampon prune). Mustafa'nın `feature/stage2-driver-state`
+  dalı regresyonsuz entegre edildi; voting `models.driver_state.voting` ile ayarlanır.
+- **FTR §4 metrik harness'ı** (`aura/eval/report.py`): `python -m aura.eval --metrics-report`
+  → video-düzeyi P/R/F1, plaka exact-match+CER, araç doğruluğu, FPS; dedektöre göre A/B;
+  `metrics_report.md`+`.csv`+`.json`. `metrics.prf1()`/`accuracy()` eklendi.
+- **Eğitim tool'u mükemmelleştirildi** (`train/`): eğit→`model.val`→metrik export(mAP/P/R/F1)→
+  best→`weights/`; otomatik cihaz (CUDA→MPS→CPU); `--lr0/--patience/--resume/--no-augment/--no-val/--out`;
+  `dataset --report` veri-dengeleme dağılımı (FTR §2). Boru hattı coco8/yolo26s ile doğrulandı.
+- **`tools/doctor.py`** sağlık kontrolü (bağımlılık/cihaz/ağırlık/config/profil) + `make doctor`/`metrics`.
+- **`ftr.md`** (Final Tasarım Raporu doldurma rehberi + doldurulabilir taslak + final demo hazırlığı),
+  `docs/dagitim.md` (sunucu dağıtımı), `docs/egitim.md`/`docs/veri_seti.md` genişletildi.
+
+### Düzeltmeler / sağlamlaştırma
+- **Plaka CONFIRM dürüstlük zırhları** (dedektör A/B'de ortaya çıktı): (1) **pozisyon-veto** —
+  ayrı-aday bütün-string marjını geçse bile her karakter pozisyonu `char_margin` önde olmalı,
+  değilse `pending`; (2) **zemin koşulu** (`confirm_peak_weight=0.30`) — kazanan plaka en az bir
+  kez net/yakın okunmuş olmalı (hep-uzak sistematik misread onaylanmaz). Her ikisi de K-004 (genel).
+
+### Dedektör A/B (3 gerçek video, dürüst ölçüm — `eval_results/metrics_report.md`)
+| Dedektör | Davranış makro-F1 | Plaka exact | CER | FPS(MPS) |
+|---|---|---|---|---|
+| v4-finetune | 1.00 | 2/3 | 0.083 | 4.83 |
+| yolo26l (varsayılan) | 0.933 | 1/3 | 0.125 | 5.69 |
+> Davranış tespiti çapraz-FP'siz. Karanlık otopark footage'ında EasyOCR il-kodunu (3→0/2)
+> tutarlı yanlış okuyabiliyor; sistem yanlış onay yerine `pending` der. Plaka-kritik demoda
+> `--profile v4-finetune` önerilir; kalıcı çözüm perspektif düzeltme / komite footage'ı.
+
+### Kalite
+- **172+ unit test** yeşil (`pytest -m "not integration"`); yeni: `test_config` (10),
+  `test_driver_engine` (9), `test_report` (8), plaka zırh testleri, train veri-istatistiği.
+  `ruff` + `black` temiz.
+
+---
+
 ## [2.2.1] — 2026-06-13 (geri bildirim düzeltmesi — plaka ilk-karakter + sınıf salınımı)
 
 İkinci geri bildirim ("bozdun; stabilite düzelmedi; eskiden plaka daha iyi okunuyordu;

@@ -267,3 +267,57 @@ tahmin değil, ölçüm: her video için ham per-frame sınıf + ağırlıklı p
   modelin ham-tespit sınırı (dürüstçe belgelendi).
 - **Eval kanıtı:** kullanıcının isteğiyle `tools/test_video.py` (3 video, annotated + JSON)
   ve `tools/show_driver_rois.py` (3 video, sürücü ROI grid) yeniden koşuldu — `eval_results/`.
+
+---
+
+# 17 Haziran 2026 — v2.3 (YOLO26 sunucu sürümü + konfigüre edilebilirlik + FTR hazırlığı)
+
+Kullanıcı isteği: *"prototip v2'yi olabildiğince geliştir; YOLO26 kullan; sunucuda çalışacak
+(edge için puan yok); konfigüre edilebilir + user-friendly olsun; FTR'yi tamamlamayı kolaylaştır,
+ipuçlu ftr.md yarat; tüm .md'leri güncelle; feature branch + PR ile teslim; tüm commit/branch'leri oku."*
+
+## A. Tüm commit'ler + branch'ler okundu
+`main` (v2.2.1'e kadar tüm geçmiş) + `origin/feature/stage2-driver-state` (Mustafa'nın
+ID-merkezli driver-state motoru) incelendi. Şartname + FTR şablonu PDF'leri (v1 reposunda)
+çıkarıldı: FTR = 100p (Özet 5 / **Veri Seti 20** / YZ Çözümü 50 / **Sınama 20** / Kaynakça 5);
+yarışma final puanı %40 YZ + %40 QoD + %20 rapor.
+
+## B. Yapılanlar (workstream'ler, hepsi ölçüldü)
+1. **YOLO26 omurga + profiller (WS-A):** varsayılan dedektör v4(yolov8m) → **stok yolo26l**.
+   `config/profiles/{server,laptop,v4-finetune}.yaml` derin-merge; `--profile` + `AURA_PROFILE`.
+   10 test.
+2. **İki-katmanlı sürücü motoru (WS-C):** Mustafa'nın dalı **regresyonsuz entegre** —
+   Katman A zengin pose-hibrit model KORUNDU, Katman B `DriverStateEngine`/`TrackVoter`
+   per-ID 16/8 oylaması eski per-alan StabilityTracker'ın yerine; voting config'e bağlandı
+   (daldaki latent yol hatası düzeltildi). 9 test. Mock pipeline event'leri korunur.
+3. **Dedektör A/B (WS-B), 3 gerçek video, dürüst ölçüm:**
+   | Dedektör | davranış makro-F1 | plaka exact | CER | FPS(MPS) |
+   |---|---|---|---|---|
+   | v4-finetune | **1.00** | 2/3 | 0.083 | 4.83 |
+   | yolo26l (vars) | 0.933 | 1/3 | 0.125 | 5.69 |
+   Davranış (sigara/telefon/swerving) çapraz-FP'siz. **Bulgu:** yolo26l'in farklı araç kutuları
+   OCR'a farklı crop besliyor → karanlık otoparkta il-kodu misread'i (v1: 0=3.96 vs 3=2.41;
+   v3: yalnız 2/I). **İki GENEL dürüstlük zırhı eklendi** (K-004): pozisyon-veto + zemin koşulu
+   (`confirm_peak_weight`). Bunlar belirsiz/uzak misread'leri `pending`e çevirir; ama OCR'ın
+   TUTARLI-GÜVENLİ yanlış okuması (bu footage) oy-mantığıyla kurtarılamaz — dürüstçe belgelendi.
+   v4 profili bu footage'da daha bağışlayıcı; plaka-kritik demoda önerilir.
+4. **FTR metrik harness'ı (WS-D):** `aura/eval --metrics-report` → video-düzeyi P/R/F1 +
+   plaka CER + FPS + dedektör A/B → `metrics_report.md/csv/json`. `metrics.prf1/accuracy`. 8 test.
+5. **Eğitim tool'u mükemmelleştirildi (WS-E):** eğit→`model.val`→metrik export→best→weights/;
+   otomatik cihaz (MPS dahil); `--lr0/--patience/--resume/--no-augment/--no-val/--out`;
+   `dataset --report` veri-dengeleme. **Boru hattı coco8/yolo26s ile uçtan uca doğrulandı**
+   (gerçek best.pt + mAP). Komite verisiyle gerçek YOLO26 fine-tune için hazır + detaylı rehber.
+6. **User-friendly + sunucu (WS-F):** `tools/doctor.py` sağlık kontrolü; `make doctor/metrics`;
+   `run.sh` profil; `docs/dagitim.md` (CUDA, systemd, ölçeklenme).
+7. **Dokümantasyon (WS-G):** README, CHANGELOG (2.3.0), mimari, sartname_izlenebilirlik,
+   egitim, veri_seti, config/README, dagitim güncellendi; **`ftr.md`** (FTR doldurma rehberi +
+   doldurulabilir taslak + final demo hazırlığı) yaratıldı; pyproject 2.3.0; bu girdi.
+
+## C. Kalite + teslim
+- **170+ unit test** yeşil; `ruff`+`black` temiz. Mantıklı commit'ler `feature/v2.3-yolo26-server`
+  dalında; PR ile teslim (main korunur — Mustafa'nın tabanı korunsun diye).
+
+## D. Açık karar (kullanıcıya)
+Varsayılan **yolo26l** (mandate) bırakıldı; ölçüm v4-finetune'un bu footage'da daha doğru/dürüst
+olduğunu gösteriyor. İkisi de profil olarak hazır; varsayılanı tek satırla değiştirebilirsiniz.
+Karar gerekçesi + A/B tabloları `ftr.md` + bu girdide; PR açıklamasında da özetlendi.
