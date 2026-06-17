@@ -25,6 +25,12 @@ event/annotation stream, dashboard/mobil tüketimi, mock↔gerçek sınırı).
                             [Event / Annotation Stream]  →  Dashboard + Mobil
 ```
 
+> **Yayın diyagramları:** `docs/diagrams/` — yukarıdaki ASCII'nin yayın-kalite Mermaid
+> karşılıkları (FTR §3.2 için): [`pipeline_kusbakisi.mmd`](diagrams/pipeline_kusbakisi.mmd)
+> (uçtan uca akış + QoD tetikleri), [`sistem_topolojisi.mmd`](diagrams/sistem_topolojisi.mmd)
+> (servis topolojisi + gerçek↔mock sınırı), [`plaka_karar_akisi.mmd`](diagrams/plaka_karar_akisi.mmd)
+> (plaka onay karar ağacı + dürüstlük zırhları). Render: [`docs/diagrams/README.md`](diagrams/README.md).
+
 ---
 
 # YZ Katmanı (v1.1 — korunmuş)
@@ -110,6 +116,7 @@ hayalet) track'ler annotation/event üretmez (gerçek video_3'te phantom `truck`
 
 ## 5. Plaka Okuma ve Konsensüs Döngüsü
 Hesap yükü en yüksek parça; katı kaynak yönetimiyle çalışır.
+(Karar ağacının yayın diyagramı: [`docs/diagrams/plaka_karar_akisi.mmd`](diagrams/plaka_karar_akisi.mmd).)
 - **Sweet Spot:** araç uzaktayken OCR pasif; önceden tanımlı sanal bölgeye girince
   etkinleşir (x aralığı yanal yaklaşan araçları da kapsayacak şekilde geniş).
 - **Sıkı plaka kırpma (LP dedektörü):** özel YOLOv11n plaka modeli, araç-altı geniş
@@ -220,6 +227,8 @@ Dashboard tabela kutularını ve sol-üstte "LİMİT" banner'ını çizer (annot
                                       │ statik serve             │ WS/HTTP
                                  [Dashboard]                 [Mobil (Expo)] ──► nv_mock (:8082)
 ```
+
+> Yayın diyagramı (gerçek↔mock sınırı renkli): [`docs/diagrams/sistem_topolojisi.mmd`](diagrams/sistem_topolojisi.mmd).
 
 ### 8.2 Event + Annotation stream sözleşmesi (iki-kanal)
 - **`AnnotationFrame`** (kare başına): `{frame_id, ts, tracks:[{track_id, bbox, cls, plate,

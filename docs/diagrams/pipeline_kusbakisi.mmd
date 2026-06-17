@@ -1,0 +1,74 @@
+%% AURA — Pipeline Kuşbakışı (ham video → çıktı)
+%% Kaynak: aura/pipeline/pipeline.py::Pipeline.process_frame + docs/mimari.md §1-8
+%% Gerçek akış: preprocessing → detection+track → ROI ⊗ stability → (driver ∥ plate)
+%%              → speed → ID-merkezli accumulator → event/annotation stream
+flowchart TD
+    CAM["Kamera / Video / RTSP<br/>(cv2.VideoCapture: path | index | URL)"]
+    PRE["1. Ön-İşleme (Preprocessor)<br/>far-glare maskeleme · motion-blur · yansıma · occlusion"]
+    DET["2. YOLO26 + ByteTrack<br/>araç/kişi/tabela tespiti + track_id"]
+    CLSVOTE["Alan-ağırlıklı sınıf-oyu (TrackClassVoter)<br/>conf × bbox_alan/kare → kararlı car/truck"]
+    GATE{"Çıktı kapısı<br/>track_age ≥ min_track_frames?"}
+    DROP["Hayalet track (2-karelik)<br/>sadece hız geçmişi biriksin, çıktı yok"]
+    ROI["ROI ayrımı (crop_rois)<br/>kabin ROI + plaka ROI"]
+
+    subgraph DRV["Sürücü ROI — Stage-2 (DriverStateEngine)"]
+        DLOCK["DriverLock sıkı kırpma<br/>sürücü kişi-kutusu (+%10/%15 pad)"]
+        LA["Katman A: model (ham bayrak)<br/>pose-hibrit / YOLO26l<br/>bilek↔ağız·kulak geometri + nesne kanıtı"]
+        LB["Katman B: per-ID zaman-oylaması (TrackVoter)<br/>16/8 → phone·smoking·no_seatbelt·fatigue"]
+        DLOCK --> LA --> LB
+    end
+
+    subgraph PLT["Plaka ROI — Konsensüs Döngüsü"]
+        SWEET["Sweet-spot kapısı<br/>uzakta OCR pasif"]
+        LP["YOLO11n LP dedektör → sıkı kırpma"]
+        VOTE["Güven-ağırlıklı kalıcı oy havuzu<br/>conf × kaynak-kalitesi (LP px)"]
+        VETO["Pozisyon-veto + zemin-koşulu<br/>char_margin · confirm_peak_weight"]
+        OCR["OCR (EasyOCR/PaddleOCR)<br/>segment birleştirme · TR regex"]
+        SWEET --> LP --> VOTE --> VETO --> OCR
+    end
+
+    SPEED["Hız (SpeedEstimator)<br/>metric oto-kalibrasyon (Kalman+EMA)<br/>+ swerving (ZigZag yanal yörünge)"]
+    ACC["6. ID-merkezli Accumulator<br/>risk kuralları (speed.over_limit / swerving / driver)"]
+    EMIT["Event / Annotation stream (EventEmitter)<br/>AuraEvent (durum değişimi) ∥ AnnotationFrame (kare)"]
+
+    DASH["Dashboard (canvas)"]
+    MOB["Mobil (Expo)"]
+    JSONL["JSONL kanıt izi<br/>(--save-events · şartname 4.5)"]
+
+    subgraph QODT["QoD Tetikleyiciler (kritik an)"]
+        T1["Yaklaşma: bbox alan-büyüme ≥ growth<br/>(TOGG yaklaşıyor → optimize)"]
+        T2["Kalite: plate_too_small / voting-buffer ret<br/>(LP px düşük → HIGH_THROUGHPUT)"]
+        T3["Anomali: hız ≥ limit · relative-vel · swerving<br/>(→ LOW_LATENCY)"]
+    end
+    QOD["QoDController (histerezis)<br/>optimize iste / state / opsiyonel qod_mock sync"]
+
+    CAM --> PRE --> DET --> CLSVOTE --> GATE
+    GATE -- "hayir (genç)" --> DROP
+    GATE -- "evet" --> ROI
+    ROI --> DRV
+    ROI --> PLT
+    LB --> ACC
+    OCR --> ACC
+    ROI --> SPEED
+    SPEED --> ACC
+    ACC --> EMIT
+    EMIT --> DASH
+    EMIT --> MOB
+    EMIT --> JSONL
+
+    SPEED -. "yaklaşma/anomali" .-> T1
+    PLT -. "kalite" .-> T2
+    SPEED -. "anomali/swerving" .-> T3
+    T1 --> QOD
+    T2 --> QOD
+    T3 --> QOD
+    QOD -. "qod_active/profile" .-> ACC
+
+    classDef real fill:#1b5e20,stroke:#0d3010,color:#fff;
+    classDef qod fill:#0d47a1,stroke:#062a66,color:#fff;
+    classDef out fill:#4a148c,stroke:#2a0c50,color:#fff;
+    classDef drop fill:#616161,stroke:#333,color:#fff,stroke-dasharray:4 3;
+    class PRE,DET,CLSVOTE,ROI,DLOCK,LA,LB,SWEET,LP,VOTE,VETO,OCR,SPEED,ACC,EMIT real;
+    class QODT,T1,T2,T3,QOD qod;
+    class DASH,MOB,JSONL,EMIT out;
+    class DROP drop;

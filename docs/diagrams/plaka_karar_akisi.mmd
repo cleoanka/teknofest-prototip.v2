@@ -1,0 +1,48 @@
+%% AURA — Plaka Karar Akışı (dürüstlük zırhları vurgulu)
+%% Kaynak: docs/mimari.md §5 + aura/plate/{reader.py,normalize.py} + config/default.yaml plate.*
+%% Felsefe: yanlış plaka ASLA onaylanmaz → CONFIRMED ya da dürüst PENDING+partial
+flowchart TD
+    IN["Plaka ROI (araç-altı geniş crop)"]
+    SWEET{"Sweet-spot içinde mi?<br/>(plate.sweet_spot)"}
+    SKIP["OCR pasif — araç uzak<br/>(kaynak tasarrufu)"]
+    LP["LP dedektör (YOLO11n) sıkı kırpma<br/>ağırlık yoksa loglu geniş-crop fallback"]
+
+    PXGATE{"LP kırpık yüksekliği<br/>≥ lp_vote_min_px (13)?"}
+    TOOSMALL["plate_too_small<br/>oylamaya GİRMEZ + kalite QoD tetiği<br/>(< lp_qod_below_px=26 → HIGH_THROUGHPUT)"]
+
+    OCR["OCR + güçlendirme<br/>aynı-satır segment birleştirme · parlama testi · CLAHE+2x"]
+    WEIGHT["Boyut-farkında ağırlık<br/>kanıt = OCR_conf × kaynak-kalitesi (LP px)"]
+    POOL["Format-öncelikli kalıcı oy havuzu<br/>track ömrü boyunca birikir (redde sıfırlanmaz)<br/>TR-blok normalizasyon: O→0 · 1→I"]
+
+    DEC{"Karar yolu"}
+    SEP["Ayrı-aday konsensüsü<br/>min ağırlık + ikinciye fark + oran"]
+    FUSE["Pozisyon-hizalı karakter füzyonu<br/>aynı yapıdaki okumalar pozisyon-pozisyon"]
+    MARGIN{"HER pozisyonda kazanan<br/>ikinciyi char_margin (1.5) MUTLAK geçti mi?"}
+    PEAK{"Zemin-koşulu<br/>tepe ağırlığı ≥ confirm_peak_weight (0.30)?"}
+
+    CONF["✅ PLATE_CONFIRMED<br/>ID'ye kalıcı yaz · OCR kapat (erken çıkış)<br/>kalite QoD oturumu hemen bırak<br/>post-validasyon: ^\\d{2}[A-Z]{1,3}\\d{2,4}$"]
+    PEND["⚠️ Dürüst PENDING<br/>en güçlü aday → PlateState.partial (KANIT izi, kesin değil)<br/>şartname 4.5 · yanlış onay yok"]
+
+    IN --> SWEET
+    SWEET -- "hayir" --> SKIP
+    SWEET -- "evet" --> LP --> PXGATE
+    PXGATE -- "hayir (çok küçük)" --> TOOSMALL --> PEND
+    PXGATE -- "evet" --> OCR --> WEIGHT --> POOL --> DEC
+    DEC --> SEP
+    DEC --> FUSE
+    SEP -- "konsensüs var" --> PEAK
+    SEP -- "konsensüs yok" --> PEND
+    FUSE --> MARGIN
+    MARGIN -- "bir pozisyon belirsiz (0↔3 / I↔T)" --> PEND
+    MARGIN -- "tüm pozisyonlar net" --> PEAK
+    PEAK -- "evet" --> CONF
+    PEAK -- "hayir (zayıf kanıt)" --> PEND
+
+    classDef armor fill:#e65100,stroke:#8a3000,color:#fff;
+    classDef ok fill:#1b5e20,stroke:#0d3010,color:#fff;
+    classDef pend fill:#f9a825,stroke:#9a6800,color:#000;
+    classDef step fill:#0d47a1,stroke:#062a66,color:#fff;
+    class IN,LP,OCR,WEIGHT,POOL,SEP,FUSE step;
+    class SWEET,PXGATE,DEC,MARGIN,PEAK armor;
+    class CONF ok;
+    class PEND,TOOSMALL,SKIP pend;
