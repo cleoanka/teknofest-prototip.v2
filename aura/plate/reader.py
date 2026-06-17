@@ -62,10 +62,14 @@ class PlateReader:
         # OCR-öncesi görüntü hazırlama (WP-A1): dewarp (fronto-paralel perspektif
         # düzeltme) + enhance (CLAHE+gamma+unsharp). LP kırpığına, OCR'a girmeden
         # HEMEN ÖNCE uygulanır. Karanlık/açılı otoparkta il-kodu misread'ini
-        # (3→0/2) azaltır. Flag'ler config'ten (varsayılan AÇIK); dışarıdan OCR
-        # enjekte edilmiş testlerde de çalışır (saf cv2/numpy, model gerektirmez).
-        self._dewarp_enabled = bool(cfg.get("plate.dewarp.enabled", True))
-        self._enhance_enabled = bool(cfg.get("plate.enhance.enabled", True))
+        # (3→0/2) azaltır. Flag'ler config'ten. VARSAYILAN KAPALI (güvenli-OFF):
+        # commit 8fef7f6 ölçtü ki bu footage'da T→I kayması 34TC8532→34IC8532
+        # YANLIŞ onayına yol açıyor — eksik-config kullanıcısı bu regresyona
+        # düşmesin diye kod-içi varsayılan da False. (config/default.yaml zaten
+        # false; iki kaynak hizalı.) Saf cv2/numpy, model gerektirmez; dışarıdan
+        # OCR enjekte edilmiş testlerde de çalışır.
+        self._dewarp_enabled = bool(cfg.get("plate.dewarp.enabled", False))
+        self._enhance_enabled = bool(cfg.get("plate.enhance.enabled", False))
         self.qod = qod
         self.sr = get_optional(cfg, "super_resolution")  # §8.2 (lazy; kapalıysa None)
         # Sıkı plaka kırpma (opsiyonel LP dedektörü): araç-altı GENİŞ crop yerine

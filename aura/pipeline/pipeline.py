@@ -12,6 +12,7 @@ Akış (plan.md §6.9):
 # böylece `np.ndarray` gibi ağır importları runtime'da yapmadan imza yazabiliriz.
 from __future__ import annotations
 
+import inspect  # crop_rois imza varsayılanından cabin_ratio'yu türetmek için (desync önleme)
 import logging  # pipeline olaylarını "aura.pipeline" kanalına loglamak için
 from collections.abc import Iterator  # frames() jeneratörünün dönüş tipini belirtmek için
 from typing import TYPE_CHECKING  # sadece tip-denetiminde çalışan, runtime'da atlanan import bloğu
@@ -115,6 +116,12 @@ class Pipeline:
         self.driver_lock = DriverLock(cfg)  # sürücüyü araca kilitleyen kimlik takipçisi
         # Sürücü kutusunu kırparken etrafa eklenen oran (varsayılan %15 dolgu).
         self.driver_roi_pad = float(cfg.get("driver_lock.roi_pad", 0.15))
+        # Kabin (sürücü bölgesi) oranı: araç bbox yüksekliğinin üst payı kabin sayılır.
+        # TEK doğruluk kaynağı crop_rois imza varsayılanı (desync önlenir: aynı değer
+        # hem ROI kırpmada hem aşağıdaki devasa-ROI cap geometri hesabında kullanılır).
+        # Config'le opsiyonel override (plate.cabin_ratio); verilmezse imza varsayılanı.
+        _cabin_default = inspect.signature(crop_rois).parameters["cabin_ratio"].default
+        self.cabin_ratio = float(cfg.get("plate.cabin_ratio", _cabin_default))
         # Devasa sürücü ROI sınırı (yalnız geometrik kabin FALLBACK'inde, kişi-kutusu yok):
         # ROI kare alanının max_roi_area_ratio'sunu aşarsa sürücü köşesine doğru o orana
         # KIRPILIR; skip_if_oversized=True ise (alternatif) o kare sürücü-durum çıkarımı
@@ -193,6 +200,12 @@ class Pipeline:
 
         events: list[AuraEvent] = []  # bu karede üretilen tüm event'ler burada toplanır
         track_dicts: list[dict] = []  # bu karedeki her aracın annotation sözlüğü
+        # ÇIKTIYA GİREN araçların track_id'leri: yalnız ÇIKTI kapısını (min_output_frames)
+        # ve takip-guard'ını (track_id>=0) geçen, track_dicts'e yazılan araçlar buraya
+        # girer. persons (sürücü/yolcu) çıktısı YALNIZ bu araçlara bağlanır → bastırılmış/
+        # genç araç ve takipsiz (vehicle_id=-1) araç ASLA orphan sürücü kutusu üretmez
+        # (track_dicts ile persons tam tutarlı; K-004: kurala bağlı, videoya değil).
+        emitted_vehicle_ids: set[int] = set()
 
         # Sahne-seviyesi tabela bağlamı: aktif hız limitini çıkar ve accumulator'a ver.
         # Araç döngüsünden ÖNCE yapılır — çünkü 'speed.over_limit' risk koşulu bunu kullanır.
@@ -239,7 +252,7 @@ class Pipeline:
                 continue
 
             # Araç kutusundan iki ROI kes: kabin (sürücü bölgesi) ve plaka bölgesi.
-            cabin, plate_roi = crop_rois(frame, det.bbox)
+            cabin, plate_roi = crop_rois(frame, det.bbox, cabin_ratio=self.cabin_ratio)
 
             # Sürücü ROI: kilitli/aday sürücünün kutusundan kes (kesin, DAR);
             # kişi yoksa geometrik kabin crop'una düş (geriye dönük uyumluluk).
@@ -262,11 +275,12 @@ class Pipeline:
                 and self.driver_max_roi_area_ratio > 0
             ):
                 h_, w_ = frame.shape[0], frame.shape[1]
-                # cabin kutusunun frame koordinatları (crop_rois ile aynı: araç üst %55)
+                # cabin kutusunun frame koordinatları (crop_rois ile AYNI cabin_ratio —
+                # tek kaynak self.cabin_ratio; hardcode 0.55 desync riski giderildi)
                 cx1 = max(0, int(det.bbox.x1))
                 cy1 = max(0, int(det.bbox.y1))
                 cx2 = min(w_, int(det.bbox.x2))
-                cy2 = min(h_, int(det.bbox.y1 + (det.bbox.y2 - det.bbox.y1) * 0.55))
+                cy2 = min(h_, int(det.bbox.y1 + (det.bbox.y2 - det.bbox.y1) * self.cabin_ratio))
                 capped = cap_roi_to_area(
                     frame,
                     (cx1, cy1, cx2, cy2),
@@ -388,6 +402,7 @@ class Pipeline:
                 # Opsiyonel modül açıksa annotation'a sıkıştırılmış payload ekle.
                 adict["zwp"] = self.zwp.build_payload(adict, plate_roi)
             track_dicts.append(adict)  # bu aracı kare çıktısına ekle
+            emitted_vehicle_ids.add(tid)  # persons (sürücü/yolcu) yalnız bu araca bağlanabilir
 
         # --- kare sonu temizlik/ilerletme (araç döngüsü dışında) --- #
         self.driver_lock.prune(idx)  # uzun süredir görülmeyen sürücü kilitlerini düşür
@@ -413,6 +428,13 @@ class Pipeline:
         person_dicts: list[dict] = []
         seen_pid: set[int] = set()
         for (vid, _), assign in zip(vehicles, driver_assignments, strict=True):
+            # ÇIKTI-tutarlılık kapısı: persons YALNIZ track_dicts'e yazılmış (çıktı
+            # kapısını + track_id>=0 guard'ını geçen) araçlara bağlanır. Takipsiz
+            # (vid=-1) ve bastırılmış/genç (boş-track / age<min_output_frames) araçlar
+            # emitted_vehicle_ids'te DEĞİL → sürücü/yolcu kutusu ÜRETMEZ (orphan/phantom
+            # person sızıntısı kapatıldı; track_dicts ile persons birebir tutarlı).
+            if vid not in emitted_vehicle_ids:
+                continue
             if (
                 assign.driver_bbox is not None
                 and assign.driver_id is not None

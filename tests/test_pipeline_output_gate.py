@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from aura.detection.detector import Detection
+from aura.detection.detector import Detection, Person
 from aura.schema import BBox
 
 
@@ -19,8 +19,14 @@ class _ScriptedDetector:
     last_signs/last_aux. Ağır model yok — çıktı kapısı saf mantığı test edilir.
     """
 
-    def __init__(self, script: list[list[Detection]]):
+    def __init__(
+        self,
+        script: list[list[Detection]],
+        persons_script: list[list[Person]] | None = None,
+    ):
         self._script = script
+        # Kare-başına kişi script'i (sürücü/yolcu testleri için); verilmezse hep boş.
+        self._persons_script = persons_script
         self._i = 0
         self.last_persons: list = []
         self.last_signs: list = []
@@ -28,6 +34,10 @@ class _ScriptedDetector:
 
     def detect(self, frame):
         dets = self._script[self._i] if self._i < len(self._script) else []
+        if self._persons_script is not None:
+            self.last_persons = (
+                self._persons_script[self._i] if self._i < len(self._persons_script) else []
+            )
         self._i += 1
         return dets
 
@@ -39,6 +49,12 @@ def _det(track_id, cls="car"):
     # Kare ortasında makul boyutlu bir araç kutusu (sweet-spot içinde).
     bbox = BBox(x1=240.0, y1=140.0, x2=400.0, y2=300.0, conf=0.9, cls=cls)
     return Detection(bbox=bbox, track_id=track_id)
+
+
+def _person_in_vehicle(track_id):
+    # _det() aracının (240,140)-(400,300) İÇİNE tam düşen kişi kutusu →
+    # DriverLock containment >= min_containment → sürücü olarak seçilir (driver_bbox dolu).
+    return Person(bbox=BBox(x1=300.0, y1=180.0, x2=360.0, y2=290.0, conf=0.9), track_id=track_id)
 
 
 def _build_pipeline(cfg):
@@ -121,6 +137,77 @@ def test_output_gate_floored_to_heavy_gate(cfg):
     cfg.data["tracking"]["min_output_frames"] = 1
     p = _build_pipeline(cfg)
     assert p.min_output_frames == 5  # max(5, 1)
+
+
+# --- MAJOR: phantom/orphan PERSONS sızıntısı (persons çıktı-tutarlılık kapısı) ---
+def _persons(anno):
+    return list(anno.persons)
+
+
+def test_suppressed_young_vehicle_emits_no_persons(cfg):
+    # Bastırılmış (genç, min_output_frames altı) araç: kişi kabinde olsa bile
+    # sürücü/yolcu kutusu ÇIKMAZ (track_dicts ile persons tutarlı; orphan yok).
+    cfg.data["tracking"]["min_output_frames"] = 3
+    cfg.data["tracking"]["min_track_frames"] = 3
+    p = _build_pipeline(cfg)
+    # vehicle_id=7 yalnız 2 kare yaşar (age 1,2 < 3 → çıktı kapısını GEÇMEZ);
+    # her karede kabininde bir kişi var (sürücü adayı).
+    p.detector = _ScriptedDetector(
+        script=[[_det(7)], [_det(7)]],
+        persons_script=[[_person_in_vehicle(50)], [_person_in_vehicle(50)]],
+    )
+    frame = np.zeros((360, 640, 3), np.uint8)
+    seen_tracks, seen_persons = [], []
+    for i in range(2):
+        anno, _ = p.process_frame(frame, i)
+        seen_tracks.extend(_track_ids(anno))
+        seen_persons.extend(_persons(anno))
+    assert seen_tracks == []  # araç çıktıya girmedi (mevcut davranış)
+    assert seen_persons == []  # ⇒ sürücü person_dict'i de ÜRETİLMEDİ (orphan kapatıldı)
+
+
+def test_untracked_vehicle_emits_no_persons(cfg):
+    # Takipsiz araç (track_id=None → vehicle_id=-1): kişi kabinde olsa bile
+    # sürücü/yolcu kutusu ÇIKMAZ (vid=-1 emitted_vehicle_ids'te değil).
+    cfg.data["tracking"]["min_output_frames"] = 1
+    cfg.data["tracking"]["min_track_frames"] = 1
+    p = _build_pipeline(cfg)
+    p.detector = _ScriptedDetector(
+        script=[[_det(None)] for _ in range(5)],
+        persons_script=[[_person_in_vehicle(51)] for _ in range(5)],
+    )
+    frame = np.zeros((360, 640, 3), np.uint8)
+    seen_persons = []
+    for i in range(5):
+        anno, _ = p.process_frame(frame, i)
+        seen_persons.extend(_persons(anno))
+    assert seen_persons == []  # vehicle_id=-1 için orphan sürücü kutusu KALMADI
+
+
+def test_long_lived_vehicle_emits_persons(cfg):
+    # Uzun-ömürlü gerçek araç (çıktı kapısını geçen): kabinindeki kişi sürücü olarak
+    # çıktıya YANSIR (davranış korunur — persons tamamen kaybolmadı).
+    cfg.data["tracking"]["min_output_frames"] = 3
+    cfg.data["tracking"]["min_track_frames"] = 3
+    p = _build_pipeline(cfg)
+    p.detector = _ScriptedDetector(
+        script=[[_det(9)] for _ in range(6)],
+        persons_script=[[_person_in_vehicle(60)] for _ in range(6)],
+    )
+    frame = np.zeros((360, 640, 3), np.uint8)
+    seen_persons = []
+    last_anno = None
+    for i in range(6):
+        anno, _ = p.process_frame(frame, i)
+        last_anno = anno
+        seen_persons.extend(_persons(anno))
+    # Çıktı kapısını geçen karelerde sürücü person_dict'i üretildi, vehicle_id=9 ile bağlı.
+    assert seen_persons, "uzun-ömürlü araç için sürücü kutusu üretilmedi (persons gate fazla sıkı)"
+    drivers = [pd for pd in seen_persons if pd["role"] == "driver"]
+    assert drivers and all(pd["track_id"] == 60 for pd in drivers)
+    assert all(pd["vehicle_id"] == 9 for pd in seen_persons)
+    # Son karede araç da kişi de çıktıda → tam tutarlılık.
+    assert 9 in _track_ids(last_anno) and _persons(last_anno)
 
 
 # --- SORUN 3: devasa kabin-fallback ROI sınırı (pipeline entegrasyonu) ----------
