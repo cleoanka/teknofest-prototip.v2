@@ -97,6 +97,21 @@ class PlateReader:
         #   ağırlık = clamp(lp_h / size_full_px, size_floor, 1.0)
         self.lp_vote_min_px = int(cfg.get("plate.lp_vote_min_px", 13))
         self.lp_qod_below_px = int(cfg.get("plate.lp_qod_below_px", 26))
+        # Keskinlik-farkında kanıt ağırlığı (Aday-1): LP kırpığının Laplacian
+        # varyansı size_w'ye çarpan olur (bulanık uzak kareyi kısar). Saf cv2,
+        # install gerektirmez; varsayılan KAPALI; enjekte-OCR'da atlanır.
+        sw = cfg.get("plate.sharpness_weight", {}) or {}
+        self._sharp_enabled = bool(sw.get("enabled", False)) and ocr is None
+        self._sharp_var_full = float(sw.get("var_full", 120.0))
+        self._sharp_floor = float(sw.get("floor", 0.25))
+        # LP-kırpık süper-çözünürlük (TEKNİK-2): OCR-öncesi küçük kırpığı Lanczos
+        # ile büyüt + unsharp. Saf cv2 (dnn_superres/contrib gerektirmez). Yalnız
+        # kırpık yüksekliği < min_h_px iken uygulanır; varsayılan KAPALI.
+        cu = cfg.get("plate.crop_upscale", {}) or {}
+        self._cu_enabled = bool(cu.get("enabled", False))
+        self._cu_min_h_px = int(cu.get("min_h_px", 40))
+        self._cu_scale = float(cu.get("scale", 3.0))
+        self._cu_unsharp = float(cu.get("unsharp_amount", 0.6))
         self._size_full_px = float(pv.get("size_full_px", 40))
         self._size_floor = float(pv.get("size_floor", 0.15))
         self._no_lp_weight = float(pv.get("no_lp_weight", 0.5))
@@ -167,6 +182,44 @@ class PlateReader:
 
             crop = cv2.resize(crop, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
         return crop, lp_h, lp_box
+
+    def _sharpness_factor(self, img: np.ndarray | None) -> float:
+        """LP kırpığının keskinliğinden (Laplacian varyansı) [floor..1] çarpan üret.
+
+        Bulanık (uzak/düşük-odak) kırpık küçük çarpan → kanıt değeri kısılır; net
+        kırpık 1.0. var >= var_full → 1.0; arası lineer; en altta floor (oy hakkı
+        tamamen sıfırlanmaz). Saf cv2/numpy, model gerektirmez. Hesaplanamazsa 1.0
+        (güvenli kimlik — keskinlik bilinmiyorsa ağırlık kısılmaz)."""
+        if img is None or getattr(img, "size", 0) == 0:
+            return 1.0
+        import cv2
+
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img.ndim == 3 else img
+        var = float(cv2.Laplacian(gray, cv2.CV_64F).var())
+        full = max(self._sharp_var_full, 1e-6)
+        return max(self._sharp_floor, min(1.0, var / full))
+
+    def _crop_upscale(self, img: np.ndarray | None) -> np.ndarray | None:
+        """Küçük LP kırpığını Lanczos ile büyüt + hafif unsharp maske (TEKNİK-2).
+
+        Yalnız kırpık yüksekliği < min_h_px ise uygulanır (büyük/net kırpık
+        değişmeden döner — gereksiz yumuşatma/maliyet yok). Lanczos (INTER_LANCZOS4)
+        küçük metin kenarlarını CUBIC'ten daha iyi korur; ardından Gaussian-tabanlı
+        unsharp maske karakter konturlarını keskinleştirir. Saf cv2; dnn_superres
+        ya da opencv-contrib GEREKTİRMEZ. Hata/boş girişte güvenli kimlik (img)."""
+        if img is None or getattr(img, "size", 0) == 0:
+            return img
+        if img.shape[0] >= self._cu_min_h_px:
+            return img  # büyük/net kırpık — dokunma
+        import cv2
+
+        up = cv2.resize(
+            img, None, fx=self._cu_scale, fy=self._cu_scale, interpolation=cv2.INTER_LANCZOS4
+        )
+        if self._cu_unsharp > 0:
+            blur = cv2.GaussianBlur(up, (0, 0), sigmaX=1.0)
+            up = cv2.addWeighted(up, 1.0 + self._cu_unsharp, blur, -self._cu_unsharp, 0)
+        return up
 
     @staticmethod
     def _enhance(img: np.ndarray) -> np.ndarray:
@@ -253,6 +306,13 @@ class PlateReader:
             # LP dedektörü çalışıyor ama plakayı bulamadı → geniş-crop okuması
             # düşük güvenilirlik sınıfıdır (kanıt tamamen atılmaz, ağırlığı kısılır).
             size_w = self._no_lp_weight
+        # KESKİNLİK-FARKINDA kanıt ağırlığı (Aday-1): bulanık/uzak kare (düşük
+        # Laplacian varyansı) size_w'yi [floor..1] çarpanla kısar → net/yakın kare
+        # konsensüste baskın olur. Yalnız flag açıkken; keskinlik OCR-öncesi
+        # dewarp/enhance dönüşümlerinden ETKİLENMESİN diye ham LP kırpığı üzerinden
+        # ÖLÇÜLÜR. Hesaplanamazsa 1.0 (kimlik — ağırlık kısılmaz).
+        if self._sharp_enabled:
+            size_w *= self._sharpness_factor(crop)
         # OCR-öncesi hazırlama: önce fronto-paralel dewarp (açılı plaka → düz),
         # sonra enhance (CLAHE+gamma+unsharp). Köşe bulunamazsa dewarp kimlik
         # döner; ikisi de saf cv2/numpy ve şekil-korur. last_plate_bbox/size_w
@@ -261,6 +321,13 @@ class PlateReader:
         # görüntü ayrıca tutulur: enhance + reader._enhance üst üste binerse
         # (CLAHE-üzerine-CLAHE + çift kontrast) bazı karelerde OCR'ı KÖTÜLEŞTİRİR.
         # İlk geçiş enhance'li okur; ikinci-şans HAM (enhance'siz) crop'tan türer.
+        # LP-kırpık süper-çözünürlük (TEKNİK-2): OCR-öncesi, küçük kırpığı Lanczos
+        # büyüt + unsharp. lp_h/size_w/last_plate_bbox YUKARIDA upscale-öncesi ham
+        # kırpıktan türetildi → bu dönüşüm kanıt ağırlığını/QoD'yi ETKİLEMEZ. Yalnız
+        # küçük kırpığa uygulanır (helper içinde min_h_px kapısı). İkinci-şans
+        # varyantı da büyütülmüş kırpıktan türesin diye dewarp/enhance'ten ÖNCE.
+        if self._cu_enabled and crop is not None and getattr(crop, "size", 0):
+            crop = self._crop_upscale(crop)
         raw_crop = crop  # dewarp sonrası, enhance öncesi — ikinci-şans referansı
         if crop is not None and getattr(crop, "size", 0):
             if self._dewarp_enabled:

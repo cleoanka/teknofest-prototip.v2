@@ -13,7 +13,7 @@ import numpy as np
 from aura.plate import ocr as ocr_mod
 from aura.plate.dewarp import dewarp_plate
 from aura.plate.enhance import enhance_plate
-from aura.plate.ocr import PaddleOCRReader, RealOCR, build_ocr
+from aura.plate.ocr import FastPlateOCRReader, PaddleOCRReader, RealOCR, build_ocr
 
 
 # --- dewarp_plate ---------------------------------------------------------- #
@@ -105,6 +105,11 @@ class _StubPaddle(PaddleOCRReader):
         self.kind = "paddle"
 
 
+class _StubFastPlate(FastPlateOCRReader):
+    def __init__(self, cfg):
+        self.kind = "fastplate"
+
+
 def test_build_ocr_paddle_missing_falls_back_to_easyocr(monkeypatch, cfg):
     # plate.ocr_engine=paddleocr ama paddleocr YOK → LOGLU olarak EasyOCR (RealOCR).
     monkeypatch.setitem(cfg.data["plate"], "ocr_engine", "paddleocr")
@@ -127,8 +132,32 @@ def test_build_ocr_paddle_present_selects_paddle(monkeypatch, cfg):
     assert getattr(engine, "kind", None) == "paddle"
 
 
-def test_build_ocr_default_engine_is_easyocr(monkeypatch, cfg):
-    # ocr_engine belirtilmese/easyocr ise MEVCUT yol: RealOCR (paddle'a hiç bakmaz).
+def test_build_ocr_default_engine_is_fastplate(monkeypatch, cfg):
+    # VARSAYILAN config.plate.ocr_engine=fastplate (18 Haz ölçümü: v3'ü kurtardı,
+    # v1/v2 exact'i korudu) → fast-plate-ocr kuruluysa FastPlateOCRReader sarmalanır.
+    monkeypatch.setitem(cfg.data["runtime"], "ai_mode", "real")
+    monkeypatch.setattr(ocr_mod, "_easyocr_available", lambda: True)
+    monkeypatch.setattr(ocr_mod, "_fastplate_available", lambda: True)
+    monkeypatch.setattr(ocr_mod, "FastPlateOCRReader", _StubFastPlate)
+    engine = build_ocr(cfg)
+    assert getattr(engine, "kind", None) == "fastplate"
+
+
+def test_build_ocr_fastplate_missing_falls_back_to_easyocr(monkeypatch, cfg):
+    # plate.ocr_engine=fastplate ama fast-plate-ocr YOK → LOGLU olarak EasyOCR (RealOCR).
+    # Varsayılan fastplate olduğundan, motoru kurmamış kullanıcı baseline easyocr'a düşer.
+    monkeypatch.setitem(cfg.data["plate"], "ocr_engine", "fastplate")
+    monkeypatch.setitem(cfg.data["runtime"], "ai_mode", "real")
+    monkeypatch.setattr(ocr_mod, "_easyocr_available", lambda: True)
+    monkeypatch.setattr(ocr_mod, "_fastplate_available", lambda: False)
+    monkeypatch.setattr(ocr_mod, "RealOCR", _StubRealOCR)
+    engine = build_ocr(cfg)
+    assert getattr(engine, "kind", None) == "real"
+
+
+def test_build_ocr_easyocr_explicit_selects_real(monkeypatch, cfg):
+    # ocr_engine=easyocr açıkça seçiliyse MEVCUT yol: RealOCR (paddle/fastplate'e bakmaz).
+    monkeypatch.setitem(cfg.data["plate"], "ocr_engine", "easyocr")
     monkeypatch.setitem(cfg.data["runtime"], "ai_mode", "real")
     monkeypatch.setattr(ocr_mod, "_easyocr_available", lambda: True)
     monkeypatch.setattr(ocr_mod, "RealOCR", _StubRealOCR)

@@ -57,8 +57,17 @@ tutarlıysa yazılır (flicker koruması).
 `voting_buffer_size` (rejected-event kadansı), `consensus_ratio`, `ocr_lang`,
 `regex` (Türk plaka), `min_pixel_height` (altında kalite tetiklenir),
 `ocr_max_side` / `ocr_enhance_below_px` (OCR girdi boyut yönetimi),
-`ocr_engine` (`easyocr` varsayılan | `paddleocr`; paddleocr kurulu değilse loglu EasyOCR
-fallback — `pip install 'aura[paddle]'`),
+`ocr_engine` (**`fastplate` varsayılan** | `easyocr` | `paddleocr`; seçilen motor kurulu
+değilse her durumda loglu EasyOCR fallback). **`fastplate`** = plakaya-özel hafif ONNX
+modeli (`global-plates-mobile-vit-v2`, ~5MB, `pip install fast-plate-ocr onnxruntime`;
+`fastplate_model` ile model adı seçilir, ilk koşuda otomatik iner). Çıktı EasyOCR
+`readtext` sözleşmesine sarılır → `_merge_line` + TR-normalizasyon + küçük-ROI ikinci-şans
+motor-bağımsız çalışır. **ÖLÇÜLDÜ (18 Haz 2026, 3 gerçek video, GT=34TC8532, CER=Lev/8):**
+easyocr baseline video_3'ü PENDING bırakıyordu (partial=`24IC8532`, CER 0.25 — uzak karelerde
+sistematik 3→2 il-kodu + T→I misread'i konsensüse girmiyordu); **fastplate video_3'ü
+CONFIRMED `34TC8532`'ye (CER 0.0) çekti VE video_1/video_2 exact'ini korudu (3/3 GT eşleşti).**
+K-004: config-driven motor seçimi, oran-bazlı, videoya-özel sabit/kara-liste YOK; fast-plate-ocr
+kurulu değilse easyocr baseline'ına şeffaf düşülür. PaddleOCR için: `pip install 'aura[paddle]'`,
 `ocr_gpu` (varsayılan `true` — OCR motorunu GPU'da çalıştır; **CUDA gerçekten kullanılabilir
 değilse otomatik CPU'ya düşer**, `aura/device.cuda_is_usable` ile probe edilir. EasyOCR'a
 `gpu=`, PaddleOCR'a sürüme göre `device=gpu`/`use_gpu=` olarak geçirilir),
