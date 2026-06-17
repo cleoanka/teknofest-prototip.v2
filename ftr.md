@@ -6,10 +6,13 @@
 > taslak**. Üç işlevi birden görür: (1) raporu doldurma kılavuzu, (2) finale
 > (mobil + 5G + QoD demo) hazırlık, (3) prototipin yeteneklerinin tam dokümantasyonu.
 >
-> ⚠️ **Takvim dürüstlüğü:** Şartnamedeki FTR son teslim tarihi **14.06.2026 17:00**'dir
-> (bugün 17.06.2026 — tarih geçmiş görünüyor). Bu rehber; rapor teslim edildiyse **final
-> sunumu/demo hazırlığı**, ek süre/itiraz varsa **doldurulabilir taslak**, her hâlükârda
-> **kalıcı teknik dokümantasyon** olarak kullanılabilir. Tarih/koşulları takım kaptanı KYS'den teyit etmeli.
+> ⚠️ **Takvim — ÇELİŞKİ, ACİL DOĞRULA:** Repodaki **şartname PDF'i 14.06.2026 17:00** diyor
+> (geçmiş). Ancak **Gemini araştırması (17 Haz) 22.06.2026 17:00** olduğunu ve uzatma duyurusu
+> olmadığını iddia ediyor → bu doğruysa **FTR hâlâ açık (~5 gün)** ve teslim edilebilir!
+> Bu iki kaynak çelişiyor; Gemini tarihte yanılabilir. **Takım kaptanı KYS panelini + mailleri
+> DERHAL kontrol etmeli** (bağlayıcı kaynak budur). FTR hâlâ açıksa bu rehber + doldurulabilir
+> taslak doğrudan kullanılır; kapandıysa final-demo hazırlığı + kalıcı dokümantasyondur.
+> (Detay + sonraki adımlar: `docs/yol_haritasi.md`.)
 
 ---
 
