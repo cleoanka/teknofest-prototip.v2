@@ -151,8 +151,9 @@ class PlateVotePool:
         # pozisyon pozisyon en güçlü karakteri alır; ONAY için her pozisyonda kazanan
         # ikinciyi 'confirm_char_margin' (ONAY-sıkı eşik, aşağıda) MUTLAK ağırlıkla geçmeli
         # — bir pozisyon belirsizse dürüst 'pending' (ASLA yanlış plaka onaylanmaz).
-        # char_consensus=False ise füzyon yalnız best_partial kanıt izinde kalır (orada
-        # 'char_margin' geçerli — kanıt izi gevşek), onaya girmez.
+        # char_consensus=False ise füzyon yalnız best_partial kanıt izinde kalır (orası
+        # EŞİKSİZ — pozisyon başına en baskın karakter; char_margin/confirm_char_margin
+        # UYGULANMAZ, bkz. _char_fuse_best), onaya girmez.
         self.char_consensus = bool(char_consensus)
         self.char_margin = float(char_margin)
         # ONAY için pozisyon-kesinliği eşiği (char_margin'den SIKI olabilir). Onayda HER
