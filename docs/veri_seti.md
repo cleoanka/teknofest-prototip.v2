@@ -64,8 +64,26 @@ görüntü sayısı): `docs/yol_haritasi.md` §2 (Gemini araştırması; kullan�
 ## Eksik-sınıf manifesti + çekme aracı (`train/datasets.yaml`)
 Yol haritası §2'deki açık setler artık **bildirimsel bir manifestte** toplanır:
 `train/datasets.yaml` her hedef sınıf (`cigarette`, `seatbelt`, `fatigue`, `minibus`,
-`license_plate`) için **kaynak(lar) + lisans + AURA taksonomisine sınıf-eşlemesi** tutar.
-Eşleme `aura/taxonomy.py` ile tutarlıdır (ör. `cigarette → smoking`, `van → minibus`).
+`license_plate`) için **kaynak(lar) + lisans + ~görüntü sayısı + AURA taksonomisine
+sınıf-eşlemesi** tutar. Eşleme `aura/taxonomy.py` ile tutarlıdır (ör. `cigarette → smoking`,
+`van → minibus`). Manifestteki açık-kaynak köprü kapsamı (lisanslar §5 kaynakçaya yazılır;
+**kullanım öncesi lisans/uyumluluk teyidi** notu korunur):
+
+| Hedef sınıf (AURA) | Kaynak(lar) | ~Görüntü | Lisans |
+|---|---|---|---|
+| `cigarette → smoking` | Roboflow gordon/driver-smoking, dingguangyu/smoker | ~5300 | CC BY 4.0 |
+| `seatbelt → no_seatbelt_evidence` | Roboflow helmet-seatbelt, Kaggle driver-seatbelt | ~33800 | CC BY 4.0 / CC0 |
+| `minibus → minibus` | Roboflow johnny/traffic, geod/İstanbul-dolmuş | ~9100 | CC BY 4.0 |
+| `fatigue` | **(teyitli açık set yok — boş)** | — | — |
+| `license_plate` | **(teyitli açık set yok — boş)** | — | — |
+| `car/bus/truck/motorcycle/person/phone` | COCO (genel sınıflar) | — | CC BY 4.0 |
+
+> **ONUR:** `fatigue` ve `license_plate` için doğrulanmış açık set bulunamadı → manifestte
+> `sources: []` boş bırakılır (uydurma kaynak eklenmez); bu sınıflar komite verisiyle gelir.
+> Buna bağlı olarak v4 fine-tune'da (`yolguvenligi_types_v4`) `license_plate/cigarette/
+> seatbelt/headphone` için eğitim verisi yoktu → bu sınıfların mAP'i güvenilir değildir;
+> plaka için stok dedektör yerine **sıkı LP-kırpık + pipeline dürüstlük zırhları** kullanılır
+> (bkz. `docs/degerlendirme.md` ölçülen sonuçlar + `ftr.md` §4).
 
 ```bash
 python -m train fetch                  # PLAN bas (varsayılan KURU; AĞ KULLANMAZ)
