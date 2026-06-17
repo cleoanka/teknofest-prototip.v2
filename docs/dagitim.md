@@ -62,6 +62,14 @@ number_verification: { backend: camara, endpoint: https://<operator-gateway>/nv 
 ## 5. Performans / ölçeklenme
 - **FPS:** sunucu CUDA'da MPS'e göre belirgin yüksektir. Büyük `imgsz` (960) doğruluk için;
   daha yüksek throughput gerekiyorsa `imgsz` 768/640'a düşürün veya `yolo26s` profiline geçin.
+- **Gerçek FPS ölçümü (CUDA sunucuda):**
+  ```bash
+  python tools/bench.py --source <video.mp4> --device cuda --profile server
+  #   → ortalama FPS + p50/p95 kare-süresi; eval_results/bench_cuda0.md
+  ```
+  Apple Silicon (MPS) üzerindeki sayılar **alt sınırdır** — gerçek dağıtım FPS'i için
+  benchmark'ı hedef CUDA sunucuda koşun. `p95` kare-süresi (kuyruk gecikmesi) tek-kare
+  ortalamadan daha bilgilendiricidir; akış SLA'sını ona göre belirleyin.
 - **Batch akış:** birden çok kamera için her akışa ayrı pipeline örneği (process) verin; QoD
   yalnız kritik anda kalite yükselttiği için 5G kaynak kullanımı verimlidir.
 - **OCR maliyeti:** plaka OCR yalnız `min_track_frames` geçen ve sweet-spot'taki araçlarda

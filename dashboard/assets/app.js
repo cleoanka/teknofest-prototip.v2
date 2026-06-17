@@ -35,25 +35,49 @@ $("#quality-btn").onclick = async () => {
 
 // --- Track kartları (son annotation karesinden) -------------------------- //
 const DRIVER_ICONS = { phone: "📱", smoking: "🚬", no_seatbelt: "⚠️", fatigue: "😴" };
+// risk_flags hem kural adlarını (distracted_speeding...) hem ham token'ları taşıyabilir;
+// bilinmeyen değer olduğu gibi büyük harfle gösterilir (describe gibi yumuşak fallback).
+const RISK_LABELS = {
+  distracted_speeding: "DİKKATSİZ+HIZ",
+  prolonged_fatigue: "YORGUNLUK",
+  unbelted: "KEMERSİZ",
+  speed_limit_violation: "LİMİT İHLALİ",
+  smoking_driver: "SİGARA",
+  swerving_vehicle: "SWERVING",
+  swerving: "SWERVING",
+};
 function renderTracks(tracks) {
   $("#chip-tracks").textContent = "Araç: " + tracks.length;
   const wrap = $("#track-cards");
   wrap.innerHTML = "";
   for (const t of tracks) {
-    const risk = (t.risk_flags || []).length > 0;
+    const flags = t.risk_flags || [];
+    const risk = flags.length > 0;
+    const swerving = t.swerving || flags.includes("swerving");
     const card = document.createElement("div");
     card.className = "tcard" + (risk ? " risk" : "");
     const icons = (t.driver || []).map((d) => DRIVER_ICONS[d] || "").join(" ");
-    const plateBadge = t.plate
-      ? `<span class="badge plate-confirmed">${t.plate}</span>`
-      : `<span class="badge plate-pending">bekliyor</span>`;
+    // Plaka 3 durumlu: CONFIRMED (yeşil) / partial=kısmi tahmin (sarı) / bekliyor (gri).
+    let plateBadge;
+    if (t.plate) {
+      plateBadge = `<span class="badge plate-confirmed" title="onaylı">✓ ${t.plate}</span>`;
+    } else if (t.plate_partial) {
+      plateBadge = `<span class="badge plate-partial" title="kısmi tahmin — henüz onaylanmadı">? ${t.plate_partial}</span>`;
+    } else {
+      plateBadge = `<span class="badge plate-pending" title="okuma bekliyor">bekliyor</span>`;
+    }
     const speed = t.speed_kmh != null ? t.speed_kmh + " km/h"
       : (t.relative_velocity_flag ? "⚡ göreli" : "—");
+    // Risk rozetleri: kural adlarını okunur token'lara çevir (varsa swerving öne).
+    const riskBadges = flags
+      .map((f) => `<span class="badge risk-flag">${RISK_LABELS[f] || f}</span>`)
+      .join(" ");
     card.innerHTML = `
       <div class="tid">ID:${t.track_id} <small>${t.cls || ""}</small></div>
       <div class="row"><span>plaka</span> ${plateBadge}</div>
-      <div class="row"><span>hız</span> <b>${speed}</b></div>
+      <div class="row"><span>hız</span> <b>${speed}${swerving ? ' <span class="badge risk-flag">SWERVING</span>' : ""}</b></div>
       <div class="row"><span>sürücü</span> <b>${icons || "—"}</b></div>
+      ${riskBadges ? `<div class="row risk-row"><span>risk</span> <span>${riskBadges}</span></div>` : ""}
       ${t.qod_active ? `<div class="row"><span>QoD</span> <span class="badge qod">AKTİF</span></div>` : ""}`;
     card.onclick = () => openModal(t.track_id);
     wrap.appendChild(card);

@@ -45,25 +45,45 @@ export class VideoRenderer {
     ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     for (const t of anno.tracks || []) {
       const [x1, y1, x2, y2] = t.bbox;
-      const risk = (t.risk_flags || []).length > 0;
+      const flags = t.risk_flags || [];
+      const risk = flags.length > 0;
+      const swerving = t.swerving || flags.includes("swerving");
       const color = risk ? "#ff4444" : "#00ff88";
-      ctx.lineWidth = 2;
+      // Riskli araç kutusu daha kalın + vurgu (jüri ekranında hemen seçilsin).
+      ctx.lineWidth = risk ? 3 : 2;
       ctx.strokeStyle = color;
       ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
 
+      // --- Üst etiket: ID + plaka (onaylı yeşil / kısmi sarı) ---------------- //
       ctx.font = "bold 14px ui-monospace, monospace";
       let label = "ID" + t.track_id;
-      if (t.plate) label += " " + t.plate;
+      let labelBg = color;
+      if (t.plate) {
+        label += " ✓" + t.plate; // CONFIRMED
+      } else if (t.plate_partial) {
+        label += " ?" + t.plate_partial; // kısmi tahmin → sarı kutu (onaysız)
+        if (!risk) labelBg = "#ffcc00";
+      }
       const tw = ctx.measureText(label).width;
-      ctx.fillStyle = color;
+      ctx.fillStyle = labelBg;
       ctx.fillRect(x1, y1 - 18, tw + 8, 18);
-      ctx.fillStyle = "#06231a";
+      ctx.fillStyle = labelBg === "#ffcc00" ? "#2a2200" : "#06231a";
       ctx.fillText(label, x1 + 4, y1 - 4);
 
       const icons = (t.driver || []).map((d) => DRIVER_ICONS[d] || "").join("");
       if (icons) {
         ctx.font = "16px sans-serif";
         ctx.fillText(icons, x1, y2 + 18);
+      }
+      // --- Risk / swerving uyarı şeridi (kutunun altında, kırmızı vurgu) ----- //
+      if (risk || swerving) {
+        const alert = swerving ? "⚠ SWERVING" : "⚠ RİSK";
+        ctx.font = "bold 13px ui-monospace, monospace";
+        const aw = ctx.measureText(alert).width + 8;
+        ctx.fillStyle = "#ff4444";
+        ctx.fillRect(x1, y1 - 36, aw, 16);
+        ctx.fillStyle = "#fff";
+        ctx.fillText(alert, x1 + 4, y1 - 23);
       }
       if (t.qod_active) {
         ctx.fillStyle = "#ffcc00";
