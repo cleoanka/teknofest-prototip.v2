@@ -173,9 +173,23 @@ python -m aura.eval --source <video> --ground-truth <gt.json> --qod-comparison
 
 **Dedektör tespit mAP'i (rapora ek):**
 - v4 fine-tune: held-out **mAP50 .788** (model kartı).
-- Stok YOLO26: Ultralytics yayınlı COCO val mAP'i kullanın —
-  `python -c "from ultralytics import YOLO; print(YOLO('weights/yolo26l.pt').val(data='coco128.yaml').box.map)"`
-  (veya resmi model kartı). Eğitim boru hattı doğrulaması (coco8, yolo26s, 1 epoch) gerçek
+- Stok YOLO26: resmi COCO val mAP'i Ultralytics model kartından (docs.ultralytics.com) alın,
+  VEYA kendi ortamınızdan ölçün:
+  `python -c "from ultralytics import YOLO; print(YOLO('weights/yolo26l.pt').val(data='coco.yaml').box.map)"`.
+  Referans (YOLO26'nın selefi **YOLO11**, COCO val @640 — resmi sayılar; YOLO26 bunların
+  üzerine kurulur, kendi kartından teyit edin):
+
+  | Model | mAP50-95 | Params(M) |
+  |---|---|---|
+  | YOLO11s | 47.0 | 9.4 |
+  | YOLO11m | 51.5 | 20.1 |
+  | YOLO11l | 53.4 | 25.3 |
+  | YOLO11x | 54.7 | 56.9 |
+
+  (Kaynak: docs.ultralytics.com/models/yolo11 · Gemini ile çekildi. NOT: yazım anında bazı
+  kaynaklar YOLO26 tablosunu henüz yayınlamamış olabilir; ortamımızda yolo26 ağırlıkları
+  kuruludur ve çalışır → kesin sayıyı yukarıdaki `model.val` komutuyla üretin.)
+- Eğitim boru hattı doğrulaması (coco8, yolo26s, 1 epoch) gerçek
   best.pt + mAP üretmiştir (bkz. `docs/egitim.md`).
 
 **Doldurulabilir taslak (4 bölümü):**
