@@ -248,9 +248,15 @@ class PlateReader:
         # sonra enhance (CLAHE+gamma+unsharp). Köşe bulunamazsa dewarp kimlik
         # döner; ikisi de saf cv2/numpy ve şekil-korur. last_plate_bbox/size_w
         # YUKARIDA lp_box'tan zaten türetildi → buradaki dönüşüm onları ETKİLEMEZ.
+        # İkinci-şans (CLAHE+2x) varyantı için dewarp-sonrası ama enhance-ÖNCESİ
+        # görüntü ayrıca tutulur: enhance + reader._enhance üst üste binerse
+        # (CLAHE-üzerine-CLAHE + çift kontrast) bazı karelerde OCR'ı KÖTÜLEŞTİRİR.
+        # İlk geçiş enhance'li okur; ikinci-şans HAM (enhance'siz) crop'tan türer.
+        raw_crop = crop  # dewarp sonrası, enhance öncesi — ikinci-şans referansı
         if crop is not None and getattr(crop, "size", 0):
             if self._dewarp_enabled:
                 crop = dewarp_plate(crop)
+                raw_crop = crop  # dewarp ikinci-şansa da uygulanır (yalnız enhance hariç)
             if self._enhance_enabled:
                 crop = enhance_plate(crop, self.cfg)
         text, conf = self.ocr.read(crop, vehicle_crop)
@@ -258,11 +264,13 @@ class PlateReader:
         pool.add(text, conf, weight=size_w)
         if (
             self._second_variant
-            and crop is not None
-            and getattr(crop, "size", 0)
+            and raw_crop is not None
+            and getattr(raw_crop, "size", 0)
             and (text is None or conf < self._second_variant_below)
         ):
-            t2, c2 = self.ocr.read(self._enhance(crop), vehicle_crop)
+            # ÇİFT-ENHANCE önleme: kendi CLAHE+2x varyantını enhance'li crop yerine
+            # HAM (dewarp sonrası, enhance öncesi) crop'a uygula → bağımsız ikinci kanıt.
+            t2, c2 = self.ocr.read(self._enhance(raw_crop), vehicle_crop)
             pool.add(t2, c2, weight=size_w)
             if t2 and not text:
                 text = t2  # okuma sayacı için (kanıt geldi)

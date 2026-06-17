@@ -94,3 +94,46 @@ def test_regex_rejects_invalid_plate(cfg):
     for _ in range(cfg.get("plate.voting_buffer_size")):
         st = r.update(1, _roi(), bbox, FRAME_SHAPE)
     assert st.status == "rejected"  # konsensüs var ama regex geçmez
+
+
+# --- çift-enhance regresyonu (W1 adversaryal düzeltmesi) ----------------- #
+class _CapturingOCR:
+    """OCR'a giren görüntüleri yakalar; her okuma düşük güven döndürür (ikinci-şans tetikler)."""
+
+    def __init__(self):
+        self.imgs = []
+
+    def read(self, plate_roi, vehicle_crop=None):
+        self.imgs.append(None if plate_roi is None else plate_roi.copy())
+        return None, 0.0  # None → ikinci-şans varyantı devreye girer
+
+
+def test_second_variant_uses_raw_not_double_enhanced(cfg):
+    """İkinci-şans (CLAHE+2x) varyantı enhance'li crop'a DEĞİL ham crop'a uygulanır.
+
+    enhance açık + ikinci-şans açıkken OCR'a giren ilk görüntü = enhance_plate(dewarp(crop)),
+    ikinci = reader._enhance(dewarp(crop)) (HAM). Çift-enhance (CLAHE-üzerine-CLAHE+2x) olsaydı
+    ikinci görüntü ilk görüntünün 2x-CLAHE'lisi olurdu; ham yoldan türeyince farklıdır.
+    """
+    import numpy as np
+
+    ocr = _CapturingOCR()
+    r = PlateReader(cfg, ocr=ocr)
+    # Enjekte OCR ikinci-şansı kapatır (ocr is None şartı); davranışı izole etmek için aç.
+    r._second_variant = True
+    r._enhance_enabled = True
+    r._dewarp_enabled = True
+    # Belirgin (rastgele değil) doku: CLAHE'nin etkisini ölçülebilir kıl.
+    rng = np.random.default_rng(0)
+    roi = rng.integers(20, 90, size=(48, 120, 3), dtype=np.uint8)
+    r.update(1, roi, _center_bbox(), FRAME_SHAPE)
+    assert len(ocr.imgs) == 2, "ilk geçiş + ikinci-şans = 2 OCR çağrısı beklenir"
+    first, second = ocr.imgs
+    # İkinci varyant 2x büyütülmüş olmalı (reader._enhance fx=fy=2.0) → ilk geçişten BÜYÜK.
+    assert second.shape[0] > first.shape[0] and second.shape[1] > first.shape[1]
+    # Çift-enhance kanıtı: ikinci görüntü, ENHANCE'li ilk görüntünün _enhance'i OLMAMALI;
+    # ham crop'un _enhance'i olmalı. İki yolu hesapla, ikincinin HAM yola eşit olduğunu doğrula.
+    raw_path = PlateReader._enhance(roi)  # ham → doğru yol
+    double_path = PlateReader._enhance(first)  # enhance'li → yanlış (eski hatalı) yol
+    assert np.array_equal(second, raw_path), "ikinci-şans HAM crop'tan türemeli"
+    assert not np.array_equal(second, double_path), "çift-enhance (CLAHE üzerine CLAHE) olmamalı"

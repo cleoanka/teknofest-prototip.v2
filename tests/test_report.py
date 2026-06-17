@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import json
+
 from aura.eval import metrics as M
 from aura.eval.report import (
     behavior_metrics,
+    build_report,
     gt_label,
     plate_metrics,
     pred_from_summary,
+    render_markdown,
     vehicle_class_accuracy,
 )
 
@@ -140,3 +144,65 @@ def test_plate_and_vehicle_metrics():
     assert pm["confirmed"] == 1
     assert pm["partial"] == 1
     assert vehicle_class_accuracy(pairs) == 100.0
+
+
+# --- mAP raporu bağlantısı (W1 adversaryal düzeltmesi: kopuk yol giderildi) - #
+def _write_summary_and_gt(summaries_dir, gt_dir, stem="vid"):
+    summaries_dir.mkdir(parents=True, exist_ok=True)
+    gt_dir.mkdir(parents=True, exist_ok=True)
+    (summaries_dir / f"{stem}.json").write_text(
+        json.dumps(
+            {
+                "source": f"{stem}.mp4",
+                "profile": "yolo26l",
+                "processing_fps": 25.0,
+                "tracks": [{"vehicle_class": "car", "plate": "34TC8532", "driver_flag_frames": {}}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (gt_dir / f"{stem}_gt.json").write_text(
+        json.dumps({"frames": [{"objects": [{"vehicle_class": "car", "plate": "34TC8532"}]}]}),
+        encoding="utf-8",
+    )
+
+
+def test_build_report_links_map_report_when_present(tmp_path):
+    summaries = tmp_path / "sum"
+    gt = tmp_path / "gt"
+    _write_summary_and_gt(summaries, gt)
+    (summaries / "map_report.json").write_text(
+        json.dumps(
+            {
+                "weights": "weights/yolo26l.pt",
+                "data": "data/coco.yaml",
+                "map50_95": 0.512,
+                "map50": 0.781,
+                "precision": 0.74,
+                "recall": 0.69,
+                "per_class": [{"class_id": 0, "class_name": "car", "map50_95": 0.61}],
+                "pr_curve": "/tmp/PR_curve.png",
+            }
+        ),
+        encoding="utf-8",
+    )
+    report = build_report(summaries, gt_dir=gt)
+    assert report.get("map") is not None
+    assert report["map"]["map50_95"] == 0.512
+    md = render_markdown(report)
+    assert "0.512" in md and "0.781" in md  # gerçek sayılar tabloya işlendi
+    assert "| car |" in md  # sınıf-bazlı tablo
+    assert "henüz üretilmedi" not in md.lower()
+
+
+def test_build_report_honest_note_when_map_absent(tmp_path, monkeypatch):
+    # CWD'yi izole et: repo kökündeki olası eval_results/map_report.json'a düşmesin.
+    monkeypatch.chdir(tmp_path)
+    summaries = tmp_path / "sum"
+    gt = tmp_path / "gt"
+    _write_summary_and_gt(summaries, gt)
+    report = build_report(summaries, gt_dir=gt)
+    assert "map" not in report
+    md = render_markdown(report)
+    assert "Henüz üretilmedi" in md  # dürüst not + --map yönlendirmesi
+    assert "--map" in md

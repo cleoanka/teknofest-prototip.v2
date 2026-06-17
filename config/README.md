@@ -59,6 +59,9 @@ tutarlıysa yazılır (flicker koruması).
 `ocr_max_side` / `ocr_enhance_below_px` (OCR girdi boyut yönetimi),
 `ocr_engine` (`easyocr` varsayılan | `paddleocr`; paddleocr kurulu değilse loglu EasyOCR
 fallback — `pip install 'aura[paddle]'`),
+`ocr_gpu` (varsayılan `true` — OCR motorunu GPU'da çalıştır; **CUDA gerçekten kullanılabilir
+değilse otomatik CPU'ya düşer**, `aura/device.cuda_is_usable` ile probe edilir. EasyOCR'a
+`gpu=`, PaddleOCR'a sürüme göre `device=gpu`/`use_gpu=` olarak geçirilir),
 **`dewarp.enabled`** (WP-A1: fronto-paralel perspektif düzeltme — açılı plaka düzleştirilir,
 köşe bulunamazsa kimlik) ve **`enhance.enabled`/`enhance.clahe_clip`/`enhance.gamma`**
 (WP-A1: CLAHE+gamma+unsharp; LP kırpığına OCR'dan HEMEN ÖNCE bir kez uygulanır — reader'ın

@@ -180,6 +180,7 @@ plate:
   # PaddleOCR sarmalanır (çıktı EasyOCR readtext ile uyumlu normalize edilir);
   # paddleocr kurulu değilse LOGLU olarak easyocr'a düşülür (pip install 'aura[paddle]').
   ocr_engine: easyocr           # easyocr | paddleocr
+  ocr_gpu: true                 # OCR'ı (EasyOCR/PaddleOCR) GPU'da çalıştır; CUDA yoksa otomatik CPU
   # OCR-öncesi görüntü hazırlama (WP-A1, karanlık/açılı otopark): dewarp + enhance,
   # LP kırpığına OCR'dan HEMEN ÖNCE bir kez uygulanır. Reader'ın düşük-güven
   # CLAHE+2x ikinci-şans varyantından AYRIDIR (o ölçek büyütür, bu yalnız ton/perspektif).
