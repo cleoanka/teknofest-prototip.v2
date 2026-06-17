@@ -19,8 +19,23 @@ def build_parser() -> argparse.ArgumentParser:
             "--ground-truth data/samples/ornek_gt.json\n"
             "  python -m aura.eval --source test.mp4 --ground-truth gt.json --qod-comparison\n"
             "  python -m aura.eval --metrics-report --summaries eval_results/ab   # FTR §4 P/R/F1\n"
+            "  python -m aura.eval --map --weights weights/yolo26l.pt --data data/coco.yaml"
+            "  # FTR §4 istatistiksel mAP\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p.add_argument(
+        "--map",
+        dest="map_eval",
+        action="store_true",
+        help="FTR §4 istatistiksel mAP/PR raporu: ultralytics YOLO.val() ile mAP50-95, "
+        "mAP50, P, R + sınıf-bazlı tablo. --weights ve --data zorunlu.",
+    )
+    p.add_argument("--weights", default=None, help="--map için YOLO ağırlık dosyası (.pt)")
+    p.add_argument(
+        "--data",
+        default=None,
+        help="--map için ultralytics data tanım YAML'ı (val seti + sınıflar)",
     )
     p.add_argument(
         "--metrics-report",
@@ -64,8 +79,30 @@ def main(argv: list[str] | None = None) -> int:
     # kodlayamaz; UTF-8'e geç ki A/B tablosu platform bağımsız basılsın.
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+
+    # --- FTR §4 istatistiksel mAP/PR (ultralytics YOLO.val) --- #
+    if args.map_eval:
+        if not args.weights or not args.data:
+            parser.error("--map için --weights ve --data zorunludur")
+        from aura.eval.map_eval import run_map
+
+        data = run_map(args.weights, args.data, out_dir=args.output)
+        if data is None:
+            print(
+                "UYARI: mAP değerlendirmesi yapılamadı "
+                "(ultralytics yok ya da ağırlık/data eksik). Loglara bakın."
+            )
+            return 1
+        print("\n=== FTR §4 İstatistiksel mAP (geniş set) ===")
+        print(f"  mAP@50-95={data['map50_95']} | mAP@50={data['map50']} ")
+        print(f"  Precision={data['precision']} | Recall={data['recall']}")
+        if data.get("pr_curve"):
+            print(f"  PR eğrisi: {data['pr_curve']}")
+        print(f"\nRapor: {args.output}/map_report.md (+ .json)")
+        return 0
 
     # --- FTR §4 metrik raporu (video-düzeyi P/R/F1 + dedektör A/B) --- #
     if args.metrics_report:

@@ -14,6 +14,8 @@ import re
 from typing import TYPE_CHECKING
 
 from aura.optional.loader import get_optional
+from aura.plate.dewarp import dewarp_plate
+from aura.plate.enhance import enhance_plate
 from aura.plate.normalize import PlateVotePool
 from aura.plate.ocr import build_ocr
 from aura.schema import BBox, PlateState
@@ -52,6 +54,13 @@ class PlateReader:
             confirm_peak_weight=float(pv.get("confirm_peak_weight", 0.30)),
         )
         self.ocr = ocr if ocr is not None else build_ocr(cfg)
+        # OCR-öncesi görüntü hazırlama (WP-A1): dewarp (fronto-paralel perspektif
+        # düzeltme) + enhance (CLAHE+gamma+unsharp). LP kırpığına, OCR'a girmeden
+        # HEMEN ÖNCE uygulanır. Karanlık/açılı otoparkta il-kodu misread'ini
+        # (3→0/2) azaltır. Flag'ler config'ten (varsayılan AÇIK); dışarıdan OCR
+        # enjekte edilmiş testlerde de çalışır (saf cv2/numpy, model gerektirmez).
+        self._dewarp_enabled = bool(cfg.get("plate.dewarp.enabled", True))
+        self._enhance_enabled = bool(cfg.get("plate.enhance.enabled", True))
         self.qod = qod
         self.sr = get_optional(cfg, "super_resolution")  # §8.2 (lazy; kapalıysa None)
         # Sıkı plaka kırpma (opsiyonel LP dedektörü): araç-altı GENİŞ crop yerine
@@ -235,6 +244,15 @@ class PlateReader:
             # LP dedektörü çalışıyor ama plakayı bulamadı → geniş-crop okuması
             # düşük güvenilirlik sınıfıdır (kanıt tamamen atılmaz, ağırlığı kısılır).
             size_w = self._no_lp_weight
+        # OCR-öncesi hazırlama: önce fronto-paralel dewarp (açılı plaka → düz),
+        # sonra enhance (CLAHE+gamma+unsharp). Köşe bulunamazsa dewarp kimlik
+        # döner; ikisi de saf cv2/numpy ve şekil-korur. last_plate_bbox/size_w
+        # YUKARIDA lp_box'tan zaten türetildi → buradaki dönüşüm onları ETKİLEMEZ.
+        if crop is not None and getattr(crop, "size", 0):
+            if self._dewarp_enabled:
+                crop = dewarp_plate(crop)
+            if self._enhance_enabled:
+                crop = enhance_plate(crop, self.cfg)
         text, conf = self.ocr.read(crop, vehicle_crop)
         pool = self._pools.setdefault(track_id, PlateVotePool(**self._pool_kwargs))
         pool.add(text, conf, weight=size_w)

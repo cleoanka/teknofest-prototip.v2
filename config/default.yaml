@@ -176,6 +176,19 @@ plate:
   min_pixel_height: 16          # bu yükseklik altındaki plaka ROI'leri kalite tetikler
   ocr_max_side: 1280            # OCR girişi uzun kenar sınırı (4K crop yavaşlatmasın)
   ocr_enhance_below_px: 64      # ROI yüksekliği bunun altındaysa CLAHE+2x varyantı denenir
+  # OCR motoru: easyocr (varsayılan, mevcut yol) | paddleocr. paddleocr seçiliyse
+  # PaddleOCR sarmalanır (çıktı EasyOCR readtext ile uyumlu normalize edilir);
+  # paddleocr kurulu değilse LOGLU olarak easyocr'a düşülür (pip install 'aura[paddle]').
+  ocr_engine: easyocr           # easyocr | paddleocr
+  # OCR-öncesi görüntü hazırlama (WP-A1, karanlık/açılı otopark): dewarp + enhance,
+  # LP kırpığına OCR'dan HEMEN ÖNCE bir kez uygulanır. Reader'ın düşük-güven
+  # CLAHE+2x ikinci-şans varyantından AYRIDIR (o ölçek büyütür, bu yalnız ton/perspektif).
+  dewarp:
+    enabled: true               # fronto-paralel perspektif düzeltme (açılı plaka → düz); köşe yoksa kimlik
+  enhance:
+    enabled: true               # CLAHE (LAB L) + gamma + hafif unsharp (karanlık kabini açar, kenar netleştirir)
+    clahe_clip: 2.5             # CLAHE kontrast sınırı (büyük = daha agresif yerel kontrast)
+    gamma: 1.2                  # >1 karanlık tonları aydınlatır (1.0 = etkisiz)
   # Sıkı plaka kırpma: özel LP dedektörü (YOLOv11n plaka fine-tune, ~5MB) plakayı
   # araç-altı geniş crop içinde bulup SIKI kırpar → OCR karakter doğruluğu artar.
   # Ağırlık bootstrap ile iner; yoksa loglu olarak geniş-crop davranışına düşülür.

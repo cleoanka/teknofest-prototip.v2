@@ -25,6 +25,7 @@ import sys
 import time
 from collections import Counter, defaultdict
 from pathlib import Path
+from statistics import median
 
 # Repo kökünden de, tools/ içinden de çalışsın
 ROOT = Path(__file__).resolve().parents[1]
@@ -172,6 +173,10 @@ def main(argv: list[str] | None = None) -> int:
     qod_reasons: Counter = Counter()
     # Tanılama: track başına yanal yörünge (kare, cx, genişlik) — swerving analizi için
     trajectories: dict[int, list] = defaultdict(list)
+    # Hız mutlak-GT doğrulaması (WP-A4): track başına KALİBRE km/h serisi. Yalnız
+    # is_calibrated=True kareler toplanır (ısınma öncesi None/kalibresiz değer girmesin,
+    # K-004 — uydurma yok). Özette medyan + is_calibrated raporlanır.
+    speed_series: dict[int, list] = defaultdict(list)
     # Tanılama: track başına sınıf-DEĞİŞİM izi [(kare, sınıf), ...] — sınıf oylamasının
     # 'car↔truck' titremesini gerçekten bastırdığının kanıtı (yalnız değişimler yazılır).
     class_changes: dict[int, list] = defaultdict(list)
@@ -197,6 +202,8 @@ def main(argv: list[str] | None = None) -> int:
                     driver_frames[t["track_id"]][d] += 1
                 if t.get("swerving"):
                     swerve_frames[t["track_id"]] += 1
+                if t.get("speed_kmh") is not None and t.get("speed_calibrated"):
+                    speed_series[t["track_id"]].append(float(t["speed_kmh"]))
                 bx = t["bbox"]
                 trajectories[t["track_id"]].append(
                     [anno.frame_id, round((bx[0] + bx[2]) / 2, 1), round(bx[2] - bx[0], 1)]
@@ -229,11 +236,17 @@ def main(argv: list[str] | None = None) -> int:
                 if _c is not None and _fx == 0:
                     raw_valid_w[_c] = raw_valid_w.get(_c, 0.0) + _w
             raw_valid_w = dict(sorted(raw_valid_w.items(), key=lambda kv: kv[1], reverse=True)[:6])
+        spd = speed_series.get(rec.track_id, [])
         tracks.append(
             {
                 "track_id": rec.track_id,
                 "vehicle_class": rec.vehicle_class,
                 "frames": rec.last_frame - rec.first_frame + 1,
+                # Tahmini hız (km/h): kalibre kare serisinin MEDYANI (titreme/aykırı
+                # dayanıklı). is_calibrated = en az bir kalibre kare gördük mü; False ise
+                # speed_kmh None (metrik iddia yok, K-004).
+                "speed_kmh": round(median(spd), 1) if spd else None,
+                "speed_is_calibrated": bool(spd),
                 "plate": rec.plate.value,
                 "plate_status": rec.plate.status,
                 "plate_partial": rec.plate.partial,

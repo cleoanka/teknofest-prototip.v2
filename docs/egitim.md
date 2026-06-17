@@ -19,6 +19,20 @@
 - YOLO formatında etiketli veri (bkz. `docs/veri_seti.md`).
 - Cihaz `auto` (CUDA→MPS→CPU otomatik). Sunucuda CUDA; geliştirmede MPS.
 
+## 1.5. Eksik-sınıf verisi çekme (manifest → plan → indirme)
+Eksik sınıflar (`cigarette/smoking`, `seatbelt`, `fatigue`, `minibus`, `license_plate`)
+için açık veri setleri `train/datasets.yaml` manifestinde toplanır (kaynak + lisans +
+AURA taksonomisine eşleme). Önce **planı** görün (ağ kullanmaz), sonra gerçek indirin:
+```bash
+python -m train fetch                  # KURU plan: kaynak/lisans/eşleme/çıktı (AĞ YOK)
+python -m train fetch --class minibus  # tek sınıfın planı
+python -m train fetch --run            # GERÇEK indirme (roboflow → ROBOFLOW_API_KEY)
+```
+Plan, taksonomiyle çelişen eşlemeleri `⚠` ile işaretler; `sources: []` olan sınıflar
+(teyitli set yok → `fatigue`/`license_plate`) boş listelenir. Kaggle/URL kaynakları
+`--run` ile otomatik inmez (manuel indirme talimatı basılır). Lisanslar **FTR §5
+kaynakçaya** yazılmalıdır (açık-kaynak veri kullanımı şartnamede serbest).
+
 ## 2. Veri hazırlama (split + data.yaml + DENGE RAPORU)
 ```bash
 python -m train dataset \
@@ -99,6 +113,8 @@ python -m train detector --data coco128.yaml --weights weights/yolo26s.pt --epoc
 ## 8. FTR'ye bağlama (puan)
 - **§2 Veri Seti (20p):** `dataset --report` çıktısını (split + sınıf dağılımı + dengesizlik
   oranı) + augmentasyon listesi + açık-kaynak set kaynakçası rapora koyun. Detay: `docs/veri_seti.md`.
+- **§5 Kaynakça:** `python -m train fetch` planının sonundaki lisans özeti (CC BY 4.0 / CC0 …)
+  + `train/datasets.yaml` kaynak listesi açık-kaynak veri atıflarını verir.
 - **§4 Sınama (20p):** eğitim sonrası `*.metrics.json` (mAP/P/R/F1) + üç video metriği
   (`python -m aura.eval --metrics-report`) rapora tablo olarak girer. Detay: `ftr.md` §4.
 

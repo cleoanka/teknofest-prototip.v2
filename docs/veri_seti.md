@@ -61,6 +61,29 @@ dengesizlik oranı (en kalabalık / en seyrek sınıf)**. Oran **> 3** ise uyar�
 **Eksik sınıflar için somut açık veri setleri** (cigarette/seatbelt/minibus — URL + lisans +
 görüntü sayısı): `docs/yol_haritasi.md` §2 (Gemini araştırması; kullanım öncesi lisans teyidi).
 
+## Eksik-sınıf manifesti + çekme aracı (`train/datasets.yaml`)
+Yol haritası §2'deki açık setler artık **bildirimsel bir manifestte** toplanır:
+`train/datasets.yaml` her hedef sınıf (`cigarette`, `seatbelt`, `fatigue`, `minibus`,
+`license_plate`) için **kaynak(lar) + lisans + AURA taksonomisine sınıf-eşlemesi** tutar.
+Eşleme `aura/taxonomy.py` ile tutarlıdır (ör. `cigarette → smoking`, `van → minibus`).
+
+```bash
+python -m train fetch                  # PLAN bas (varsayılan KURU; AĞ KULLANMAZ)
+python -m train fetch --class minibus  # tek hedef sınıfın planı
+python -m train fetch --run            # GERÇEK indirme (roboflow → ROBOFLOW_API_KEY)
+```
+Plan her kaynak için **indirme tipi/koordinatları + lisans + ~görüntü sayısı + sınıf-eşlemesi
++ çıktı dizini** basar ve sonda **FTR §5 kaynakça lisanslarını** özetler. Manifestte
+taksonomiyle çelişen bir eşleme varsa planda `⚠` ile işaretlenir (sessiz düzeltme yok).
+
+> **ONUR notu:** `fatigue` ve `license_plate` için teyitli açık set olmadığından manifestte
+> `sources: []` bırakılır; plan bunları boş gösterir (uydurma kaynak eklenmez). Kaggle/URL
+> kaynakları `--run` ile **otomatik indirilmez** (kimlik/lisans onayı gerekir) — araç yalnız
+> manuel indirme talimatını basar.
+
+İndirilen set sonrası akış değişmez: `python -m train dataset --input ... --output ... --report`
+(denge) → birden çok sürücü-davranış seti için `python -m train.merge_driver_datasets`.
+
 ## Dizin yapısı
 ```
 data/

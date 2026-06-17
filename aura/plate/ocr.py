@@ -1,7 +1,11 @@
-"""OCR motorları — gerçek (EasyOCR) ve deterministik mock.
+"""OCR motorları — gerçek (EasyOCR / PaddleOCR) ve deterministik mock.
 
 - `RealOCR`: EasyOCR ile plaka ROI'sinden metin okur (sentetik videodaki çizili
-  plakaları gerçekten okuyabilir).
+  plakaları gerçekten okuyabilir). Varsayılan motor.
+- `PaddleOCRReader`: PaddleOCR'ı EasyOCR'ın `readtext` çıktısıyla UYUMLU bir
+  sarmalayıcıyla (bbox, metin, güven) sunar; aynı `_merge_line` satır-birleştirme
+  + TR-normalizasyon hattı çalışır. config `plate.ocr_engine: paddleocr` ile
+  seçilir; paddleocr kurulu değilse LOGLU olarak EasyOCR'a düşülür.
 - `MockOCR`: EasyOCR/torch yokken araç renginden senaryo plakasını üretir
   (track başına kararlı → voting konsensüsü oluşur).
 """
@@ -107,6 +111,82 @@ class RealOCR(OCREngine):
         return text, conf
 
 
+class _PaddleAdapter:
+    """PaddleOCR'ı EasyOCR `readtext` arayüzüne uyarlar.
+
+    EasyOCR `readtext(img)` → `[(box, text, conf), ...]` döner; box = 4 köşe
+    [[x,y],...]. PaddleOCR sürümleri çıktıyı farklı sarar:
+      • eski: `[[ [box, (text, conf)], ... ]]`  (predict ilk eleman)
+      • yeni: `[{"rec_texts": [...], "rec_scores": [...], "dt_polys": [...]}]`
+    İkisi de aynı `(box, text, conf)` üçlüsüne indirgenir; `_merge_line` ve TR
+    normalizasyonu motor-bağımsız çalışır.
+    """
+
+    def __init__(self, engine):
+        self._engine = engine
+
+    @staticmethod
+    def _norm_box(box) -> list[list[float]]:
+        pts = [[float(p[0]), float(p[1])] for p in box]
+        return pts if pts else [[0.0, 0.0]]
+
+    def readtext(self, img) -> list:
+        try:
+            raw = self._engine.ocr(img)
+        except TypeError:
+            # Bazı sürümler konumsal 'cls' bekler; uyumlu en geniş çağrı.
+            raw = self._engine.ocr(img, cls=True)
+        out: list = []
+        if not raw:
+            return out
+        first = raw[0]
+        # Yeni sözlük formatı (PaddleX / PP-OCRv4+).
+        if isinstance(first, dict):
+            texts = first.get("rec_texts", []) or []
+            scores = first.get("rec_scores", []) or []
+            polys = first.get("dt_polys", first.get("rec_polys", [])) or []
+            for i, txt in enumerate(texts):
+                conf = float(scores[i]) if i < len(scores) else 0.0
+                box = self._norm_box(polys[i]) if i < len(polys) else [[0.0, 0.0]]
+                out.append((box, str(txt), conf))
+            return out
+        # Eski liste formatı: first = [[box, (text, conf)], ...]
+        for line in first:
+            try:
+                box, (txt, conf) = line[0], line[1]
+            except (TypeError, ValueError, IndexError):
+                continue
+            out.append((self._norm_box(box), str(txt), float(conf)))
+        return out
+
+
+class PaddleOCRReader(RealOCR):
+    """PaddleOCR motoru — `RealOCR`'ın okuma/birleştirme hattını aynen kullanır.
+
+    Yalnız `__init__` motoru PaddleOCR'a çevirir (`self.reader` bir _PaddleAdapter
+    olur, EasyOCR'ın `readtext` sözleşmesini taklit eder). `read`, `_readtext`,
+    `_merge_line` ve düşük-güven CLAHE+2x varyantı RealOCR'dan miras alınır →
+    motor değişse de OCR-sonrası mantık BİREBİR korunur.
+    """
+
+    def __init__(self, cfg):
+        from paddleocr import PaddleOCR
+
+        from aura.device import cuda_is_usable
+
+        use_gpu = bool(cfg.get("plate.ocr_gpu", True)) and cuda_is_usable()
+        # PaddleOCR sürümleri parametre adlarında değişir (use_gpu vs device);
+        # en uyumlu kurulum: önce sade, başarısızsa GPU/dil argümanlarıyla dene.
+        try:
+            self._engine = PaddleOCR(use_angle_cls=True, lang="en", show_log=False)
+        except TypeError:
+            self._engine = PaddleOCR(lang="en")
+        self.reader = _PaddleAdapter(self._engine)
+        self.max_side = int(cfg.get("plate.ocr_max_side", 1280))
+        self.enhance_below = int(cfg.get("plate.ocr_enhance_below_px", 64))
+        log.info("PaddleOCR yüklendi (gpu=%s)", use_gpu)
+
+
 class MockOCR(OCREngine):
     """Araç rengi (BGR) → senaryo plakası. Track başına kararlı."""
 
@@ -142,6 +222,29 @@ def _easyocr_available() -> bool:
         return False
 
 
+def _paddleocr_available() -> bool:
+    try:
+        import paddleocr  # noqa: F401
+
+        return True
+    except Exception:
+        return False
+
+
+def _build_real_ocr(cfg) -> OCREngine:
+    """Gerçek OCR motorunu config `plate.ocr_engine` ile seç.
+
+    `paddleocr` seçiliyse PaddleOCR'ı sarmalar; kurulu değilse LOGLU olarak
+    EasyOCR'a düşer. Varsayılan `easyocr` (MEVCUT yol birebir korunur).
+    """
+    engine = str(cfg.get("plate.ocr_engine", "easyocr")).lower()
+    if engine == "paddleocr":
+        if _paddleocr_available():
+            return PaddleOCRReader(cfg)
+        log.warning("plate.ocr_engine=paddleocr ama paddleocr kurulu değil → EasyOCR'a düşülüyor")
+    return RealOCR(cfg)
+
+
 def build_ocr(cfg) -> OCREngine:
     mode = str(cfg.get("runtime.ai_mode", "auto")).lower()
     # auto + gömülü sentetik örnek → mock OCR (renk→plaka, hızlı ve deterministik;
@@ -149,7 +252,7 @@ def build_ocr(cfg) -> OCREngine:
     if mode == "auto" and is_synthetic_source(cfg):
         return MockOCR(cfg)
     if mode != "mock" and _easyocr_available():
-        return RealOCR(cfg)
+        return _build_real_ocr(cfg)
     if mode == "real" and not _easyocr_available():
         log.warning("ai_mode=real ama EasyOCR yok → mock OCR'a düşülüyor")
     return MockOCR(cfg)
