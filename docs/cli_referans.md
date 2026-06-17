@@ -3,12 +3,18 @@
 > Bu dosya **gerçek çalıştırılmış `--help` çıktılarından** üretilmiştir.
 > Yeniden üretmek için: ilgili komutu `--help` ile çalıştırıp çıktıyı yapıştırın.
 
+> **v2.3 yenileri:** çalıştırılabilirler `--profile {server,laptop,v4-finetune}` kabul eder
+> (config profili; `AURA_PROFILE` env ile de). Yeni komutlar: `python tools/doctor.py`
+> (ortam sağlık kontrolü), `python -m aura.eval --metrics-report` (FTR §4 P/R/F1 + dedektör A/B),
+> `python -m train dataset --report` (veri-dengeleme). `--help` çıktısı her zaman günceldir.
+
 ## İçindekiler
 - [bootstrap.py](#bootstrappy) — kurulum
-- [python -m aura](#python--m-aura) — inference pipeline
+- `python tools/doctor.py` — ortam/sağlık kontrolü (v2.3)
+- [python -m aura](#python--m-aura) — inference pipeline (`--profile`)
 - [python tools/test_video.py](#python-toolstest_videopy) — gerçek video testi (annotated mp4 + JSON kanıt)
-- [python -m aura.eval](#python--m-auraeval) — değerlendirme + QoD A/B
-- [python -m train](#python--m-train) — eğitim (alt komutlar)
+- [python -m aura.eval](#python--m-auraeval) — değerlendirme + QoD A/B + `--metrics-report`
+- [python -m train](#python--m-train) — eğitim (alt komutlar; doğrulama+metrik export)
 - [python -m aura.synthetic](#python--m-aurasynthetic) — örnek veri
 - [python -m aura.smoke](#python--m-aurasmoke) — smoke test
 - [python -m train.roboflow_pull](#python--m-trainroboflow_pull) — Roboflow

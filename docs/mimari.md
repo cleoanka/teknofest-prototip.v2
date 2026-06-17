@@ -37,9 +37,11 @@ aç/kapa (`preprocessing.*`):
 - **Yansıma süpürme:** ön cam / ıslak yüzey yansımaları.
 - **Occlusion handling:** direk/ağaç/araç çakışmasında geçici görünürlük kaybı yönetimi.
 
-## 2. Aşama 1 — ROI Tespiti ve Takip (YOLO26s + ByteTrack)
-Uç cihazda çalışan ana tespit motoru. Hedef araç sınıflarını tespit eder; tam kareyi
-ağır bileşenlere göndermek yerine **yalnızca iki ROI kırpması** üretir:
+## 2. Aşama 1 — ROI Tespiti ve Takip (YOLO26 + ByteTrack)
+Ana tespit motoru. **Varsayılan stok `yolo26l`** (sunucu, doğruluk-önce); `--profile laptop`
+ile `yolo26s` (hafif), `--profile v4-finetune` ile 11-sınıf fine-tune. Hedef araç
+sınıflarını tespit eder; tam kareyi ağır bileşenlere göndermek yerine **yalnızca iki ROI
+kırpması** üretir:
 
 | ROI | Hedef |
 |-----|-------|
@@ -80,10 +82,19 @@ koordinat; sürücü araç içinde sabit oturur), `redetect_every` karede bir ta
 kare başına TEK pose geçişi korunur. Bu sayede l-pose gibi büyük model affordable olur
 (minimum alana maksimum model). Sürücü tarafı `driver_lock.corner` ile aynı sözleşme.
 
-Her iki backend'in ham bayrakları 16/8 kararlılık süzgecinden geçer; Stage-1'in tam
-karede gördüğü `phone`/`smoking` nesneleri de araca düşüyorsa füzyon edilir
-(`fuse_detections`). Gerçek 4K test videolarında doğrulandı (sigara: video_1 — sürücü
-kırpma + l-pose ile 118 kare; telefon: video_2 — 110+ kare; çapraz-FP yok).
+**İki katman (v2.3 — `DriverStateEngine`):** Aşama 2 artık iki katmana ayrılmıştır:
+- **Katman A (model):** yukarıdaki pose-hibrit / yolo backend — tek-kare HAM bayrak.
+- **Katman B (`aura/driver_state/engine.py` + `voting.py`):** her `track_id` için ayrı
+  **zaman-oylaması** (`TrackVoter`); bir bayrak son `window` karenin ≥`min_votes` tanesinde
+  True ise aktiftir (varsayılan 16/8 = eski davranış). Araç sahneden çıkınca tampon
+  `max_age` karede düşer (bellek). Bu, eski per-(track,alan) `StabilityTracker` çağrısının
+  **ID-merkezli** karşılığıdır; ayarlar `models.driver_state.voting.*`. Stage-1'in tam
+  karede gördüğü `phone`/`smoking` nesneleri oylamadan ÖNCE ham bayrağa OR'lanır
+  (`fuse_detections`/`aux_classes`). Mustafa'nın `feature/stage2-driver-state` dalının
+  iki-katman tasarımı bu sürümde regresyonsuz entegre edildi.
+
+Gerçek 4K test videolarında doğrulandı (sigara: video_1 — sürücü kırpma + l-pose; telefon:
+video_2 — 110+ kare; çapraz-FP yok; v4 makro-F1 1.0, dedektör A/B `eval_results/metrics_report.md`).
 
 **Araç-sınıfı kararlılığı (`tracking.class_vote`):** Fine-tune dedektör aynı aracı
 kareler arasında farklı sınıflarla görüyor — gerçek ölçüm (13 Haz): video_2'de ana araç

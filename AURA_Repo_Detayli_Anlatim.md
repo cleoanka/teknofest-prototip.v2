@@ -4,6 +4,12 @@
 **Proje:** AURA — 5G & Yapay Zekâ ile Akıllı Yol Güvenliği (TEKNOFEST 2026 prototipi)
 **Lisans:** MIT · **Diller:** Python %81 · JavaScript %7 · TypeScript %4 · CSS/HTML/PowerShell
 
+> **v2.3 güncel durum (2026-06-17):** dedektör omurgası varsayılan **stok YOLO26l** (sunucu),
+> seçilebilir config **profilleri** (`--profile server|laptop|v4-finetune`); sürücü durumu
+> **iki katmanlı** (`DriverStateEngine`); FTR metrik harness'ı (`aura.eval --metrics-report`);
+> eğitim tool'u doğrulama+metrik export ile mükemmelleştirildi; `tools/doctor.py`. Güncel
+> ayrıntı için: `README.md`, `CHANGELOG.md` (2.3.0), `docs/`, ve FTR rehberi `ftr.md`.
+
 ---
 
 ## 1. Proje Nedir, Ne Yapar?
