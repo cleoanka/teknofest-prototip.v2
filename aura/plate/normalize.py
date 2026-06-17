@@ -126,6 +126,7 @@ class PlateVotePool:
         substring_weight: float = 0.25,
         char_consensus: bool = True,
         char_margin: float = 1.5,
+        confirm_peak_weight: float = 0.30,
         max_reads: int = 400,
     ):
         self.min_weight = float(min_weight)
@@ -133,6 +134,13 @@ class PlateVotePool:
         self.ratio = float(ratio)
         self.fix_w = {0: 1.0, 1: float(fix1_weight), 2: float(fix2_weight)}
         self.substring_w = float(substring_weight)
+        # CONFIRM zemin koşulu (gerçek video_3 dersi: UZAK plaka tutarlı şekilde
+        # YANLIŞ okunabilir — '24IC8532' gibi — ve yalnız sayıca birikimle min_weight'i
+        # aşıp YANLIŞ onaya gidebilir). Kazanan plaka, EN AZ BİR kez bu etkin-ağırlıkla
+        # (= OCR güveni × kırpık-yüksekliği kalitesi) okunmuş OLMALI: "plakayı en az bir
+        # kez NET/YAKIN gördük" güvencesi. Hep-uzak okuma → dürüst pending. Ayarlanabilir
+        # (0 = kapalı). K-004: videoya değil okuma-kalitesine bağlı.
+        self.confirm_peak_weight = float(confirm_peak_weight)
         # Pozisyon-hizalı karakter füzyonu: ayrı-aday kararı başarısız olursa
         # (iki format-geçerli okuma yarışıyor, ör. T↔I misread'i 34TC8532 vs
         # 34IC8532) aynı YAPIDAKİ okumalar pozisyon pozisyon birleştirilir.
@@ -241,31 +249,70 @@ class PlateVotePool:
         güven görüntülemesine katkı verir (erken-yanlış-kilit koruması).
         """
         raw_valid: dict[str, float] = {}
+        peak: dict[str, float] = {}  # aday başına EN GÜÇLÜ tek okuma (net/yakın kanıt zemini)
         for raw, conf in self.raw_reads:
             cand, fixes = normalize_tr(raw)
             if cand is not None and fixes == 0:
                 raw_valid[cand] = raw_valid.get(cand, 0.0) + conf
+                peak[cand] = max(peak.get(cand, 0.0), conf)
         if not raw_valid:
             return None, 0.0
         ranked = sorted(raw_valid.items(), key=lambda kv: kv[1], reverse=True)
         top, w_top = ranked[0]
         w_second = ranked[1][1] if len(ranked) > 1 else 0.0
         total = sum(raw_valid.values())
+        # Ayrı-aday onayı: bütün-string marjı + ZEMİN (en az bir net okuma) + her
+        # KARAKTER pozisyonunun belirsiz olmaması. Bütün-string baskın olsa bile tek bir
+        # pozisyon çekişmeliyse (ör. yolo26l video_1: pos0 0↔3) ya da plaka hiç net
+        # görülmemişse (video_3: hep-uzak) onaylamayız → char füzyonuna düşer, o da
+        # belirsizse dürüst pending. Hiçbir koşulda YANLIŞ plaka kesinleşmez.
         if (
             w_top >= self.min_weight
             and (w_top - w_second) >= self.margin_weight
             and w_top / total >= self.ratio
+            and peak.get(top, 0.0) >= self.confirm_peak_weight
+            and self._position_unambiguous(top, raw_valid)
         ):
             return top, round(min(1.0, w_top / total), 2)
         # Tek-varyant kararı yok: OCR aynı plakayı varyantlara bölmüş olabilir
         # (3↔0, T↔I). Pozisyon-hizalı füzyonu dene — her pozisyon NET ise onayla.
         if self.char_consensus:
-            cand, conf = self._char_consensus(raw_valid)
+            cand, conf = self._char_consensus(raw_valid, peak)
             if cand is not None:
                 return cand, conf
         return None, round(w_top / max(total, 1e-9), 2)
 
-    def _char_consensus(self, raw_valid: dict[str, float]) -> tuple[str | None, float]:
+    def _position_unambiguous(self, winner: str, raw_valid: dict[str, float]) -> bool:
+        """Kazanan stringin HER karakteri, aynı-yapıdaki diğer ham-geçerli okumalarda
+        kendisine ``char_margin`` içinde bir rakip karaktere sahip OLMAMALI.
+
+        Tek-yapılı (rakipsiz) okuma → çekişme yok → True. Bir pozisyonda kazanan ile
+        ikinci karakter arasındaki ağırlık farkı ``char_margin``'in altındaysa o pozisyon
+        belirsizdir → False (ayrı-aday onayını VETO eder; dürüstlük). char_consensus
+        kapalıysa veto da kapalıdır (eski davranış)."""
+        if not self.char_consensus:
+            return True
+        pat = tuple("D" if c.isdigit() else "L" for c in winner)
+        members = [
+            (t, w)
+            for t, w in raw_valid.items()
+            if tuple("D" if c.isdigit() else "L" for c in t) == pat
+        ]
+        if len(members) < 2:
+            return True
+        for i, wc in enumerate(winner):
+            char_w: dict[str, float] = {}
+            for t, w in members:
+                char_w[t[i]] = char_w.get(t[i], 0.0) + w
+            win_w = char_w.get(wc, 0.0)
+            other = max((w for c, w in char_w.items() if c != wc), default=0.0)
+            if (win_w - other) < self.char_margin:
+                return False
+        return True
+
+    def _char_consensus(
+        self, raw_valid: dict[str, float], peak: dict[str, float] | None = None
+    ) -> tuple[str | None, float]:
         """Pozisyon-hizalı karakter füzyonu (CONFIRMED kararı için, güvenli).
 
         Aynı YAPIDAKİ (uzunluk + rakam/harf deseni) ham-geçerli okumalar pozisyon
@@ -292,6 +339,11 @@ class PlateVotePool:
         group_w = sum(w for _, w in members)
         if group_w < self.min_weight:
             return None, 0.0
+        # ZEMİN koşulu: bu yapı grubundaki okumalardan en az biri net/yakın (peak >=
+        # confirm_peak_weight) olmalı — hep-uzak (sistematik yanlış) okuma onaylanmaz.
+        if peak is not None and self.confirm_peak_weight > 0:
+            if max((peak.get(t, 0.0) for t, _ in members), default=0.0) < self.confirm_peak_weight:
+                return None, 0.0
         out: list[str] = []
         for i in range(len(best_pattern)):
             char_w: dict[str, float] = {}

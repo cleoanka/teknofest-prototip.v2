@@ -208,6 +208,11 @@ plate:
     # ise füzyon yalnız 'partial' kanıt izinde kalır, onaya girmez.
     char_consensus: true
     char_margin: 1.5            # bir pozisyonda kazananın ikinciyi geçmesi gereken min mutlak ağırlık farkı
+    # CONFIRM zemin koşulu: kazanan plaka EN AZ BİR kez bu etkin-ağırlıkla (OCR güveni ×
+    # kırpık-yükseklik kalitesi) okunmuş olmalı = "plakayı en az bir kez NET/YAKIN gördük".
+    # Gerçek video_3 dersi: UZAK plaka tutarlı YANLIŞ okunup (24IC8532) yalnız birikimle
+    # onaya gidebiliyordu; bu zemin hep-uzak okumayı dürüst 'pending'e çevirir. 0 = kapalı.
+    confirm_peak_weight: 0.30
 
 speed:
   mode: metric                  # metric | tripwire | ipm | disabled
