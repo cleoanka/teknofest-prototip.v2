@@ -95,9 +95,20 @@ models:
       suppress_conf: 0.30
     # --- Stage-1 kanıt füzyonu ---
     # Dedektör tam karede phone/smoking NESNESİ görür ve kutu araca düşerse sürücü
-    # bayrağına OR'lanır (16/8 süzgecinden geçer). v4 modeli 'phone' üretebilir.
+    # bayrağına OR'lanır (Katman B oylamasından geçer). v4/yolo26 'phone' üretebilir.
     fuse_detections: true
     aux_classes: [phone, smoking]
+    # --- Katman B: ID-merkezli zaman-oylaması (DriverStateEngine + TrackVoter) ---
+    # Ham bayrak (Katman A: pose-hibrit / YOLO26l / mock) her track_id için pencere
+    # boyunca oylanır; bayrak yalnız son `window` karenin >= `min_votes` tanesinde
+    # True ise event'e döner → tek-karelik FP'ler (flicker) elenir. Bu, eski
+    # per-(track,alan) StabilityTracker 16/8 çağrısının ID-merkezli karşılığıdır
+    # (varsayılan 16/8 → aynı davranış); araç sahneden çıkınca tampon `max_age`
+    # karede düşer (bellek). Tümü ayarlanabilir.
+    voting:
+      window: 16                  # oylama penceresi (kare)
+      min_votes: 8                # pencerede aktiflik için min True oy (16/8 = mevcut davranış)
+      max_age: 30                 # ID bu kadar kare görünmezse tamponu düşür
 
 # Sürücü kimlik kilidi: araç kabininde sağ-alttaki kişiyi sürücü kabul et,
 # confirm_frames boyunca aynı kişi sürücüyse o kişinin takip ID'sini araca KİLİTLE.
