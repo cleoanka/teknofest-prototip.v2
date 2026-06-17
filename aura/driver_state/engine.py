@@ -42,6 +42,11 @@ class DriverStateEngine:
         self.max_age = int(cfg.get("models.driver_state.voting.max_age", 30))
         # Kemer ihlali türetme aç/kapa (varsayılan KAPALI; bkz. config no_seatbelt.enabled).
         self.derive_no_seatbelt = bool(cfg.get("models.driver_state.no_seatbelt.enabled", False))
+        # Sürücü-varlığı kapısı: no_seatbelt yalnızca kabinde gerçek bir sürücü
+        # yeterince görüldüyse türetilir (boş kabinde yanlış ihlali engeller).
+        self.require_present = bool(
+            cfg.get("models.driver_state.no_seatbelt.require_driver_present", True)
+        )
         # track_id → o ID'nin zaman tamponu (ID-merkezli durum burada yaşar).
         self.voters: dict[int, TrackVoter] = {}
         log.info(
@@ -52,12 +57,20 @@ class DriverStateEngine:
         )
 
     def process(
-        self, track_id: int, cabin_roi: np.ndarray | None, frame_idx: int = 0
+        self,
+        track_id: int,
+        cabin_roi: np.ndarray | None,
+        frame_idx: int = 0,
+        driver_present: bool = True,
     ) -> DriverState:
         """Bir aracın ID'si + kabin ROI'sini al → o ID için KARARLI DriverState üret.
 
         Arkadaşının Stage-1'inin verdiği ``track_id`` burada ana anahtardır: aynı ID
         her karede aynı tampona yazar, böylece sürücü-durumu zaman içinde birikir.
+
+        ``driver_present``: kabinde GERÇEK bir sürücü tespit edildi mi (driver_lock).
+        no_seatbelt türetmesinin kapısıdır; varsayılan ``True`` → varlık bilgisi yoksa
+        (driver_lock kapalı) eski davranış korunur.
         """
         # Katman A: bu karenin ham tahmini (henüz oylanmamış).
         raw = self.model.infer(cabin_roi)
@@ -66,7 +79,7 @@ class DriverStateEngine:
         if voter is None:
             voter = TrackVoter(self.window, self.min_votes)
             self.voters[track_id] = voter
-        voter.update(raw, frame_idx)
+        voter.update(raw, frame_idx, driver_present)
         ds = voter.stable_raw()  # kararlı HAM durum (phone/smoking/seatbelt/fatigue)
         self._derive_no_seatbelt(ds, voter)
         return ds
@@ -78,11 +91,15 @@ class DriverStateEngine:
         GÖRÜLMÜYORSA → no_seatbelt ihlali. Az gözlemde (soğuk tampon) yanlış alarm
         üretmemek için min_votes eşiği beklenir.
 
-        Not: şimdilik sürücü-varlığı koşulu eklenmedi (boş kabinde de tetikleyebilir);
-        gerçek dağıtımda driver_lock varlığıyla kapılanabilir — inşaat sonrası iyileştirme.
+        Sürücü-varlığı kapısı (``require_present``): kemerin yokluğu ancak kabinde
+        GERÇEK bir sürücü yeterince (>= min_votes kare) görüldüyse ihlal sayılır.
+        Böylece boş/sürücüsüz kabinde "kemer yok" yanlış pozitifi üretilmez
+        (varlık sinyali driver_lock'tan gelir; kapalıysa ``present`` daima True'dur).
         """
         if not self.derive_no_seatbelt:
             return  # toggle KAPALI → kemer ihlali türetilmez (varsayılan)
+        if self.require_present and voter.present_votes() < self.min_votes:
+            return  # sürücü kabinde yeterince görülmedi → ihlal türetme
         if not ds.seatbelt and voter.seen >= self.min_votes:
             ds.no_seatbelt = True
             # güven: kemer ne kadar az görüldüyse o kadar yüksek (0..1)

@@ -42,6 +42,11 @@ models:
     # VARSAYILAN KAPALI. Net kemer görünümü olan kamerada açılabilir.
     no_seatbelt:
       enabled: false
+      # Sürücü-varlığı kapısı: no_seatbelt yalnızca kabinde GERÇEK bir sürücü yeterince
+      # (>= voting.min_votes kare) görüldüyse türetilir → boş/sürücüsüz kabinde yanlış
+      # "kemer yok" ihlalini engeller. Varlık sinyali driver_lock'tan gelir; driver_lock
+      # kapalıysa kapı uygulanamaz (sürücü var kabul edilir).
+      require_driver_present: true
 
 # Sürücü kimlik kilidi: araç kabininde sağ-alttaki kişiyi sürücü kabul et,
 # confirm_frames boyunca aynı kişi sürücüyse o kişinin takip ID'sini araca KİLİTLE.

@@ -33,13 +33,23 @@ class TrackVoter:
         self.min_votes = min_votes
         self._hist: dict[str, deque[bool]] = {f: deque(maxlen=window) for f in RAW_FLAGS}
         self._conf: dict[str, deque[float]] = {f: deque(maxlen=window) for f in RAW_FLAGS}
+        # Sürücü-varlığı penceresi: bu ID'nin son `window` karesinde kabinde GERÇEK bir
+        # sürücü tespit edildi mi (driver_lock'tan gelir). no_seatbelt türetmesi bunu
+        # kapı olarak kullanır — boş kabinde "kemer yok" ihlali üretmemek için.
+        self._present: deque[bool] = deque(maxlen=window)
         self.seen: int = 0  # bu ID için gözlenen kare sayısı (pencere boyutunda doyar)
         self.last_frame: int = 0
 
-    def update(self, raw: DriverState, frame_idx: int) -> None:
-        """Bu karenin HAM tahminini pencereye ekle (henüz karar verme)."""
+    def update(self, raw: DriverState, frame_idx: int, present: bool = True) -> None:
+        """Bu karenin HAM tahminini pencereye ekle (henüz karar verme).
+
+        ``present``: bu karede kabinde gerçek bir sürücü görüldü mü (driver_lock).
+        Varsayılan ``True`` → varlık bilgisi yoksa (driver_lock kapalı, test) eski
+        davranış korunur.
+        """
         self.last_frame = frame_idx
         self.seen = min(self.seen + 1, self.window)
+        self._present.append(bool(present))
         for f in RAW_FLAGS:
             on = bool(getattr(raw, f))
             self._hist[f].append(on)
@@ -48,6 +58,10 @@ class TrackVoter:
     def votes(self, flag: str) -> int:
         """`flag` bayrağının penceredeki True oy sayısı."""
         return sum(self._hist[flag])
+
+    def present_votes(self) -> int:
+        """Penceredeki sürücü-VAR kare sayısı (no_seatbelt türetme kapısı)."""
+        return sum(self._present)
 
     def mean_conf(self, flag: str) -> float:
         """`flag` aktifken görülen güven skorlarının ortalaması (yoksa 0)."""

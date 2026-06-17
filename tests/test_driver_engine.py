@@ -113,6 +113,33 @@ def test_engine_no_seatbelt_disabled_by_default(cfg):
     assert out.smoking is True
 
 
+def test_engine_no_seatbelt_requires_driver_present(cfg):
+    """Kapı AÇIK (varsayılan): sürücü kabinde görülmezse kemer yok olsa bile türetilmez."""
+    eng = DriverStateEngine(cfg)
+    eng.window, eng.min_votes = 16, 8
+    eng.derive_no_seatbelt = True  # türetmeyi aç
+    assert eng.require_present is True  # config varsayılanı (no_seatbelt.require_driver_present)
+    eng.model = _StubModel([_ds(smoking=0.9)])  # kemer YOK ama sürücü de YOK (present=False)
+    out = None
+    for fi in range(20):
+        out = eng.process(1, object(), fi, driver_present=False)
+    assert out.no_seatbelt is False  # sürücü-varlığı kapısı ihlali engelledi
+    assert out.smoking is True  # ham bayraklar yine de oylanır
+
+
+def test_engine_present_gate_can_be_disabled(cfg):
+    """Kapı KAPATILIRSA: sürücü görülmese bile eski davranış → no_seatbelt türetilir."""
+    eng = DriverStateEngine(cfg)
+    eng.window, eng.min_votes = 16, 8
+    eng.derive_no_seatbelt = True
+    eng.require_present = False  # kapıyı kapat
+    eng.model = _StubModel([_ds(smoking=0.9)])  # kemer YOK
+    out = None
+    for fi in range(8):
+        out = eng.process(1, object(), fi, driver_present=False)
+    assert out.no_seatbelt is True  # kapı kapalı → varlıktan bağımsız türetilir
+
+
 def test_engine_no_violation_when_belt_present(cfg):
     """Toggle açık olsa bile kemer kararlı görülürse no_seatbelt türetilmez."""
     eng = DriverStateEngine(cfg)

@@ -159,10 +159,16 @@ class Pipeline:
             else:
                 driver_roi = cabin
 
+            # Sürücü-varlığı: driver_lock bu araca bir aday/kilitli sürücü bulduysa kabinde
+            # gerçek bir sürücü var demektir. no_seatbelt türetmesinin kapısı budur (boş
+            # kabinde "kemer yok" üretilmesin). driver_lock kapalıysa kapı uygulanamaz →
+            # varlık var kabul edilir (engine'deki present varsayılanı zaten True).
+            driver_present = assign.driver_id is not None or not self.driver_lock.enabled
+
             # Stage-2 sürücü durumu — motor ID-merkezli oylar (Katman A model → Katman B voting).
             # track_id ana anahtar: motor her ID için kendi zaman tamponunu tutar; tek-karelik
             # yanlış pozitifler (flicker) tampon içinde elenir, harici süzgeç gerekmez.
-            driver = self.driver.process(tid, driver_roi, idx)
+            driver = self.driver.process(tid, driver_roi, idx, driver_present=driver_present)
 
             # Plaka OCR: ilgili ROI'den oku; track'e göre sonucu biriktirir/günceller.
             plate = self.plate.update(tid, plate_roi, det.bbox, frame.shape, frame=frame)
