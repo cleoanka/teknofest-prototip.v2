@@ -69,21 +69,26 @@ sınıf-eşlemesi** tutar. Eşleme `aura/taxonomy.py` ile tutarlıdır (ör. `ci
 `van → minibus`). Manifestteki açık-kaynak köprü kapsamı (lisanslar §5 kaynakçaya yazılır;
 **kullanım öncesi lisans/uyumluluk teyidi** notu korunur):
 
-| Hedef sınıf (AURA) | Kaynak(lar) | ~Görüntü | Lisans |
-|---|---|---|---|
-| `cigarette → smoking` | Roboflow gordon/driver-smoking, dingguangyu/smoker | ~5300 | CC BY 4.0 |
-| `seatbelt → no_seatbelt_evidence` | Roboflow helmet-seatbelt, Kaggle driver-seatbelt | ~33800 | CC BY 4.0 / CC0 |
-| `minibus → minibus` | Roboflow johnny/traffic, geod/İstanbul-dolmuş | ~9100 | CC BY 4.0 |
-| `fatigue` | **(teyitli açık set yok — boş)** | — | — |
-| `license_plate` | **(teyitli açık set yok — boş)** | — | — |
-| `car/bus/truck/motorcycle/person/phone` | COCO (genel sınıflar) | — | CC BY 4.0 |
+| Hedef sınıf (AURA) | Kaynak(lar) | ~Görüntü | Lisans | Durum |
+|---|---|---|---|---|
+| `seatbelt → no_seatbelt_evidence` | `ramankamran/seatbelt-detection` (HF / Roboflow `oohmp`) | 3104 | CC BY 4.0 | **indirildi + kullanıldı** (denge 1.27); özel YOLO26 (s+l) fine-tune devam ediyor |
+| `car/bus/truck/motorcycle/person/phone` | COCO (genel sınıflar) | — | CC BY 4.0 | mevcut |
+| `cigarette → smoking` | **(no-auth açık bbox seti bulunamadı)** | — | — | Roboflow/Kaggle anahtarı veya komite verisi gerekir |
+| `minibus → minibus` | **(no-auth açık bbox seti bulunamadı)** | — | — | Roboflow/Kaggle anahtarı veya komite verisi gerekir |
+| `fatigue` | **(teyitli açık set yok — boş)** | — | — | komite verisi beklenir |
+| `license_plate` | **(teyitli açık set yok — boş)** | — | — | komite verisi beklenir |
 
-> **ONUR:** `fatigue` ve `license_plate` için doğrulanmış açık set bulunamadı → manifestte
-> `sources: []` boş bırakılır (uydurma kaynak eklenmez); bu sınıflar komite verisiyle gelir.
-> Buna bağlı olarak v4 fine-tune'da (`yolguvenligi_types_v4`) `license_plate/cigarette/
-> seatbelt/headphone` için eğitim verisi yoktu → bu sınıfların mAP'i güvenilir değildir;
-> plaka için stok dedektör yerine **sıkı LP-kırpık + pipeline dürüstlük zırhları** kullanılır
-> (bkz. `docs/degerlendirme.md` ölçülen sonuçlar + `ftr.md` §4).
+> **ONUR:** `seatbelt` için gerçek bir açık-kaynak YOLO seti (3104 görsel, CC BY 4.0) indirilip
+> kullanılmış ve üzerinde özel YOLO26 (s+l) fine-tune EĞİTİMİ başlatılmıştır (held-out mAP eğitim
+> bitince eklenecek). `cigarette` ve `minibus` için kimlik-doğrulaması gerektirmeyen (no-auth)
+> açık bbox seti bulunamamıştır (Roboflow/Kaggle anahtarı veya komite verisi gerekir). `fatigue`
+> ve `license_plate` için doğrulanmış açık set bulunamadığından bunlar manifestte `sources: []`
+> boş bırakılır (uydurma kaynak eklenmez); bu sınıflar komite verisiyle gelir. v4 fine-tune'da
+> (`yolguvenligi_types_v4`) `license_plate/cigarette/seatbelt/headphone` için eğitim verisi yoktu
+> → bu sınıfların mAP'i güvenilir değildir; plaka için stok dedektör yerine **sıkı LP-kırpık +
+> pipeline dürüstlük zırhları** kullanılır. Bu zırhlar sayesinde **her iki dedektör de** plakada
+> 2/3 exact-match, 0 yanlış-onay verir ve belirsizde dürüstçe `pending` der; sistem asla yanlış
+> plaka onaylamaz (bkz. `docs/degerlendirme.md` ölçülen sonuçlar + `ftr.md` §4).
 
 ```bash
 python -m train fetch                  # PLAN bas (varsayılan KURU; AĞ KULLANMAZ)
