@@ -3,6 +3,10 @@
 weights/*.pt
 weights/*.onnx
 weights/*.engine
+weights/*.metrics.json
+
+# Eğitim koşum çıktıları (ultralytics train/val)
+runs/
 
 # Ham veri / büyük örnekler
 data/raw/
