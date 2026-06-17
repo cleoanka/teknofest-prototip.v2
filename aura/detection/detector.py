@@ -161,6 +161,52 @@ def crop_rois(
     return cabin, plate
 
 
+def cap_roi_to_area(
+    frame: np.ndarray,
+    roi_box: tuple[int, int, int, int],
+    max_area_ratio: float,
+    corner: tuple[float, float] = (1.0, 1.0),
+) -> tuple[int, int, int, int] | None:
+    """ROI kutusunu kare alanının ``max_area_ratio`` payına KIRP (sürücü köşesine doğru).
+
+    Devasa sürücü ROI'si (kişi-kutusu yokken geometrik kabin fallback'i: araç üst
+    ~%55, ön cam + yolcu yansımaları) modelin minimum-alan ilkesine aykırıdır ve FP
+    kaynağıdır. ROI alanı eşiği AŞIYORSA, En-Boy oranı korunarak hedef alana ölçeklenir
+    ve ``corner`` (DriverLock ile aynı sözleşme, vars. sağ-alt = sürücü) yönüne sabitlenir.
+
+    ``max_area_ratio <= 0`` → kapalı (None). Eşik zaten sağlanıyorsa None (kırpma yok).
+    Aksi halde yeni (x1, y1, x2, y2) kutusunu döndürür. K-004: kare-alanına göreli
+    oran; videoya-özel sabit yok. Saf geometri (model gerektirmez)."""
+    if max_area_ratio <= 0:
+        return None
+    h, w = frame.shape[:2]
+    frame_area = float(h * w)
+    if frame_area <= 0:
+        return None
+    rx1, ry1, rx2, ry2 = roi_box
+    rx1 = max(0, min(int(rx1), w))
+    ry1 = max(0, min(int(ry1), h))
+    rx2 = max(0, min(int(rx2), w))
+    ry2 = max(0, min(int(ry2), h))
+    rw, rh = rx2 - rx1, ry2 - ry1
+    if rw <= 0 or rh <= 0:
+        return None
+    roi_area = float(rw * rh)
+    cap = frame_area * float(max_area_ratio)
+    if roi_area <= cap:
+        return None  # zaten yeterince küçük → kırpma gereksiz (dar ROI değişmez)
+    scale = (cap / roi_area) ** 0.5  # alan oranı → kenar oranı (kare-kök)
+    new_w = max(1, int(rw * scale))
+    new_h = max(1, int(rh * scale))
+    cx_t, cy_t = corner  # 0..1 köşe hedefi (sağ-alt = 1,1)
+    # Köşe-hizalı yerleştirme: anchor noktasını köşeye sabitle, kalan alanı içeri al.
+    nx1 = int(rx1 + (rw - new_w) * cx_t)
+    ny1 = int(ry1 + (rh - new_h) * cy_t)
+    nx1 = max(rx1, min(nx1, rx2 - new_w))
+    ny1 = max(ry1, min(ny1, ry2 - new_h))
+    return nx1, ny1, nx1 + new_w, ny1 + new_h
+
+
 def crop_person_roi(frame: np.ndarray, bbox: BBox, pad_ratio: float = 0.15) -> np.ndarray | None:
     """Kilitli sürücünün kutusundan ROI kes (kenarlardan `pad_ratio` kadar pay bırakır).
 

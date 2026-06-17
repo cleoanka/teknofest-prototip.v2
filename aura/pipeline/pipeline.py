@@ -31,7 +31,12 @@ from typing import TYPE_CHECKING  # sadece tip-denetiminde çalışan, runtime'd
 #   SpeedEstimator        → bbox hareketinden hız/göreli hız tahmini
 #   StabilityTracker      → 16/8 kararlılık süzgeci (titreşimli bayrakları yumuşatır)
 from aura.accumulator.accumulator import Accumulator
-from aura.detection.detector import build_detector, crop_person_roi, crop_rois
+from aura.detection.detector import (
+    build_detector,
+    cap_roi_to_area,
+    crop_person_roi,
+    crop_rois,
+)
 from aura.driver_state.engine import build_driver_engine
 from aura.events.emitter import EventEmitter
 from aura.identity.driver_lock import DriverLock
@@ -110,6 +115,21 @@ class Pipeline:
         self.driver_lock = DriverLock(cfg)  # sürücüyü araca kilitleyen kimlik takipçisi
         # Sürücü kutusunu kırparken etrafa eklenen oran (varsayılan %15 dolgu).
         self.driver_roi_pad = float(cfg.get("driver_lock.roi_pad", 0.15))
+        # Devasa sürücü ROI sınırı (yalnız geometrik kabin FALLBACK'inde, kişi-kutusu yok):
+        # ROI kare alanının max_roi_area_ratio'sunu aşarsa sürücü köşesine doğru o orana
+        # KIRPILIR; skip_if_oversized=True ise (alternatif) o kare sürücü-durum çıkarımı
+        # ATLANIR (devasa/güvenilmez ROI'de FP üretme). Kişi-kutusu varken ROI zaten
+        # dardır → bu sınır DEVREYE GİRMEZ (davranış değişmez). 0/None → kapalı.
+        dc = cfg.get("models.driver_state.driver_crop", {}) or {}
+        self.driver_max_roi_area_ratio = float(dc.get("max_roi_area_ratio", 0.0) or 0.0)
+        self.driver_skip_if_oversized = bool(dc.get("skip_if_oversized", False))
+        corner = str(cfg.get("driver_lock.corner", "bottom_right")).lower()
+        self._driver_corner = {
+            "bottom_right": (1.0, 1.0),
+            "bottom_left": (0.0, 1.0),
+            "top_right": (1.0, 0.0),
+            "top_left": (0.0, 0.0),
+        }.get(corner, (1.0, 1.0))
         self.qod = QoDController(cfg)  # Quality-on-Demand kontrolcüsü (anomalide kalite yükseltir)
         self.plate = PlateReader(cfg, qod=self.qod)  # plaka okuyucu; QoD ile koordineli çalışır
         self.speed = SpeedEstimator(cfg)  # hız/göreli hız tahmincisi
@@ -137,6 +157,15 @@ class Pipeline:
         # aşamalarına girmez (hidden_prototip min-track-hits dersi: tek-kare hayalet
         # tespitler OCR/pose maliyeti yaratmasın, çıktıyı kirletmesin).
         self.min_track_frames = int(cfg.get("tracking.min_track_frames", 3))
+        # ÇIKTI kapısı (annotation/event): heavy-stage kapısından AYRI ayarlanabilir.
+        # Bir track çıktı üretmek için en az bu kadar kare görülmüş OLMALI (kümülatif
+        # görünürlük). Vars. min_track_frames (geriye dönük uyum); orkestratör çıktı
+        # bastırmayı heavy-stage'den bağımsız sıkılaştırabilir. Çıktı eşiği heavy
+        # kapısından küçük OLAMAZ (heavy'den geçmeyen track zaten çıktı üretemez).
+        self.min_output_frames = max(
+            self.min_track_frames,
+            int(cfg.get("tracking.min_output_frames", self.min_track_frames)),
+        )
         self._track_age: dict[int, int] = {}
         # Sahne-seviyesi tabela takibi: aktif hız limitini çıkarır (ID-merkezli akışın yanında)
         self.sign_tracker = SignTracker(cfg)
@@ -182,8 +211,15 @@ class Pipeline:
 
         # Her tespit edilen araç için aşamaları sırayla uygula:
         for det, assign in zip(detections, driver_assignments, strict=True):
-            # track_id yoksa -1 ile işaretle (takip kurulmamış geçici tespit).
-            tid = det.track_id if det.track_id is not None else -1
+            # GUARD: takip KURULMAMIŞ tespit (track_id is None). Tüm böyle tespitler
+            # tek bir yapay '-1' kimliğine çökerdi → per-track durum (sınıf oyu, yaş
+            # sayacı, hız geçmişi) farklı araçlar arasında KİRLENİR ve '-1' sayacı hızla
+            # min_track_frames'i aşıp annotation/event'e SIZARDI (gerçek ölçüm: summary'lerde
+            # track_id=-1 çıktısı). Takipsiz tespit ağır aşamalara da çıktıya da girmez —
+            # net erken çıkış (K-004: kurala, videoya değil, takip-durumuna bağlı).
+            if det.track_id is None:
+                continue
+            tid = det.track_id
             # Sınıf oyu: tek-kare 'car↔truck' titremesi track çoğunluğuyla düzeltilir.
             # Oy ALAN-AĞIRLIKLI: yakın/büyük araç sınıfı daha güvenilir (uzak araç
             # truck görünebiliyor — gerçek ölçüm). det.bbox.cls YERİNDE güncellenir →
@@ -192,8 +228,8 @@ class Pipeline:
             _area_norm = (det.bbox.width * det.bbox.height) / max(1.0, float(_h * _w))
             det.bbox.cls = self.cls_voter.update(tid, det.bbox.cls, det.bbox.conf, _area_norm)
 
-            # Ağır aşama + ÇIKTI kapısı: yeni doğan track min_track_frames kare
-            # görülmeden ne ağır aşamalara girer ne annotation/event üretir.
+            # Ağır aşama kapısı: yeni doğan track min_track_frames kare görülmeden
+            # ağır aşamalara (driver_state/plaka OCR) girmez (maliyet koruması).
             # (Gerçek video_3 dersi: ByteTrack parçalanması 2-karelik hayalet 'truck'
             # track'leri doğuruyor — bunlar kanıt videosuna/dashboard'a sızmamalı.)
             age = self._track_age[tid] = self._track_age.get(tid, 0) + 1
@@ -205,14 +241,47 @@ class Pipeline:
             # Araç kutusundan iki ROI kes: kabin (sürücü bölgesi) ve plaka bölgesi.
             cabin, plate_roi = crop_rois(frame, det.bbox)
 
-            # Sürücü ROI: kilitli/aday sürücünün kutusundan kes (kesin);
+            # Sürücü ROI: kilitli/aday sürücünün kutusundan kes (kesin, DAR);
             # kişi yoksa geometrik kabin crop'una düş (geriye dönük uyumluluk).
+            # Fallback devasa ROI (ön cam + yolcu) FP kaynağıdır → boyut sınırı uygulanır.
+            using_fallback = True
             if assign.driver_bbox is not None:
                 driver_roi = crop_person_roi(frame, assign.driver_bbox, self.driver_roi_pad)
                 if driver_roi is None:
                     driver_roi = cabin
+                else:
+                    using_fallback = False  # kişi kutusundan kesik DAR ROI: sınır uygulanmaz
             else:
                 driver_roi = cabin
+            # Devasa kabin-fallback ROI sınırı: yalnız fallback'te ve config açıkken.
+            # (Kişi-kutusu ROI'si zaten dar — using_fallback=False → değişmez.)
+            if (
+                using_fallback
+                and driver_roi is not None
+                and getattr(driver_roi, "size", 0)
+                and self.driver_max_roi_area_ratio > 0
+            ):
+                h_, w_ = frame.shape[0], frame.shape[1]
+                # cabin kutusunun frame koordinatları (crop_rois ile aynı: araç üst %55)
+                cx1 = max(0, int(det.bbox.x1))
+                cy1 = max(0, int(det.bbox.y1))
+                cx2 = min(w_, int(det.bbox.x2))
+                cy2 = min(h_, int(det.bbox.y1 + (det.bbox.y2 - det.bbox.y1) * 0.55))
+                capped = cap_roi_to_area(
+                    frame,
+                    (cx1, cy1, cx2, cy2),
+                    self.driver_max_roi_area_ratio,
+                    self._driver_corner,
+                )
+                if capped is not None:
+                    if self.driver_skip_if_oversized:
+                        # Alternatif politika: devasa/güvenilmez ROI'de çıkarımı ATLA
+                        # (engine None ROI'de boş DriverState üretir → negatif oy, FP yok).
+                        driver_roi = None
+                    else:
+                        nx1, ny1, nx2, ny2 = capped
+                        cropped = frame[ny1:ny2, nx1:nx2]
+                        driver_roi = cropped.copy() if cropped.size else driver_roi
 
             # Stage-2 sürücü durumu — ID-merkezli iki katman (DriverStateEngine):
             #   Katman A: pose-hibrit / YOLO26l ham tahmin (track_id → latch belleği)
@@ -288,6 +357,17 @@ class Pipeline:
                 qod_active=qod_active,
                 qod_profile=qod_profile,
             )
+
+            # ÇIKTI kapısı (phantom bastırma): accumulator/hız durumu yukarıda OLGUNLAŞTI,
+            # ama track yeterli KÜMÜLATİF görünürlüğe (min_output_frames) ulaşmadıysa
+            # annotation/event ÜRETMEZ — kısa-ömürlü hayalet track'ler (ByteTrack
+            # parçalanması: 1-2 karelik motorcycle/truck) kanıt videosuna/event'e sızmaz.
+            # Vars. = min_track_frames (mevcut davranış birebir korunur); orkestratör
+            # bu eşiği bağımsız yükselterek bastırmayı güçlendirebilir. Uzun-ömürlü
+            # gerçek track (age >= eşik) etkilenmez.
+            if age < self.min_output_frames:
+                continue
+
             events.extend(ev)  # accumulator'ın ürettiği event'leri kare listesine ekle
 
             # Sürücü kimliğini kayda yaz; yeni kilitlendiyse event üret
