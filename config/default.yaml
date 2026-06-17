@@ -51,10 +51,15 @@ models:
     #          fine-tune ağırlık GEREKTİRMEZ). Bkz. aura/driver_state/pose.py.
     #   auto → pose ağırlığı diskte varsa pose, yoksa yolo.
     backend: auto
+    # yolo backend ağırlığı: stok yolo26l (pose varsayılan olduğundan bu yalnız backend=yolo'da
+    # kullanılır). AURA özel eğitimli domain modeli (phone/smoking/seatbelt) için bunu
+    # weights/custom_driver.pt yapıp `backend: yolo` seçin (bkz. docs/egitim.md).
     path: weights/yolo26l.pt
-    conf: 0.40
-    imgsz: 320
-    classes: [phone, smoking, no_seatbelt, fatigue]
+    conf: 0.45                     # fine-tune/domain model için (yolo backend)
+    imgsz: 640                     # 320 küçük telefonu kaybediyordu (cam-ardı sürücü); 640 korur
+    # Modelin HAM tespit sınıfları. 'seatbelt' = kemer ŞERİDİ (kemer VAR) tespiti;
+    # 'no_seatbelt' İHLALİ bundan TÜRETİLİR (Katman B), bu yüzden burada yer almaz.
+    classes: [phone, smoking, seatbelt, fatigue]
     # --- pose backend ayarları ---
     # l-pose: minimum alana (sürücü kırpığı) maksimum model — kullanıcı kararı.
     # Diskte yoksa koda gömülü LOGLU fallback stok yolo26s-pose.pt'ye düşer.
@@ -109,6 +114,12 @@ models:
       window: 16                  # oylama penceresi (kare)
       min_votes: 8                # pencerede aktiflik için min True oy (16/8 = mevcut davranış)
       max_age: 30                 # ID bu kadar kare görünmezse tamponu düşür
+    # Kemer ihlali (no_seatbelt) TÜRETME aç/kapa. Model kemer ŞERİDİNİ (kemer VAR) tespit
+    # eder; ihlal bunun yokluğundan Katman B'de türetilir. Kemer görünmeyen (cam-ardı/loş/
+    # uzak) footage'da yanlış pozitif üretebileceğinden VARSAYILAN KAPALI. Net kemer
+    # görünümü olan kamerada + domain modelinde açın.
+    no_seatbelt:
+      enabled: false
 
 # Sürücü/Yolcu atama: araç kabininde EN ALTTAKİ (berabere → en sağdaki) kişi HER ZAMAN
 # sürücüdür (dikey öncelikli, POZİSYONEL — kimliğe kilitlenmez). Diğer herkes yolcu; bir

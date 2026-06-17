@@ -10,6 +10,8 @@ runs/
 
 # Ham veri / büyük örnekler
 data/raw/
+data/processed/
+data/processed_driver/
 data/samples/*.mp4
 data/samples/*.avi
 eval_results/

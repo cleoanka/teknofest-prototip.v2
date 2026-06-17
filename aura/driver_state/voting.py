@@ -1,16 +1,18 @@
 """ID-merkezli zaman tamponu (temporal voting) — Stage-2 Katman B çekirdeği.
 
-Her sürücü-durum bayrağı (phone/smoking/no_seatbelt/fatigue) için son ``window``
-karelik HAM model çıktısını tutar. Bir bayrak yalnızca pencerede en az ``min_votes``
-kez görülürse "kararlı aktif" sayılır; aksi halde pasif kalır. Böylece tek-karelik
-yanlış pozitifler (titreşim/flicker) event'e dönüşmeden elenir.
+Her HAM tespit bayrağı için son ``window`` karelik model çıktısını tutar. Bir bayrak
+yalnızca pencerede en az ``min_votes`` kez görülürse "kararlı aktif" sayılır; böylece
+tek-karelik yanlış pozitifler (flicker) elenir.
 
-Bu, eski per-(track,alan) ``StabilityTracker`` 16/8 çağrısının ID-merkezli karşılığıdır
-(varsayılan window=16, min_votes=8 → aynı 16/8 davranışı). Fark: tampon track_id'ye
-bağlıdır ve araç sahneden çıkınca ``DriverStateEngine.prune`` ile düşer (bellek).
+Ham bayraklar (modelin doğrudan tespit ettikleri):
+    phone, smoking, seatbelt (kemer ŞERİDİ görüldü = kemer VAR), fatigue
 
-Tasarım: bu katman MODELDEN BAĞIMSIZDIR. Ham bayrak nereden gelirse gelsin (pose
-hibrit, fine-tune YOLO26l ya da mock) mantık aynı çalışır.
+Dikkat: ``no_seatbelt`` (ihlal) burada bir HAM bayrak DEĞİLDİR — o, kemerin YOKLUĞUNDAN
+``DriverStateEngine`` tarafından türetilir. Bu yüzden voter ek olarak ``seen`` (gözlenen
+kare sayısı) ve ``votes()`` sayaçlarını dışarı verir; engine türetmeyi bunlarla yapar.
+
+Tasarım: bu katman MODELDEN BAĞIMSIZDIR. Ham bayrak nereden gelirse gelsin (placeholder
+ya da eğitilmiş YOLO26l) mantık aynı çalışır.
 """
 
 from __future__ import annotations
@@ -19,48 +21,48 @@ from collections import deque
 
 from aura.schema import DriverState
 
-#: İzlenen sürücü-durum bayrakları (DriverState alanlarıyla birebir aynı isimler).
-FLAGS = ("phone", "smoking", "no_seatbelt", "fatigue")
+#: Modelin doğrudan ürettiği HAM tespit bayrakları (seatbelt = kemer takılı gözlemi).
+RAW_FLAGS = ("phone", "smoking", "seatbelt", "fatigue")
 
 
 class TrackVoter:
-    """Tek bir araç ID'si için tüm bayrakların kayan-pencere oy tamponu.
-
-    Her ``update`` çağrısı o karenin ham tahminini pencereye ekler; ``stable``
-    pencereye bakıp kararlı (oy eşiğini geçen) DriverState üretir.
-    """
+    """Tek bir araç ID'si için ham bayrakların kayan-pencere oy tamponu."""
 
     def __init__(self, window: int, min_votes: int):
         self.window = window
         self.min_votes = min_votes
-        # Her bayrak için son `window` karenin True/False geçmişi (maxlen ile otomatik kayar).
-        self._hist: dict[str, deque[bool]] = {f: deque(maxlen=window) for f in FLAGS}
-        # Aynı pencerede, bayrak aktifken görülen güven skorları (kararlı conf raporu için).
-        self._conf: dict[str, deque[float]] = {f: deque(maxlen=window) for f in FLAGS}
+        self._hist: dict[str, deque[bool]] = {f: deque(maxlen=window) for f in RAW_FLAGS}
+        self._conf: dict[str, deque[float]] = {f: deque(maxlen=window) for f in RAW_FLAGS}
+        self.seen: int = 0  # bu ID için gözlenen kare sayısı (pencere boyutunda doyar)
         self.last_frame: int = 0
 
     def update(self, raw: DriverState, frame_idx: int) -> None:
         """Bu karenin HAM tahminini pencereye ekle (henüz karar verme)."""
         self.last_frame = frame_idx
-        for f in FLAGS:
+        self.seen = min(self.seen + 1, self.window)
+        for f in RAW_FLAGS:
             on = bool(getattr(raw, f))
             self._hist[f].append(on)
-            # Bayrak kapalıysa 0 yaz: kararlı conf yalnızca "açık" oylardan hesaplanır.
             self._conf[f].append(raw.confidence.get(f, 0.0) if on else 0.0)
 
-    def stable(self) -> DriverState:
-        """Pencereye bakıp KARARLI sürücü durumunu üret.
+    def votes(self, flag: str) -> int:
+        """`flag` bayrağının penceredeki True oy sayısı."""
+        return sum(self._hist[flag])
 
-        Bir bayrak, son `window` karenin en az `min_votes` tanesinde True ise aktif
-        kabul edilir. Aktif bayrağın confidence'ı, pencerede onu True yapan karelerin
-        ortalama güveni olarak raporlanır.
+    def mean_conf(self, flag: str) -> float:
+        """`flag` aktifken görülen güven skorlarının ortalaması (yoksa 0)."""
+        positives = [c for c in self._conf[flag] if c > 0.0]
+        return round(sum(positives) / len(positives), 3) if positives else 0.0
+
+    def stable_raw(self) -> DriverState:
+        """Pencereye bakıp KARARLI HAM durumu üret (henüz no_seatbelt TÜRETİLMEDEN).
+
+        Her ham bayrak, son `window` karenin en az `min_votes` tanesinde True ise aktif
+        kabul edilir. no_seatbelt türetmesini engine yapar (bkz. DriverStateEngine).
         """
         ds = DriverState()
-        for f in FLAGS:
-            votes = sum(self._hist[f])
-            if votes >= self.min_votes:
+        for f in RAW_FLAGS:
+            if self.votes(f) >= self.min_votes:
                 setattr(ds, f, True)
-                positives = [c for c in self._conf[f] if c > 0.0]
-                if positives:
-                    ds.confidence[f] = round(sum(positives) / len(positives), 3)
+                ds.confidence[f] = self.mean_conf(f)
         return ds

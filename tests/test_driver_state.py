@@ -16,10 +16,12 @@ def _cabin(color) -> np.ndarray:
 
 def test_mock_maps_scenario_colors(cfg):
     clf = MockDriverClassifier(cfg)
-    assert clf.infer(_cabin((90, 200, 255))).phone is True  # araç 1
-    ds = clf.infer(_cabin((120, 255, 120)))  # araç 2
-    assert ds.smoking is True and ds.no_seatbelt is True
-    assert clf.infer(_cabin((200, 150, 255))).fatigue is True  # araç 3
+    a1 = clf.infer(_cabin((90, 200, 255)))  # araç 1: telefon + KEMERLİ
+    assert a1.phone is True and a1.seatbelt is True
+    ds = clf.infer(_cabin((120, 255, 120)))  # araç 2: sigara, KEMER YOK
+    # no_seatbelt artık HAM bayrak değil (Katman B'de türetilir) → mock onu üretmez
+    assert ds.smoking is True and ds.seatbelt is False and ds.no_seatbelt is False
+    assert clf.infer(_cabin((200, 150, 255))).fatigue is True  # araç 3: yorgun + kemerli
 
 
 def test_mock_background_no_state(cfg):
@@ -28,8 +30,8 @@ def test_mock_background_no_state(cfg):
 
 
 def test_mock_multilabel_confidence(cfg):
-    ds = MockDriverClassifier(cfg).infer(_cabin((120, 255, 120)))
-    assert set(ds.confidence) == {"smoking", "no_seatbelt"}
+    ds = MockDriverClassifier(cfg).infer(_cabin((90, 200, 255)))  # araç 1: phone + seatbelt
+    assert set(ds.confidence) == {"phone", "seatbelt"}
     assert all(0.5 <= c <= 1.0 for c in ds.confidence.values())
 
 
