@@ -151,9 +151,9 @@ plate:
   # LP kırpığına OCR'dan HEMEN ÖNCE bir kez uygulanır. Reader'ın düşük-güven
   # CLAHE+2x ikinci-şans varyantından AYRIDIR (o ölçek büyütür, bu yalnız ton/perspektif).
   dewarp:
-    enabled: true               # fronto-paralel perspektif düzeltme (açılı plaka → düz); köşe yoksa kimlik
+    enabled: false               # fronto-paralel perspektif düzeltme (açılı plaka → düz); köşe yoksa kimlik
   enhance:
-    enabled: true               # CLAHE (LAB L) + gamma + hafif unsharp (karanlık kabini açar, kenar netleştirir)
+    enabled: false               # CLAHE (LAB L) + gamma + hafif unsharp (karanlık kabini açar, kenar netleştirir)
     clahe_clip: 2.5             # CLAHE kontrast sınırı (büyük = daha agresif yerel kontrast)
     gamma: 1.2                  # >1 karanlık tonları aydınlatır (1.0 = etkisiz)
   # Sıkı plaka kırpma: özel LP dedektörü (YOLOv11n plaka fine-tune, ~5MB) plakayı

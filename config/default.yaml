@@ -184,10 +184,14 @@ plate:
   # OCR-öncesi görüntü hazırlama (WP-A1, karanlık/açılı otopark): dewarp + enhance,
   # LP kırpığına OCR'dan HEMEN ÖNCE bir kez uygulanır. Reader'ın düşük-güven
   # CLAHE+2x ikinci-şans varyantından AYRIDIR (o ölçek büyütür, bu yalnız ton/perspektif).
+  # ⚠ ÖLÇÜLDÜ (17 Haz 2026, 3 gerçek video): BU karanlık-otopark footage'ında OCR'ı
+  # tutarlı T→I'ya kaydırıp 34TC8532'yi 34IC8532 olarak YANLIŞ onayladı (ESKİ davranış
+  # 34TC8532'yi doğru onaylıyordu) → VARSAYILAN KAPALI. Opsiyonel kalır; farklı/komite
+  # footage'ında --config ile A/B test edip faydalıysa açın (K-004: dürüst, veriye dayalı).
   dewarp:
-    enabled: true               # fronto-paralel perspektif düzeltme (açılı plaka → düz); köşe yoksa kimlik
+    enabled: false              # VARSAYILAN KAPALI (ölçülen plaka regresyonu); opsiyonel — fronto-paralel perspektif düzeltme
   enhance:
-    enabled: true               # CLAHE (LAB L) + gamma + hafif unsharp (karanlık kabini açar, kenar netleştirir)
+    enabled: false              # VARSAYILAN KAPALI (ölçülen plaka regresyonu); opsiyonel — CLAHE (LAB L) + gamma + hafif unsharp
     clahe_clip: 2.5             # CLAHE kontrast sınırı (büyük = daha agresif yerel kontrast)
     gamma: 1.2                  # >1 karanlık tonları aydınlatır (1.0 = etkisiz)
   # Sıkı plaka kırpma: özel LP dedektörü (YOLOv11n plaka fine-tune, ~5MB) plakayı
