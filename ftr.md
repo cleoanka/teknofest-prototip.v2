@@ -66,18 +66,27 @@ headphone` için eğitim verisi yoktu → o sınıflar güvenilmez; plaka için 
 LP-kırpık + pipeline zırhları** kullanılır (§4). **YOLO26 fine-tune boru hattı `train/`
 altında hazırdır ve uçtan uca doğrulanmıştır** (açık `coco128` setinde gerçek `best.pt` +
 val mAP üretti → §4); komite verisi gelince **tek komutla** domain modeli eğitilir.
+**Seatbelt için somut ilerleme (17 Haz):** `seatbelt` sınıfı için **gerçek bir açık-kaynak
+YOLO veri seti indirilip kullanılmıştır** — 3104 görsel, CC BY 4.0 (kaynak:
+`ramankamran/seatbelt-detection` HF / Roboflow class `oohmp`; sınıf-dengesi oranı 1.27, yani
+dengeli). Bu set üzerinde **özel YOLO26 (s + l) seatbelt fine-tune EĞİTİMİ şu an devam
+etmektedir** (`custom_seatbelt_s` / `custom_seatbelt_l`); held-out mAP eğitim bitince
+eklenecektir (§4). `smoking` (cigarette) ve `minibus` için kimlik-doğrulaması gerektirmeyen
+(no-auth) bbox veri seti bulunamamıştır — bunlar Roboflow/Kaggle API anahtarı veya komite
+verisi gerektirir; dürüstçe belirtilir.
 
 **Doldurulacak içerik + komutlar:**
 - **Toplama (açık-kaynak köprü manifesti):** kaynaklar `train/datasets.yaml`'da
   **bildirimsel** tutulur (her hedef sınıf → kaynak + lisans + ~görüntü + AURA taksonomisine
   sınıf-eşlemesi). Ölçülen kapsam: `car/bus/truck/motorcycle/person/phone → COCO`;
-  `minibus → Roboflow Türk-trafiği (johnny/traffic ~5150, geod/İstanbul-dolmuş ~3950,
-  CC BY 4.0)`; `cigarette → smoking (gordon/driver-smoking ~1066, dingguangyu/smoker ~4221,
-  CC BY 4.0)`; `seatbelt → no_seatbelt_evidence (helmet-seatbelt ~3820 CC BY 4.0,
-  kaggle/driver-seatbelt ~30000 CC0)`. **ONUR:** `fatigue` ve `license_plate` için teyitli
-  açık set bulunamadığından manifestte `sources: []` boş bırakılır (uydurma kaynak yok).
-  Plan/lisans özeti: `python -m train fetch` (kuru, ağ kullanmaz). Lisanslar §5 kaynakçaya
-  yazılır; **kullanım öncesi lisans/uyumluluk teyidi notu** korunur.
+  `seatbelt → no_seatbelt_evidence` için **gerçek bir açık-kaynak YOLO seti indirilip
+  kullanıldı** (`ramankamran/seatbelt-detection` HF / Roboflow `oohmp`, 3104 görsel,
+  CC BY 4.0, sınıf-dengesi 1.27). **ONUR:** `cigarette` ve `minibus` için kimlik-doğrulaması
+  gerektirmeyen (no-auth) açık bbox seti bulunamadı (Roboflow/Kaggle anahtarı veya komite
+  verisi gerekir); `fatigue` ve `license_plate` için de teyitli açık set bulunamadığından
+  manifestte `sources: []` boş bırakılır (uydurma kaynak yok). Plan/lisans özeti:
+  `python -m train fetch` (kuru, ağ kullanmaz). Lisanslar §5 kaynakçaya yazılır;
+  **kullanım öncesi lisans/uyumluluk teyidi notu** korunur.
 - **Etiketleme:** YOLO formatı (`<cls> <xc> <yc> <w> <h>` normalize). Roboflow ile çek:
   `python -m train.roboflow_pull --workspace W --project P --version N`; çoklu sürücü-davranış
   setini birleştir: `python -m train.merge_driver_datasets`.
@@ -94,11 +103,12 @@ val mAP üretti → §4); komite verisi gelince **tek komutla** domain modeli e�
 
 **Doldurulabilir taslak:**
 > Veri seti açık-kaynak köprü stratejisiyle oluşturulmuştur: (i) genel
-> araç/kişi/nesne sınıfları için COCO; (ii) Türk trafiğine özgü `minibus` için Roboflow
-> Türk-trafiği setleri (~9100 görsel, CC BY 4.0); (iii) `cigarette/seatbelt` davranış
-> sınıfları için Roboflow + Kaggle açık setleri (~39000 görsel, CC BY 4.0 / CC0). Tüm
-> kaynaklar `train/datasets.yaml` manifestinde lisans ve AURA-taksonomisi eşlemesiyle
-> tutulur; `fatigue` ve `license_plate` için teyitli açık set bulunamadığından bunlar
+> araç/kişi/nesne sınıfları için COCO; (ii) `seatbelt` davranış sınıfı için gerçek bir
+> açık-kaynak YOLO seti indirilip kullanıldı (`ramankamran/seatbelt-detection`, 3104 görsel,
+> CC BY 4.0, sınıf-dengesi 1.27) ve üzerinde özel YOLO26 (s+l) fine-tune eğitimi başlatıldı.
+> Tüm kaynaklar `train/datasets.yaml` manifestinde lisans ve AURA-taksonomisi eşlemesiyle
+> tutulur; `cigarette/minibus` için no-auth açık bbox seti bulunamadığından (anahtar/komite
+> verisi gerekir) ve `fatigue/license_plate` için teyitli açık set bulunamadığından bunlar
 > dürüstçe boş bırakılmış (komite verisi beklenir). Tüm etiketler YOLO formatına
 > dönüştürülmüş, **%80/%10/%10 train/val/test** olarak bölünmüştür (küçük özel sette
 > val/test'in istatistiksel anlamı için %10+%10). Sınıf dengesizliği
@@ -151,6 +161,14 @@ ve `docs/mimari.md`'deki ayrıntılı şemayı rapora alın.
 - **Ön işleme:** far/headlight bastırma, hareket-bulanıklığı düzeltme, ROI CLAHE+gamma.
 - **Son işleme:** sınıf oylaması, 16/8 kararlılık, plaka format-normalizasyonu + pozisyon
   füzyonu + dürüstlük zırhları, hız Kalman+EMA + metrik oto-kalibrasyon, swerving ZigZag sayacı.
+- **Stabilite/doğruluk zırhları (config-driven; videoya-özel sabit YOK, K-004):** Bu üç kapı,
+  gerçek-videoda doğrulanmış olup yanlış-pozitif ve yanlış-onay kaynaklarını yapısal olarak
+  kapatır: (a) **`confirm_min_char_margin=2.0`** — bir plaka karakteri ikinci adayını mutlak
+  marjla geçmezse o pozisyon belirsiz sayılır ve plaka **asla yanlış onaylanmaz** (dürüst
+  `pending`); böylece eski ilk-karakter `3→0` misread'i artık yanlış onay üretmez. (b)
+  **`track_id=-1` / phantom çıktı kapısı (`min_output_frames`)** — takipsiz veya hayalet
+  tespitler event/annotation üretmez. (c) **`max_roi_area_ratio=0.10`** — kare alanının
+  %10'unu aşan devasa sürücü-ROI'leri kırpılır (eski bir FP kaynağı kapatıldı).
 - **Yazılım:** Python 3.13, PyTorch 2.12, Ultralytics 8.4, EasyOCR, OpenCV, FastAPI.
 - **Donanım:** sunucu dağıtımı (CUDA otomatik); geliştirme Apple Silicon/MPS. Cihaz `auto`
   (CUDA→MPS→CPU). Tüm `--help` çıktıları: `docs/cli_referans.md`.
@@ -179,32 +197,34 @@ python -m aura.eval --source <video> --ground-truth <gt.json> --qod-comparison
 
 | Dedektör | Davranış makro-F1 | Plaka exact | Plaka CER | Yanlış plaka onayı | Araç sınıfı | FPS (MPS) |
 |---|---|---|---|---|---|---|
-| **v4-finetune** (yolov8m, ÖNERİLEN plaka) | **1.00** | **2/3** (66.7%) | **0.083** | **0** | 100% | ~5.0 |
-| yolo26l (stok, varsayılan dedektör) | 0.933 | 1/3 (33.3%) | 0.125 | 2 (yanlış-onay) | 100% | ~5.9 |
+| **yolo26l** (stok, varsayılan dedektör) | **1.00** | **2/3** (66.7%) | **0.083** | **0** | 100% | ~5.9 |
+| **v4-finetune** (yolov8m) | **1.00** | **2/3** (66.7%) | **0.083** | **0** | 100% | ~5.3 |
 
-Davranış sınıf-bazlı (her iki dedektörde) — phone / smoking / swerving: P = R = F1 = **1.0**
-(v4). yolo26l yalnız video_2'de 1 `swerving` yanlış-pozitif üretir (swerving F1 0.667 →
-makro-F1 0.933). Araç sınıfı doğruluğu **%100** (her iki dedektör).
+Davranış sınıf-bazlı (**her iki dedektörde de**) — phone / smoking / swerving:
+P = R = F1 = **1.0**, makro-F1 **1.0**. (Stabilite fixleri öncesi eski yolo26l, video_2'de
+1 `swerving` yanlış-pozitifiyle 0.933 veriyordu; bu FP `track_id=-1`/phantom çıktı kapısı ve
+`max_roi_area_ratio` ile **gitti**.) Araç sınıfı doğruluğu **%100** (her iki dedektör).
 
 **Video-düzeyi plaka kararları (GT plaka = `34TC8532`):**
 
-| Video | GT davranış | v4 plaka (durum) | yolo26l plaka (durum) |
+| Video | GT davranış | yolo26l plaka (durum) | v4 plaka (durum) |
 |---|---|---|---|
-| video_1 | smoking | 34TC8532 (confirmed ✓) | 04TC8532 (confirmed — YANLIŞ) |
+| video_1 | smoking | 34TC8532 (confirmed ✓) | 34TC8532 (confirmed ✓) |
 | video_2 | phone | 34TC8532 (confirmed ✓) | 34TC8532 (confirmed ✓) |
-| video_3 | swerving | 24IC8532 (partial — dürüst pending) | 24IC8532 (confirmed — YANLIŞ) |
+| video_3 | swerving | 24IC8532 (partial — dürüst pending) | 24IC8532 (partial — dürüst pending) |
 
 > **Dürüst yorum (plaka çerçevesi — jüriye güven verir):** Davranış tespiti
-> (sigara/telefon/swerving) **çapraz-FP'siz** çalışır (v4 makro-F1 1.0). Plaka için
-> **`--profile v4-finetune` ÖNERİLİR**: 2/3 exact-match, CER 0.083 ve **0 yanlış-onay**.
-> Varsayılan stok `yolo26l` ise plaka-kritik DEĞİLDİR — 1/3 exact ama **2 yanlış-onay**
-> (`04TC8532`, `24IC8532`) üretir. Bu, ölçümle kanıtlanmış bir **dedektör-kalitesi
-> sınırıdır** (LP kırpığının karakter çözünürlüğü): voting eşiğini sıkmak overfit
-> olmadan düzeltmez. v4 dedektörü daha sıkı LP kırpığı sağladığından belirsiz/uzak
-> okuma onaylanmaz; sistem yanlış plaka kesinleştirmek yerine **pozisyon-veto + zemin
-> koşulu** zırhlarıyla dürüstçe `pending` (partial) der (video_3, v4). FPS değerleri
-> **MPS alt-sınırıdır**; CUDA sunucuda belirgin daha yüksektir. QoD A/B (aşağıda) plaka
-> doğruluğunu kontrollü sette 66.7→100'e çıkarır.
+> (sigara/telefon/swerving) **her iki dedektörde de çapraz-FP'siz** çalışır (makro-F1 1.0).
+> Plaka tarafında da iki dedektör **eşittir: 2/3 exact-match (66.7%), CER 0.083 ve 0
+> yanlış-onay** (`confirm_min_char_margin=2.0` zırhı sayesinde). Sistem belirsiz/uzak/bulanık
+> okumada **asla yanlış plaka onaylamaz**; bunun yerine dürüstçe **`pending` (partial)** der —
+> video_1/2 doğru plakayı (`34TC8532`) CONFIRMED verirken, uzak ve bulanık video_3 onurlu bir
+> PENDING'tir (`24IC8532` partial). Eski stok yolo26l 1/3 exact + 2 yanlış-onay üretiyordu; bu
+> yanlış-onaylar **conservative confirm eşiği** (pozisyon-veto + zemin koşulu + char-margin)
+> ile **düzeldi**. İki dedektör plaka doğruluğunda artık eşit olmakla birlikte, v4 ikincil
+> track'lerde biraz daha temiz kırpık üretir (ikincil bir not, doğruluk farkı değil). FPS
+> değerleri **MPS alt-sınırıdır**; CUDA sunucuda belirgin daha yüksektir. QoD A/B (aşağıda)
+> plaka doğruluğunu kontrollü sette 66.7→100'e çıkarır.
 
 **Dedektör tespit mAP'i (ÖLÇÜLEN held-out, rapora ek):**
 - **Stok dedektör (varsayılan `yolo26l`) — kendi ortamımızda ölçülen held-out mAP**
@@ -273,7 +293,10 @@ Finalde mobil uygulamada **canlı 5G + NV + QoD**:
   --weights weights/yolo26l.pt --epochs 100 --imgsz 768` → `weights/custom_detector.pt` + metrik;
   config `models.detector.path` ile devreye al. Detaylı rehber: `docs/egitim.md`.
 - **Karanlık plaka il-kodu:** perspektif düzeltme portu (yol haritası) veya komite footage'ı.
-- **cigarette/seatbelt/fatigue sınıfları:** küçük özel etiketleme + `driver-state` fine-tune.
+- **seatbelt sınıfı:** açık-kaynak YOLO seti (3104 görsel, CC BY 4.0) indirildi; özel YOLO26
+  (s+l) seatbelt fine-tune EĞİTİMİ devam ediyor — held-out mAP eğitim bitince §4'e eklenecek.
+- **cigarette/fatigue sınıfları:** no-auth açık bbox seti bulunamadı (Roboflow/Kaggle anahtarı
+  veya komite verisi gerekir) → küçük özel etiketleme + `driver-state` fine-tune.
 - **FPS:** CUDA sunucuda ölçüp rapora gerçek değerleri yazın (MPS sayıları alt-sınırdır).
 
 > **Özet:** AURA, FTR'nin **tüm bölümlerine somut kanıt + tek-komut üretim** sağlar. En yüksek

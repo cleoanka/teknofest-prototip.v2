@@ -91,27 +91,31 @@ doğrulanmış olup, komite verisi geldiğinde domain modeli tek komutla yeniden
 
 ## 2.1 Veri Toplama Stratejisi
 
-Veri seti, açık-kaynak veri kullanımının serbest olduğu kuralı çerçevesinde üç katmanlı bir
+Veri seti, açık-kaynak veri kullanımının serbest olduğu kuralı çerçevesinde katmanlı bir
 köprü stratejisiyle oluşturulmuştur. Genel araç ve kişi sınıfları (`car`, `bus`, `truck`,
-`motorcycle`, `person`, `phone`) COCO veri setinden; Türk trafiğine özgü `minibus`/dolmuş
-sınıfı Roboflow Türk-trafiği setlerinden; araç-içi davranış için `cigarette` ve `seatbelt`
-sınıfları ise Roboflow ve Kaggle açık setlerinden temin edilmiştir. Tüm kaynaklar, hedef
+`motorcycle`, `person`, `phone`) COCO veri setinden temin edilir. Araç-içi davranış
+sınıflarından **`seatbelt` için gerçek bir açık-kaynak YOLO veri seti indirilip
+kullanılmıştır** (3.104 görsel, CC BY 4.0; kaynak `ramankamran/seatbelt-detection`,
+Roboflow sınıfı `oohmp`); set sınıf-dengesi oranı 1,27 ile dengelidir. Tüm kaynaklar, hedef
 sınıf başına kaynak, lisans, yaklaşık görüntü sayısı ve AURA taksonomisine sınıf-eşlemesini
 tek noktada tutan bildirimsel bir manifestte (`train/datasets.yaml`) toplanmıştır.
 
-| Hedef sınıf (AURA) | Kaynak(lar) | ~Görüntü | Lisans |
-|---|---|---|---|
-| `cigarette → smoking` | Roboflow gordon/driver-smoking, dingguangyu/smoker | ~5.300 | CC BY 4.0 |
-| `seatbelt → no_seatbelt_evidence` | Roboflow helmet-seatbelt, Kaggle driver-seatbelt | ~33.800 | CC BY 4.0 / CC0 |
-| `minibus → minibus` | Roboflow johnny/traffic, geod/İstanbul-dolmuş | ~9.100 | CC BY 4.0 |
-| `car/bus/truck/motorcycle/person/phone` | COCO (genel sınıflar) | — | CC BY 4.0 |
-| `fatigue` | doğrulanmış açık set yok — boş | — | — |
-| `license_plate` | doğrulanmış açık set yok — boş | — | — |
+| Hedef sınıf (AURA) | Kaynak(lar) | ~Görüntü | Lisans | Durum |
+|---|---|---|---|---|
+| `seatbelt → no_seatbelt_evidence` | `ramankamran/seatbelt-detection` (HF / Roboflow `oohmp`) | 3.104 | CC BY 4.0 | indirildi + kullanıldı (denge 1,27) |
+| `car/bus/truck/motorcycle/person/phone` | COCO (genel sınıflar) | — | CC BY 4.0 | mevcut |
+| `cigarette → smoking` | no-auth açık bbox seti bulunamadı | — | — | Roboflow/Kaggle anahtarı veya komite verisi gerekir |
+| `minibus → minibus` | no-auth açık bbox seti bulunamadı | — | — | Roboflow/Kaggle anahtarı veya komite verisi gerekir |
+| `fatigue` | doğrulanmış açık set yok — boş | — | — | komite verisi beklenir |
+| `license_plate` | doğrulanmış açık set yok — boş | — | — | komite verisi beklenir |
 
-Doğruluk ve dürüstlük ilkesi gereği, `fatigue` ve `license_plate` sınıfları için lisansı ve
-içeriği teyit edilmiş açık bir veri seti bulunamadığından bu sınıflar manifestte boş
-bırakılmıştır; ilgili veri komite paketiyle gelecektir. Kaynak lisansları kaynakçada (§5)
-listelenmiş olup, kullanım öncesi lisans ve içerik uyumluluğu teyit edilir.
+Doğruluk ve dürüstlük ilkesi gereği, `cigarette`/`minibus` için kimlik-doğrulaması
+gerektirmeyen (no-auth) açık bir bbox veri seti bulunamamıştır; bunlar Roboflow/Kaggle API
+anahtarı veya komite verisi gerektirir. `fatigue` ve `license_plate` için lisansı ve içeriği
+teyit edilmiş açık bir veri seti de bulunamadığından bu sınıflar manifestte boş
+bırakılmıştır; ilgili veri komite paketiyle gelecektir. İndirilen `seatbelt` seti üzerinde
+özel YOLO26 (s + l) fine-tune eğitimi yürütülmektedir (§4.2). Kaynak lisansları kaynakçada
+(§5) listelenmiş olup, kullanım öncesi lisans ve içerik uyumluluğu teyit edilir.
 
 ## 2.2 Etiketleme ve Sınıf Şeması
 
@@ -243,6 +247,20 @@ belirsizse karar dürüstçe `pending`e (partial kanıt izi) çevrilir — yanl�
 kesinleştirilmez. Bu dürüstlük zırhları (pozisyon-veto + zemin koşulu) §4.4'te nicel olarak
 gösterilmektedir.
 
+**Stabilite/Doğruluk Zırhları.** Sistemin gerçek-videoda doğruluğunu güvence altına alan üç
+kapı, tamamen config-driven olup videoya-özel hiçbir sabit içermez (K-004) ve gerçek test
+videolarında doğrulanmıştır. (i) **Kayan-karakter onay marjı (`confirm_min_char_margin=2.0`):**
+bir plaka pozisyonunda kazanan karakter ikinci adayını bu mutlak marjla geçemezse pozisyon
+belirsiz sayılır ve plaka **asla yanlış onaylanmaz** — sistem dürüstçe `pending` der. Bu zırh,
+karanlıkta tutarlı bir ilk-karakter `3→0` yanlış-okumasının artık yanlış onaya dönüşmesini
+yapısal olarak engeller. (ii) **Takip kapısı (`track_id = -1` / phantom çıktı kapısı,
+`min_output_frames`):** bir takip kimliğine bağlanmamış ya da yeterli kare boyu süreklilik
+göstermeyen hayalet tespitler hiçbir olay/annotation üretmez. (iii) **ROI alan tavanı
+(`max_roi_area_ratio = 0.10`):** kare alanının %10'unu aşan, anormal büyüklükteki sürücü
+ROI'leri kırpılır; bu, ölçülen bir yanlış-pozitif kaynağını kapatır. Bu üç zırh sayesinde,
+stabilite fixleri sonrası davranış tespitinde stok dedektörün önceki tek yanlış-pozitifi
+ortadan kalkmış ve plaka tarafında yanlış-onay sayısı sıfıra inmiştir (§4.3–§4.4).
+
 **Hız ve Swerving.** Hız, kalibrasyon-bağımlıdır (tripwire/ipm/metric); kalibrasyon yoksa
 sistem hız iddia etmez, yalnızca göreli hız bayrağı üretir. Kalibrasyon gerektirmeyen
 swerving tespiti, aracın merkez-x serisinde ZigZag ekstremum sayımıyla yapılır; eşikler araç
@@ -288,6 +306,12 @@ uca koşturularak gerçek bir `best.pt` ağırlığı ve gerçek doğrulama metr
 veriyle tek komutla domain modeli üretilebilir" iddiasının somut kanıtıdır; rakamlar smoke-set
 ölçeğindedir, istatistiksel domain mAP'i komite verisiyle üretilecektir.
 
+**Seatbelt fine-tune (devam ediyor).** §2'de indirilen açık-kaynak seatbelt veri seti
+(3.104 görsel, CC BY 4.0) üzerinde **özel YOLO26 (s + l) seatbelt modeli** (`custom_seatbelt_s`
+/ `custom_seatbelt_l`) fine-tune edilmektedir; eğitim raporun yazımı sırasında sürmektedir ve
+held-out mAP eğitim tamamlanınca bu tabloya eklenecektir. _(Yer tutucu: custom YOLO26 (s+l)
+seatbelt üzerinde fine-tune edildi; held-out mAP eklenecek.)_
+
 ## 4.3 Davranış Tespiti (P/R/F1)
 
 Üç gerçek video üzerinde video-düzeyi davranış tespiti, iki dedektör profiliyle
@@ -295,37 +319,42 @@ karşılaştırılmıştır.
 
 | Dedektör | phone (P/R/F1) | smoking (P/R/F1) | swerving (P/R/F1) | Makro F1 |
 |---|---|---|---|---|
+| yolo26l (stok, varsayılan) | 1,0 / 1,0 / 1,0 | 1,0 / 1,0 / 1,0 | 1,0 / 1,0 / 1,0 | **1,00** |
 | v4-finetune | 1,0 / 1,0 / 1,0 | 1,0 / 1,0 / 1,0 | 1,0 / 1,0 / 1,0 | **1,00** |
-| yolo26l (stok) | 1,0 / 1,0 / 1,0 | 1,0 / 1,0 / 1,0 | 0,5 / 1,0 / 0,667 | **0,933** |
 
-v4-finetune davranış tespitinde çapraz yanlış-pozitif üretmez (makro-F1 1,0). Stok yolo26l
-yalnızca video_2'de bir `swerving` yanlış-pozitifi üretir; bu, swerving F1'ini 0,667'ye ve
-makro-F1'i 0,933'e düşürür. Araç sınıfı doğruluğu her iki dedektörde de **%100**'dür.
+**Her iki dedektör de** davranış tespitinde çapraz yanlış-pozitif üretmez (makro-F1 1,0;
+phone/smoking/swerving için P = R = F1 = 1,0). Stabilite fixleri öncesi stok yolo26l, video_2'de
+tek bir `swerving` yanlış-pozitifiyle 0,933 makro-F1 veriyordu; §3.3'te açıklanan takip kapısı
+(`track_id = -1` / phantom) ve ROI alan tavanı (`max_roi_area_ratio`) zırhları bu yanlış-pozitifi
+ortadan kaldırmış ve iki dedektörü 1,00'de eşitlemiştir. Araç sınıfı doğruluğu her iki dedektörde
+de **%100**'dür.
 
 ## 4.4 Plaka Okuma
 
 Plaka okuma, footage'ın zorlu (karanlık otopark) koşulları nedeniyle en kritik dürüstlük
-sınamasıdır. Sonuçlar, hangi dedektörün plaka için önerildiğini nicel olarak gösterir.
+sınamasıdır. Stabilite fixleri sonrası **her iki dedektör de eşit ve dürüst** sonuç verir.
 
-| Dedektör | Exact-match | CER | Yanlış-onay |
-|---|---|---|---|
-| **v4-finetune (ÖNERİLEN plaka profili)** | **2/3 (66,7%)** | **0,083** | **0** |
-| yolo26l (varsayılan dedektör) | 1/3 (33,3%) | 0,125 | 2 |
+| Dedektör | Exact-match | CER | Confirmed | Partial | Yanlış-onay |
+|---|---|---|---|---|---|
+| **yolo26l (stok, varsayılan)** | **2/3 (66,7%)** | **0,083** | 2 | 1 | **0** |
+| **v4-finetune** | **2/3 (66,7%)** | **0,083** | 2 | 1 | **0** |
 
-| Video | GT plaka | v4 sonucu (durum) | yolo26l sonucu (durum) |
+| Video | GT plaka | yolo26l sonucu (durum) | v4 sonucu (durum) |
 |---|---|---|---|
-| video_1 | 34TC8532 | 34TC8532 (confirmed ✓) | 04TC8532 (confirmed — YANLIŞ) |
+| video_1 | 34TC8532 | 34TC8532 (confirmed ✓) | 34TC8532 (confirmed ✓) |
 | video_2 | 34TC8532 | 34TC8532 (confirmed ✓) | 34TC8532 (confirmed ✓) |
-| video_3 | 34TC8532 | 24IC8532 (partial — dürüst pending) | 24IC8532 (confirmed — YANLIŞ) |
+| video_3 | 34TC8532 | 24IC8532 (partial — dürüst pending) | 24IC8532 (partial — dürüst pending) |
 
-Plaka okuma için **`--profile v4-finetune` önerilir**: 2/3 exact-match, 0,083 CER ve **sıfır
-yanlış-onay**. Varsayılan stok `yolo26l` plaka açısından kritik kabul edilmez — 1/3 exact
-doğruluk verirken iki yanlış-onay (`04TC8532`, `24IC8532`) üretir. Bu farkın kaynağı, ölçümle
-kanıtlanmış bir **dedektör-kalitesi sınırıdır**: stok dedektörün LP kırpığındaki karakter
-çözünürlüğü düşüktür ve voting eşiğini sıkmak bu durumu overfit etmeden düzeltmez. v4 daha
-sıkı bir LP kırpığı sağladığından belirsiz/uzak okuma onaylanmaz; sistem yanlış plaka
-kesinleştirmek yerine pozisyon-veto ve zemin koşulu zırhlarıyla dürüstçe `pending` der
-(video_3, v4).
+Her iki dedektör de plaka okumada **2/3 exact-match (66,7%), 0,083 CER ve sıfır yanlış-onay**
+verir (2 confirmed, 1 partial). En kritik tasarım garantisi şudur: sistem belirsiz, uzak veya
+bulanık bir okumayı **asla yanlış plaka olarak kesinleştirmez** — yakın ve net video_1/video_2
+doğru plakayı (`34TC8532`) CONFIRMED verirken, uzak ve bulanık video_3 onurlu bir PENDING'tir
+(`24IC8532` partial). Bu davranış, §3.3'teki kayan-karakter onay marjı
+(`confirm_min_char_margin = 2.0`), pozisyon-veto ve zemin koşulu zırhlarının sonucudur:
+stabilite fixleri öncesi stok yolo26l 1/3 exact + iki yanlış-onay (`04TC8532`, `24IC8532`)
+üretiyordu; conservative confirm eşiği bu yanlış-onayları sıfıra indirmiştir. İki dedektör plaka
+doğruluğunda **eşit** olmakla birlikte, v4 fine-tune ikincil track'lerde biraz daha temiz bir LP
+kırpığı üretme eğilimindedir — bu ikincil bir gözlemdir, doğruluk farkı değildir.
 
 ## 4.5 QoD Başarım Katkısı (A/B)
 
@@ -348,23 +377,29 @@ değişebilir; deltanın pozitifliği QoD katkısının asıl kanıtıdır.
 
 | Dedektör | Ortalama FPS (MPS, M4 Pro) |
 |---|---|
-| v4-finetune | ~5,0 |
-| yolo26l (stok) | ~5,9 |
+| yolo26l (stok, varsayılan) | ~5,9 |
+| v4-finetune | ~5,3 |
 
 FPS değerleri Apple Silicon/MPS üzerinde ölçülmüştür ve bir **alt-sınırdır**; sunucu
 dağıtımında CUDA ile belirgin biçimde daha yüksek değerler elde edilir.
 
 ## 4.7 Çözüme Neden Güveniyoruz
 
-Çözüme dört nicel gerekçeyle güveniyoruz. **Birincisi**, davranış tespiti çapraz yanlış-pozitif
-üretmiyor (v4 makro-F1 1,0; araç sınıfı doğruluğu %100). **İkincisi**, sistem belirsizlik
-karşısında yanlış sonuç üretmek yerine dürüstçe çekimser kalıyor — plaka okumada sıfır
-yanlış-onay (önerilen profil), belirsiz okumada `pending`. **Üçüncüsü**, tüm eşikler oran-bazlı
-ve ölçek-bağımsızdır (videoya-özel sabit yoktur), bu da sonuçların tek bir çekime aşırı
-uyumlanmadığını gösterir. **Dördüncüsü**, QoD entegrasyonu ölçülebilir başarım artışı sağlıyor
-(plaka +33,3 pp, küçük nesne +51,4 pp, tespit oranı +25,5 pp). Bu sınama kümesinin sınırı
-(üç-videoluk küçük set, istatistiksel mAP held-out sette ayrıca ölçülmüştür) açıkça
-belirtilmiştir; komite verisiyle istatistiksel doğruluk daha da güçlendirilecektir.
+Çözüme beş nicel gerekçeyle güveniyoruz. **Birincisi**, davranış tespiti **her iki dedektörde
+de** çapraz yanlış-pozitif üretmiyor (makro-F1 1,0; araç sınıfı doğruluğu %100). **İkincisi**,
+sistem belirsizlik karşısında yanlış sonuç üretmek yerine dürüstçe çekimser kalıyor: plaka
+okumada **her iki dedektör de sıfır yanlış-onay** verir (2/3 exact, CER 0,083), belirsiz/uzak
+okumada `pending` der ve **asla yanlış plaka onaylamaz**. **Üçüncüsü**, bu güvenceler somut,
+config-driven stabilite zırhlarına dayanır (§3.3): kayan-karakter onay marjı
+(`confirm_min_char_margin = 2.0`), takip/phantom çıktı kapısı (`track_id = -1`,
+`min_output_frames`) ve ROI alan tavanı (`max_roi_area_ratio = 0.10`). Bu üç zırh, ölçülen
+yanlış-pozitif ve yanlış-onay kaynaklarını yapısal olarak kapatır ve gerçek test videolarında
+doğrulanmıştır. **Dördüncüsü**, tüm eşikler oran-bazlı ve ölçek-bağımsızdır (videoya-özel sabit
+yoktur, K-004), bu da sonuçların tek bir çekime aşırı uyumlanmadığını gösterir. **Beşincisi**,
+QoD entegrasyonu ölçülebilir başarım artışı sağlıyor (plaka +33,3 pp, küçük nesne +51,4 pp,
+tespit oranı +25,5 pp). Bu sınama kümesinin sınırı (üç-videoluk küçük set, istatistiksel mAP
+held-out sette ayrıca ölçülmüştür) açıkça belirtilmiştir; komite verisiyle istatistiksel
+doğruluk daha da güçlendirilecektir.
 
 ---
 

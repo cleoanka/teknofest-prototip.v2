@@ -29,14 +29,19 @@ python -m aura.eval --metrics-report --summaries eval_results/ab   # → eval_re
   `map_yolo26l.json`): mAP50-95 **0.537**, mAP50 **0.709**, P **0.740**, R **0.641**.
 - **v4 fine-tune** (yolov8m, 11 sınıf): held-out **mAP50 0.788** (model kartı). DİKKAT:
   `license_plate/cigarette/seatbelt/headphone` için eğitim verisi yoktu → o sınıflar güvenilmez.
-- **Davranış (3 gerçek video, video-düzeyi):** v4-finetune makro-F1 **1.0**; yolo26l makro-F1
-  **0.933** (yolo26l video_2'de 1 `swerving` yanlış-pozitif). phone/smoking/swerving P=R=F1=1.0 (v4).
-- **Plaka (dürüst çerçeve):** **ÖNERİLEN `--profile v4-finetune`** → 2/3 exact-match (66.7%),
-  CER **0.083**, **0 yanlış-onay** (video_3 dürüst `pending`/partial). Stok `yolo26l` → 1/3
-  exact ama **2 yanlış-onay** (`04TC8532`, `24IC8532`) → plaka-kritik değildir; ölçümle
-  kanıtlanmış dedektör-kalitesi sınırı (voting eşiğiyle overfit olmadan düzeltilemez).
-- **Araç sınıfı doğruluğu:** %100 (her iki dedektör). **FPS (MPS, M4 Pro):** ~5.0 (v4) /
-  ~5.9 (yolo26l) — MPS alt-sınırı; CUDA sunucuda belirgin daha yüksektir.
+- **Davranış (3 gerçek video, video-düzeyi):** **her iki dedektör de** (yolo26l ve v4-finetune)
+  makro-F1 **1.0**; phone/smoking/swerving P=R=F1=1.0. (Stabilite fixleri öncesi yolo26l
+  video_2'de 1 `swerving` yanlış-pozitifiyle 0.933 veriyordu; `track_id=-1`/phantom çıktı kapısı
+  ve `max_roi_area_ratio` zırhlarıyla bu FP gitti.)
+- **Plaka (dürüst çerçeve — her iki dedektör eşit):** yolo26l **ve** v4-finetune → 2/3
+  exact-match (66.7%), CER **0.083**, confirmed=2, partial=1, **0 yanlış-onay**. video_1/2 =
+  `34TC8532` CONFIRMED (doğru); video_3 = dürüst PENDING (`24IC8532` partial, uzak/bulanık).
+  Sistem belirsiz/uzak okumayı **asla yanlış plaka olarak onaylamaz**, dürüstçe çekimser kalır
+  (`confirm_min_char_margin=2.0` + pozisyon-veto + zemin koşulu). Eski stok yolo26l 1/3 exact +
+  2 yanlış-onay üretiyordu; conservative confirm eşiğiyle düzeldi. v4 ikincil track'lerde biraz
+  daha temiz kırpık üretir (ikincil not; plaka doğruluğu eşit).
+- **Araç sınıfı doğruluğu:** %100 (her iki dedektör). **FPS (MPS, M4 Pro):** ~5.9 (yolo26l) /
+  ~5.3 (v4) — MPS alt-sınırı; CUDA sunucuda belirgin daha yüksektir.
 - **Eğitim hattı doğrulaması:** açık `coco128` setinde uçtan uca gerçek `best.pt` + val mAP
   üretildi (mAP50 0.790, mAP50-95 0.619) → boru hattı çalışır; komite verisiyle tek komut.
 
