@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING  # sadece tip-denetiminde çalışan, runtime'd
 # Aşağıdaki her import bir boru-hattı aşamasını getirir; ne işe yaradıkları:
 #   Accumulator           → track durumunu biriktirir, durum değişiminde event üretir
 #   build_detector/crop_* → araç (ve kişi) tespiti + ROI kırpma yardımcıları
-#   build_driver_classifier → Stage-2 sürücü davranışı (telefon/sigara/kemer/yorgunluk)
+#   build_driver_engine   → Stage-2 sürücü-durum motoru (ID-merkezli; Katman A model + Katman B oylama)
 #   EventEmitter          → event ve annotation'ları downstream'e (dashboard) yayınlar
 #   DriverLock            → sürücüyü araca kilitleyen kimlik takipçisi
 #   get_optional          → §8 opsiyonel modülleri tembel (lazy) yükler
@@ -32,7 +32,7 @@ from typing import TYPE_CHECKING  # sadece tip-denetiminde çalışan, runtime'd
 #   StabilityTracker      → 16/8 kararlılık süzgeci (titreşimli bayrakları yumuşatır)
 from aura.accumulator.accumulator import Accumulator
 from aura.detection.detector import build_detector, crop_person_roi, crop_rois
-from aura.driver_state.classifier import build_driver_classifier
+from aura.driver_state.engine import build_driver_engine
 from aura.events.emitter import EventEmitter
 from aura.identity.driver_lock import DriverLock
 from aura.optional.loader import get_optional
@@ -104,7 +104,9 @@ class Pipeline:
         # Track başına sınıf oylaması: tek-kare 'car↔truck' titremesini çoğunlukla düzeltir
         # (gerçek video ölçümü: araç ilk karede 0.8 güvenle 'truck', sonra kalıcı 'car').
         self.cls_voter = TrackClassVoter(cfg)
-        self.driver = build_driver_classifier(cfg)  # Stage-2 sürücü davranış sınıflandırıcısı
+        # Stage-2 sürücü-durum motoru (ID-merkezli): Katman A model (pose-hibrit/YOLO26l/mock)
+        # + Katman B per-track zaman-oylaması (eski per-alan 16/8 stability'nin yerine).
+        self.driver = build_driver_engine(cfg)
         self.driver_lock = DriverLock(cfg)  # sürücüyü araca kilitleyen kimlik takipçisi
         # Sürücü kutusunu kırparken etrafa eklenen oran (varsayılan %15 dolgu).
         self.driver_roi_pad = float(cfg.get("driver_lock.roi_pad", 0.15))
@@ -212,29 +214,23 @@ class Pipeline:
             else:
                 driver_roi = cabin
 
-            # Stage-2 sürücü durumu → 16/8 kararlılık süzgeci (alan-bazında)
-            # ham tahmin: telefon/sigara/kemer/yorgunluk (track_id: latch belleği için)
-            driver = self.driver.infer(driver_roi, track_id=tid)
-            # Stage-1 yardımcı kanıt füzyonu: dedektörün tam karede gördüğü
-            # phone/smoking nesnesi BU aracın kutusuna düşüyorsa bayrağa OR'lanır.
-            # (Kanıt da 16/8 süzgecinden geçer — tek-kare nesne FP'si event olamaz.)
+            # Stage-2 sürücü durumu — ID-merkezli iki katman (DriverStateEngine):
+            #   Katman A: pose-hibrit / YOLO26l ham tahmin (track_id → latch belleği)
+            #   Katman B: track_id başına zaman-oylaması (eski per-alan 16/8'in yerine)
+            # Stage-1 yardımcı kanıt füzyonu: dedektörün tam karede gördüğü phone/smoking
+            # NESNESİ BU aracın kutusuna düşüyorsa ham tahmine OR'lanır (kanıt da Katman B
+            # oylamasından geçer — tek-kare nesne FP'si event olamaz).
+            aux_flags: dict[str, float] = {}
             if self.fuse_aux:
                 for aux in getattr(self.detector, "last_aux", []):
                     ax, ay = aux.center
-                    if det.bbox.x1 <= ax <= det.bbox.x2 and det.bbox.y1 <= ay <= det.bbox.y2:
-                        field = aux.cls if aux.cls in _DRIVER_FIELDS else None
-                        if field is not None:
-                            setattr(driver, field, True)
-                            driver.confidence[field] = max(
-                                driver.confidence.get(field, 0.0), float(aux.conf)
-                            )
-            # Her bayrağı kendi anahtarıyla (track+alan) kararlılık süzgecinden geçir:
-            # tek karelik yanlış pozitiflerin event'e dönüşmesini engeller.
-            for f in _DRIVER_FIELDS:
-                stable = self.stability.update(
-                    f"{tid}:driver.{f}", getattr(driver, f), driver.confidence.get(f, 1.0)
-                )
-                setattr(driver, f, bool(stable))  # ham değeri kararlı (süzülmüş) değerle değiştir
+                    if (
+                        aux.cls in _DRIVER_FIELDS
+                        and det.bbox.x1 <= ax <= det.bbox.x2
+                        and det.bbox.y1 <= ay <= det.bbox.y2
+                    ):
+                        aux_flags[aux.cls] = max(aux_flags.get(aux.cls, 0.0), float(aux.conf))
+            driver = self.driver.process(tid, driver_roi, idx, aux_flags=aux_flags)
 
             # Plaka OCR: ilgili ROI'den oku; track'e göre sonucu biriktirir/günceller.
             plate = self.plate.update(tid, plate_roi, det.bbox, frame.shape, frame=frame)
@@ -311,6 +307,7 @@ class Pipeline:
 
         # --- kare sonu temizlik/ilerletme (araç döngüsü dışında) --- #
         self.driver_lock.prune(idx)  # uzun süredir görülmeyen sürücü kilitlerini düşür
+        self.driver.prune(idx)  # giden araçların sürücü-durum tamponlarını düşür (bellek)
         self.qod.tick()  # QoD zamanlayıcısını bir adım ilerlet (süresi dolan optimizasyonları kapat)
         events.extend(self.qod.drain_events())  # QoD'un kendi ürettiği event'leri (aç/kapa) topla
 
