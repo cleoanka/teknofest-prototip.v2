@@ -25,10 +25,15 @@ python -m aura.eval --metrics-report --summaries eval_results/ab   # → eval_re
 > Detay + doldurulabilir taslak: `ftr.md` §4.
 
 ### Ölçülen sonuçlar (17 Haz 2026; dewarp/enhance OFF; `eval_results/`)
-- **Stok dedektör (`yolo26l`) held-out mAP** (COCO val2017, 5000 görsel,
-  `map_yolo26l.json`): mAP50-95 **0.537**, mAP50 **0.709**, P **0.740**, R **0.641**.
-- **v4 fine-tune** (yolov8m, 11 sınıf): held-out **mAP50 0.788** (model kartı). DİKKAT:
-  `license_plate/cigarette/seatbelt/headphone` için eğitim verisi yoktu → o sınıflar güvenilmez.
+- **(ASIL DOĞRULUK) Stok dedektör (`yolo26l`) — COCO val2017 HELD-OUT** (5000 görsel,
+  `map_yolo26l.json`): mAP50-95 **0.537**, mAP50 **0.709**, P **0.740**, R **0.641**. Bu, modelin
+  eğitiminde görmediği ayrı doğrulama setidir ve asıl dedektör doğruluk göstergesidir.
+- **(YALNIZ HIZLI SAĞLIK) Stok `yolo26l` — coco128** (küçük, train-örtüşmeli): mAP50 **0.790**,
+  mAP50-95 **0.619**. DİKKAT: fine-tune DEĞİLDİR ve doğruluk iddiası olarak kullanılmaz; yalnız
+  boru hattının kurulduğunu gösteren sağlık kontrolüdür ("fine-tune 0.790" atfı YANLIŞTIR).
+- **DÜRÜST NOT (zorunlu sınıflar):** `license_plate`, `smoking`/`cigarette` için held-out mAP,
+  komite verisi / özel-model eğitimi gelene dek **YOKTUR** (mevcut sayılar stok COCO held-out +
+  3-video davranış + boru-hattı doğrulaması).
 - **Davranış (3 gerçek video, video-düzeyi):** **her iki dedektör de** (yolo26l ve v4-finetune)
   makro-F1 **1.0**; phone/smoking/swerving P=R=F1=1.0. (Stabilite fixleri öncesi yolo26l
   video_2'de 1 `swerving` yanlış-pozitifiyle 0.933 veriyordu; `track_id=-1`/phantom çıktı kapısı
@@ -42,8 +47,9 @@ python -m aura.eval --metrics-report --summaries eval_results/ab   # → eval_re
   daha temiz kırpık üretir (ikincil not; plaka doğruluğu eşit).
 - **Araç sınıfı doğruluğu:** %100 (her iki dedektör). **FPS (MPS, M4 Pro):** ~5.9 (yolo26l) /
   ~5.3 (v4) — MPS alt-sınırı; CUDA sunucuda belirgin daha yüksektir.
-- **Eğitim hattı doğrulaması:** açık `coco128` setinde uçtan uca gerçek `best.pt` + val mAP
-  üretildi (mAP50 0.790, mAP50-95 0.619) → boru hattı çalışır; komite verisiyle tek komut.
+- **Eğitim hattı doğrulaması (uçtan uca):** açık `coco128` setinde `yolo26s` ile 5 epoch
+  koşturularak gerçek `best.pt` + val mAP üretildi (**best.pt mAP50 0.7645, mAP50-95 0.5909**)
+  → "eğitim hattı uçtan uca çalışır" kanıtı (doğruluk iddiası değil); komite verisiyle tek komut.
 
 ## QoD A/B harness (kritik)
 Aynı video iki senaryoda koşulur:
@@ -61,8 +67,11 @@ Her senaryo için tam metrik seti; çıktı **delta tablosu** (mutlak + yüzde f
 Chart.js paneli.
 
 ### Ölçülen sonuç (sentetik kontrollü örnek — kare-düzeyi GT, 17 Haz 2026)
-Gerçek videolarda kare-düzeyi ground-truth bulunmadığından QoD A/B bu **kontrollü sentetik
-sette** ölçülür (dürüst not). Kaynak: `eval_results/report.md`.
+Aşağıdaki delta sayıları gerçek ve **yeniden-üretilebilirdir** (`eval_results/report.json`,
+`qod_comparison=true`). Atıf şeffaflığı: QoD A/B kare-düzeyi ground-truth gerektirir; üç gerçek
+videoda kare-düzeyi GT bulunmadığından QoD A/B **orada ölçülemez** ve bu nedenle ölçüm,
+kare-düzeyi GT içeren **kontrollü sentetik set** (`data/samples/ornek.mp4`) üzerinde yapılır.
+Kaynak: `eval_results/report.md` / `report.json`.
 
 | Metrik | QoD OFF | QoD ON | Δ |
 |---|---|---|---|
