@@ -11,19 +11,25 @@ gerçek bir YZ çekirdeği ile, bu çekirdeği **5G QoD** (CAMARA Quality-on-Dem
 **gerçektir**. Ağ/telekom/mobil katmanları (QoD gateway, NV API, 5G şebekesi) gerçek API
 sözleşmesini birebir taklit eden **mock**'lardır — final ortamında yalnızca endpoint/credential değişir.
 
-**Öne çıkanlar:**
-- **Gerçek videoda doğrulanmış tespit:** fine-tune dedektör (`yolguvenligi_types_v4`,
-  held-out mAP50 .788) + **YOLO26-pose sürücü davranış geometrisi** (telefon/sigara —
-  fine-tune ağırlık gerektirmez) + **swerving/yalpalama** tespiti (ZigZag yanal yörünge
-  analizi, ölçek- ve fps-bağımsız) + TR plaka **format-öncelikli, güven-ağırlıklı oylama**.
-- **Ağırlıksız da çalışır:** YOLO26 ağırlığı yoksa pipeline deterministik *mock* modda tüm
-  hattı (tespit→plaka→sürücü→hız→QoD→event) uçtan uca koşturur; demo ve testler model olmadan geçer.
-- **QoD kanıtı:** A/B harness ölçülebilir delta üretir (plaka doğruluğu **+33pp**, küçük
-  nesne tespiti **+51pp**); **yaklaşma tetiği** (`vehicle_approach`) şartnamenin "TOGG
-  yaklaşınca QoD" senaryosunu birebir karşılar — %40 QoD puanı için kanıt araçları.
-- **Denetim izi:** `tools/test_video.py` her videodan annotated mp4 + JSON kanıt özeti
-  üretir; `python -m aura --save-events` tüm event'leri JSONL'e yazar (şartname 4.5).
-- **Kalite:** 118 unit test, `ruff` + `black` temiz, GitHub Actions CI.
+**Öne çıkanlar (v2.3 — YOLO26 sunucu sürümü):**
+- **YOLO26 omurga, konfigüre edilebilir:** varsayılan Stage-1 dedektör **stok `yolo26l`**
+  (sunucu, doğruluk-önce); **config profilleri** (`--profile server|laptop|v4-finetune`)
+  `default.yaml` üzerine derin-merge edilir. Sürücü davranışı **YOLO26-pose** geometrisi +
+  hibrit nesne kanıtı; plaka **YOLO11n LP dedektörü + format-öncelikli güven-ağırlıklı oylama**.
+- **ID-merkezli iki-katmanlı sürücü motoru:** Katman A (pose-hibrit model) + Katman B
+  (`DriverStateEngine` per-track 16/8 zaman-oylaması) → tek-kare FP'leri eler, araç çıkınca tampon düşer.
+- **FTR'ye hazır metrikler:** `python -m aura.eval --metrics-report` → video-düzeyi
+  **P/R/F1 + plaka exact-match/CER + FPS** (dedektör A/B); `eval_results/metrics_report.md`.
+- **Eğitim boru hattı (YOLO26 fine-tune):** `python -m train` eğit→doğrula→metrik→best;
+  `dataset --report` veri-dengeleme dağılımı (FTR §2). Komite verisi gelince tek komut.
+- **Ağırlıksız da çalışır:** ağırlık yoksa pipeline deterministik *mock* modda tüm hattı
+  (tespit→plaka→sürücü→hız→QoD→event) uçtan uca koşturur; demo ve testler model olmadan geçer.
+- **QoD kanıtı:** A/B harness ölçülebilir delta üretir; **yaklaşma tetiği** (`vehicle_approach`)
+  şartnamenin "TOGG yaklaşınca QoD" senaryosunu birebir karşılar — %40 QoD puanı için kanıt.
+- **Denetim izi + sağlık:** `tools/test_video.py` annotated mp4 + JSON kanıt; `--save-events`
+  JSONL iz (şartname 4.5); `python tools/doctor.py` tek-bakış ortam/hazırlık kontrolü.
+- **Kalite:** 170+ unit test, `ruff` + `black` temiz, GitHub Actions CI.
+- **FTR rehberi:** [`ftr.md`](ftr.md) — Final Tasarım Raporu'nu bu kanıtlarla doldurma kılavuzu.
 
 ---
 
@@ -31,8 +37,10 @@ sözleşmesini birebir taklit eden **mock**'lardır — final ortamında yalnız
 
 ### macOS / Linux
 ```bash
-./setup.sh        # bağımlılıklar + model ağırlıkları + örnek veri + smoke (tek komut)
-./run.sh          # inference :8080, QoD mock :8081, NV mock :8082
+./setup.sh                       # bağımlılıklar + model ağırlıkları + örnek veri + smoke (tek komut)
+python tools/doctor.py           # ortam/hazırlık kontrolü (bağımlılık, cihaz, ağırlık, profil)
+./run.sh                         # inference :8080, QoD mock :8081, NV mock :8082
+AURA_PROFILE=server ./run.sh     # sunucu profili (yolo26l, CUDA, büyük imgsz)
 ```
 
 ### Windows (PowerShell 7+)
@@ -53,20 +61,21 @@ otomatik seçilir (Apple Silicon→MPS, NVIDIA→CUDA, diğer→CPU).
 ## Mimari Özeti
 
 ```
-[Kamera] → [Ön-İşleme] → [v4/YOLO26 + ByteTrack] ─┬─→ [Sürücü ROI] → [YOLO26-pose geometri | YOLO26l]
-                                ↑                  └─→ [Plaka ROI] → [Sweet Spot + Güven-Ağırlıklı Oylama + OCR]
-                          [16/8 State Machine]                              ↓
-                                                                     [QoD Tetikleyici (yaklaşma/kalite/anomali)]
-                                                                           ↓
+[Kamera] → [Ön-İşleme] → [YOLO26 + ByteTrack] ─┬─→ [Sürücü ROI] → Katman A: YOLO26-pose geometri+hibrit nesne
+                              ↑                 │                  Katman B: per-ID 16/8 zaman-oylaması (engine)
+                       [Sınıf oyu]             └─→ [Plaka ROI] → [YOLO11n LP + Güven-Ağırlıklı Oylama + OCR]
+                                                                          ↓
+                                                          [QoD Tetik (yaklaşma/kalite/anomali)]
                               [ID-Merkezli Accumulator] ← [Hız + Swerving (yanal yörünge)]
                                           ↓
-                              [Event / Annotation Stream] → Dashboard + Mobil
+                              [Event / Annotation Stream] → Dashboard + Mobil + JSONL kanıt
 ```
 
-Mimari kararlar (değişmez): cascade pipeline (Stage-1 dedektör → Stage-2 sürücü analizi),
-ID-merkezli birikim, 16/8 state machine, **landmark kütüphanesi yok** (sürücü davranışı ya
-YOLO26l detection sınıfı ya da **YOLO26-pose keypoint geometrisi** ile — `models.driver_state.backend`),
-kalibrasyon-bağımlı hız. Detay: [`docs/mimari.md`](docs/mimari.md).
+Mimari kararlar (değişmez): cascade pipeline (Stage-1 YOLO26 dedektör → Stage-2 sürücü motoru:
+**Katman A model + Katman B ID-merkezli zaman-oylaması**), ID-merkezli birikim, **landmark
+kütüphanesi yok** (sürücü davranışı YOLO26-pose keypoint geometrisi veya YOLO26l detection ile —
+`models.driver_state.backend`), kalibrasyon-bağımlı hız. Dedektör/cihaz/eşikler **config
+profilleriyle** seçilir (`--profile`). Detay: [`docs/mimari.md`](docs/mimari.md).
 
 ---
 
@@ -75,12 +84,18 @@ kalibrasyon-bağımlı hız. Detay: [`docs/mimari.md`](docs/mimari.md).
 | Komut | Açıklama |
 |---|---|
 | `python bootstrap.py --help` | Kurulum seçenekleri |
-| `python -m aura --help` | Ana inference pipeline (`--save-events` ile JSONL kanıt izi) |
-| `python tools/test_video.py --help` | Gerçek video testi → annotated mp4 + JSON kanıt özeti |
-| `python -m aura.eval --help` | Değerlendirme + QoD A/B karşılaştırması |
-| `python -m train --help` | Model eğitimi (detector / driver-state / dataset) |
+| `python tools/doctor.py` | Ortam/hazırlık sağlık kontrolü (bağımlılık, cihaz, ağırlık, profil) |
+| `python -m aura --help` | Ana inference pipeline (`--profile`, `--save-events` JSONL kanıt izi) |
+| `python tools/test_video.py --help` | Gerçek video testi → annotated mp4 + JSON kanıt (`--profile` ile A/B) |
+| `python -m aura.eval --metrics-report` | FTR §4 metrik raporu (P/R/F1 + plaka CER + FPS + dedektör A/B) |
+| `python -m aura.eval --qod-comparison` | QoD A/B delta (şartname %40 QoD kanıtı) |
+| `python -m train --help` | YOLO26 eğitimi (detector / driver-state / dataset `--report`) |
 | `python -m aura.synthetic` | Sentetik örnek video + ground-truth üret |
-| `make help` | Geliştirme kısayolları |
+| `make help` | Geliştirme kısayolları (`make doctor` / `metrics` / `test`) |
+
+**Config profilleri** (`config/profiles/*.yaml`, `default.yaml` üzerine derin-merge):
+`--profile server` (yolo26l/CUDA/imgsz960) · `laptop` (yolo26s/MPS) · `v4-finetune`
+(11-sınıf fine-tune). `AURA_PROFILE` env ile de seçilir.
 
 Tüm `--help` çıktıları: [`docs/cli_referans.md`](docs/cli_referans.md).
 Tüm API endpoint'leri: [`docs/api_referans.md`](docs/api_referans.md).
@@ -120,6 +135,8 @@ Tüm API endpoint'leri: [`docs/api_referans.md`](docs/api_referans.md).
 | [`docs/degerlendirme.md`](docs/degerlendirme.md) | Metrikler + QoD A/B protokolü |
 | [`docs/mimari_ek_moduller.md`](docs/mimari_ek_moduller.md) | §8 opsiyonel modüller (lazy) |
 | [`docs/sartname_izlenebilirlik.md`](docs/sartname_izlenebilirlik.md) | Şartname ↔ modül eşlemesi |
+| [`docs/dagitim.md`](docs/dagitim.md) | Sunucu dağıtımı (CUDA, profil, servis, ölçeklenme) |
+| [`ftr.md`](ftr.md) | Final Tasarım Raporu doldurma rehberi + doldurulabilir taslak |
 
 Her dizin kendi `README.md`'sini taşır.
 
@@ -128,7 +145,7 @@ Her dizin kendi `README.md`'sini taşır.
 ## Test & Kalite
 
 ```bash
-pytest -m "not integration"        # 118 unit test (mock modda, ağırlık gerektirmez)
+pytest -m "not integration"        # 170+ unit test (mock modda, ağırlık gerektirmez)
 ruff check . && black --check .    # lint + format
 ```
 Model gerektiren testler `@pytest.mark.integration` ile işaretli (CI'da skip edilir).

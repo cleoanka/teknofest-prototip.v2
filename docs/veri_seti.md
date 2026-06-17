@@ -40,6 +40,24 @@ Eğitimde ultralytics otomatik uygular; öne çıkanlar:
 testleri içindir; eğitim verisi değildir. Gerçek TOGG veri seti geldiğinde
 `data/raw/` altına yerleştirip `prepare_dataset` ile işleyin.
 
+## Veri dengeleme (data balancing) — FTR §2 (20 puan)
+FTR şablonu verinin nasıl **dengelendiğini** açıkça ister. AURA tool'u dağılımı ölçer:
+```bash
+python -m train dataset --report --output data/processed/
+```
+Çıktı: her split (train/val/test) için **görüntü sayısı + sınıf-örnek dağılımı +
+dengesizlik oranı (en kalabalık / en seyrek sınıf)**. Oran **> 3** ise uyarır.
+
+**Dengeleme stratejileri (rapora yazın):**
+1. **Hedeflenmiş toplama/etiketleme:** seyrek sınıflara (ör. `cigarette`, `minibus`) ek örnek.
+2. **Oversampling:** az sınıfın görüntülerini eğitim listesinde çoğaltma.
+3. **Sınıf-lehine augmentasyon:** seyrek sınıf sahnelerinde daha agresif mozaik/HSV/karartma.
+4. **Split oranı:** varsayılan **%80/%10/%10** (train/val/test) — küçük özel sette val/test'in
+   istatistiksel anlamı için %10+%10; çok dengesizse stratified split önerilir.
+
+> FTR'ye: `dataset --report` çıktısını tablo olarak koyun + uyguladığınız dengeleme
+> tekniklerini ve gerekçesini yazın. Komut + sayılar = "veriyi nasıl dengelediğinizin" kanıtı.
+
 ## Dizin yapısı
 ```
 data/

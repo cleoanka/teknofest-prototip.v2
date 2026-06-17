@@ -8,8 +8,21 @@
 - **Plaka:** exact-match accuracy, CER (Character Error Rate).
 - **Tespit:** kare-bazlı tespit oranı, küçük/uzak nesne tespit oranı.
 - **Hız:** MAE/RMSE (kalibrasyon varsa).
-- **Sürücü durumu:** precision/recall/F1 (sınıf bazında — genişletilebilir).
+- **Sürücü durumu / swerving:** precision/recall/F1 (video-düzeyi; `prf1`/`accuracy`).
 - **FPS:** ortalama (referans amaçlı).
+
+## FTR §4 metrik raporu (v2.3) — `--metrics-report`
+`tools/test_video.py` özetlerinden **video-düzeyi P/R/F1 + plaka exact-match/CER + araç
+doğruluğu + FPS** üretir; **dedektöre göre gruplar** (yolo26l vs v4-finetune A/B). Doğrudan
+FTR §4 tablolarına yapıştırılabilir.
+```bash
+python tools/test_video.py --source ~/video_1.mp4 --json eval_results/ab/video_1_yolo26l.json
+python tools/test_video.py --source ~/video_1.mp4 --profile v4-finetune --json eval_results/ab/video_1_v4.json
+python -m aura.eval --metrics-report --summaries eval_results/ab   # → eval_results/metrics_report.md+csv+json
+```
+> Dürüstlük: 3-videoluk küçük held-out set (davranış tespitinin *çalıştığının* kanıtı).
+> İstatistiksel mAP için etiketli set + `python -m train` (`model.val` mAP/P/R/F1 export).
+> Detay + doldurulabilir taslak: `ftr.md` §4.
 
 ## QoD A/B harness (kritik)
 Aynı video iki senaryoda koşulur:
