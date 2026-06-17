@@ -32,6 +32,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p.add_argument("--output", default="eval_results", help="Rapor çıktı dizini")
     p.add_argument("--config", default=None, help="Config dosyası")
+    p.add_argument("--profile", default=None, help="Config profili: server | laptop | v4-finetune")
     return p
 
 
@@ -42,7 +43,7 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.reconfigure(encoding="utf-8")
     args = build_parser().parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
-    cfg = load_config(args.config)
+    cfg = load_config(args.config, profile=args.profile)
     source = args.source if args.source else cfg.get("runtime.source")
 
     from aura.eval.harness import run_eval

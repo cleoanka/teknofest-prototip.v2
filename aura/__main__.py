@@ -31,6 +31,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="Config dosyası (varsayılan: config/default.yaml)",
     )
     p.add_argument(
+        "--profile",
+        metavar="NAME",
+        default=None,
+        help="Config profili (config/profiles/*.yaml): server | laptop | v4-finetune. "
+        "default.yaml üzerine derin-merge edilir. AURA_PROFILE env ile de verilebilir.",
+    )
+    p.add_argument(
         "--source",
         metavar="SOURCE",
         default=None,
@@ -71,7 +78,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     log = logging.getLogger("aura")
 
-    cfg = load_config(args.config)
+    cfg = load_config(args.config, profile=args.profile)
     if args.device:
         cfg.data.setdefault("runtime", {})["device"] = args.device
     if args.no_bbox:
@@ -96,8 +103,9 @@ def main(argv: list[str] | None = None) -> int:
         pipe.emitter.on_event(lambda e: events_file.write(e.model_dump_json() + "\n"))
 
     log.info(
-        "Kaynak: %s | device: %s | ai_mode: %s",
+        "Kaynak: %s | profil: %s | device: %s | ai_mode: %s",
         source,
+        cfg.profile or "(yok)",
         cfg.get("runtime.device"),
         cfg.get("runtime.ai_mode"),
     )
