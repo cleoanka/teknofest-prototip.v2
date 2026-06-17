@@ -12,6 +12,8 @@ import random
 import shutil
 from pathlib import Path
 
+from train.utils import dataset_stats, print_dataset_report
+
 log = logging.getLogger("aura.train.dataset")
 IMG_EXT = {".jpg", ".jpeg", ".png", ".bmp"}
 DEFAULT_CLASSES = ["car", "truck", "bus", "minibus"]
@@ -72,6 +74,19 @@ def write_data_yaml(out: Path, classes: list[str]) -> Path:
 
 
 def prepare_dataset(args) -> int:
+    # --report: mevcut bir YOLO setini analiz et (kopyalama yok) → veri-dengeleme raporu.
+    if getattr(args, "report", False):
+        root = Path(args.output or args.input or ".")
+        if not root.is_dir():
+            log.error("Rapor için geçerli bir dizin verin (--output/--input): %s", root)
+            return 1
+        classes = _read_classes(root, args.classes) if (root / "classes.txt").exists() else None
+        print_dataset_report(dataset_stats(root, names=classes))
+        return 0
+
+    if not args.input or not args.output:
+        log.error("Hazırlık için --input ve --output gerekir (yalnız rapor için --report).")
+        return 1
     inp, out = Path(args.input), Path(args.output)
     images = _find_images(inp)
     if not images:
@@ -96,4 +111,6 @@ def prepare_dataset(args) -> int:
         classes,
         yaml_path,
     )
+    # FTR §2 "data balancing": split başına sınıf-örnek dağılımını bas.
+    print_dataset_report(dataset_stats(out, names=classes))
     return 0

@@ -1,32 +1,18 @@
-"""Stage-1 araç tespit modeli eğitimi — YOLO26s fine-tune.
+"""Stage-1 araç tespit modeli eğitimi — YOLO26 fine-tune.
 
-Araç sınıfları (car, truck, bus, minibus). ultralytics `model.train()`.
-Çıktı `weights/custom_detector.pt` → config'te `models.detector.path` swap.
+Araç + plaka + araç-içi sınıflar (data.yaml'a göre). ultralytics ``model.train`` →
+``model.val`` → metrik + best export. Çıktı ``weights/custom_detector.pt`` (veya --out);
+config'te ``models.detector.path`` bununla değiştirilir. Detay: docs/egitim.md.
 """
 
 from __future__ import annotations
 
 import logging
 
-from train.utils import export_best, resolve_device
+from train.utils import run_finetune
 
 log = logging.getLogger("aura.train.detector")
 
 
 def train_detector(args) -> int:
-    from ultralytics import YOLO  # lazy: --help torch gerektirmesin
-
-    log.info("YOLO26s fine-tune: data=%s epochs=%d imgsz=%d", args.data, args.epochs, args.imgsz)
-    model = YOLO(args.weights)
-    results = model.train(
-        data=args.data,
-        epochs=args.epochs,
-        imgsz=args.imgsz,
-        batch=args.batch,
-        device=resolve_device(args.device),
-        project=args.project,
-        name=args.name,
-        exist_ok=True,
-    )
-    export_best(results, "custom_detector.pt")
-    return 0
+    return run_finetune(args, "custom_detector.pt", "YOLO26 dedektör")
