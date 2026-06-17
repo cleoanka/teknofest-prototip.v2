@@ -19,6 +19,7 @@ import csv
 import json
 import logging
 from pathlib import Path
+from statistics import median
 
 from aura.eval import metrics as M
 
@@ -37,6 +38,9 @@ def gt_label(gt: dict) -> dict:
             obj = objs[0]
             break
     drv = obj.get("driver", {}) or {}
+    # Hız mutlak-GT (WP-A4): video-düzeyi opsiyonel gerçek hız (komite radar/GPS ölçümü,
+    # km/h). Yoksa None → hız doğruluğu sessizce atlanır (sayı uydurma yok, K-004).
+    rs = gt.get("real_speed_kmh")
     return {
         "vehicle_class": obj.get("vehicle_class"),
         "plate": obj.get("plate"),
@@ -45,6 +49,7 @@ def gt_label(gt: dict) -> dict:
         "no_seatbelt": bool(drv.get("no_seatbelt")),
         "fatigue": bool(drv.get("fatigue")),
         "swerving": bool(gt.get("swerving", False)),
+        "real_speed_kmh": float(rs) if isinstance(rs, (int, float)) else None,
     }
 
 
@@ -59,6 +64,9 @@ def pred_from_summary(summary: dict, min_frames: int = 3) -> dict:
     plate = None
     plate_status = "none"
     vehicle_class = None
+    # Tahmini hız (WP-A4): track-başı kalibre km/h medyanlarının medyanı. Yalnız
+    # is_calibrated track'ler sayılır; hiç yoksa None (hız doğruluğu hesaplanmaz, K-004).
+    speed_vals: list[float] = []
     for t in summary.get("tracks", []):
         dff = t.get("driver_flag_frames", {}) or {}
         for b in ("phone", "smoking", "no_seatbelt", "fatigue"):
@@ -66,6 +74,8 @@ def pred_from_summary(summary: dict, min_frames: int = 3) -> dict:
                 pred[b] = True
         if t.get("swerving_frames", 0) >= min_frames:
             pred["swerving"] = True
+        if t.get("speed_is_calibrated") and t.get("speed_kmh") is not None:
+            speed_vals.append(float(t["speed_kmh"]))
         if t.get("plate") and plate_status != "confirmed":
             plate, plate_status, vehicle_class = t["plate"], "confirmed", t.get("vehicle_class")
         elif plate is None and t.get("plate_partial"):
@@ -76,7 +86,14 @@ def pred_from_summary(summary: dict, min_frames: int = 3) -> dict:
             )
         if vehicle_class is None and t.get("vehicle_class"):
             vehicle_class = t.get("vehicle_class")
-    return {"plate": plate, "plate_status": plate_status, "vehicle_class": vehicle_class, **pred}
+    speed_kmh = round(median(speed_vals), 1) if speed_vals else None
+    return {
+        "plate": plate,
+        "plate_status": plate_status,
+        "vehicle_class": vehicle_class,
+        "speed_kmh": speed_kmh,
+        **pred,
+    }
 
 
 def behavior_metrics(pairs: list[tuple[dict, dict]]) -> dict:
@@ -137,6 +154,27 @@ def vehicle_class_accuracy(pairs: list[tuple[dict, dict]]) -> float:
     return round(100.0 * correct / total, 1) if total else 0.0
 
 
+def speed_metrics(pairs: list[tuple[dict, dict]]) -> dict | None:
+    """Hız mutlak-GT doğruluğu (WP-A4): MAE (km/h) + MAPE (%).
+
+    Yalnız GT'de video-düzeyi ``real_speed_kmh`` BULUNAN ve tahmininde kalibre km/h
+    ÜRETİLEN videolar eşleştirilir. Hiç eşleşme yoksa None → çağıran satırı sessizce
+    atlar (komite gerçek hız verisi gelmeden hız doğruluğu iddia edilmez, K-004).
+    """
+    preds: list[float] = []
+    truths: list[float] = []
+    for gt, pred in pairs:
+        truth = gt.get("real_speed_kmh")
+        got = pred.get("speed_kmh")
+        if truth is None or got is None:
+            continue
+        preds.append(float(got))
+        truths.append(float(truth))
+    if not truths:
+        return None
+    return {"mae_kmh": M.mae(preds, truths), "mape_pct": M.mape(preds, truths), "n": len(truths)}
+
+
 def _detector_key(summary: dict) -> str:
     """Özeti dedektör grubuna ata: profil > ağırlık dosya kökü."""
     prof = summary.get("profile")
@@ -178,6 +216,7 @@ def build_report(
             "videos": [stem for _, _, stem, _ in items],
             "behavior": behavior_metrics(pairs),
             "plate": plate_metrics(pairs),
+            "speed": speed_metrics(pairs),  # None ise hız GT'si yok → rapor sessizce atlar
             "vehicle_class_accuracy": vehicle_class_accuracy(pairs),
             "mean_fps": round(sum(fps_vals) / len(fps_vals), 2) if fps_vals else 0.0,
             "per_video": [{"video": stem, "gt": gt, "pred": pred} for gt, pred, stem, _ in items],
@@ -204,6 +243,14 @@ def render_markdown(report: dict) -> str:
             f"- **Plaka:** {d['plate']['correct']}/{d['plate']['total']} exact-match "
             f"({d['plate']['accuracy']}%), CER={d['plate']['mean_cer']}, "
             f"confirmed={d['plate']['confirmed']}, partial={d['plate']['partial']}",
+        ]
+        sp = d.get("speed")
+        if sp:  # GT'de real_speed_kmh yoksa speed_metrics None → satır eklenmez (sessiz atla)
+            lines.append(
+                f"- **Hız doğruluğu (MAE/MAPE):** MAE={sp['mae_kmh']} km/h, "
+                f"MAPE={sp['mape_pct']}% (n={sp['n']} video)"
+            )
+        lines += [
             "",
             "| Davranış | TP | FP | FN | Precision | Recall | F1 | Accuracy | Destek |",
             "|---|---|---|---|---|---|---|---|---|",
@@ -226,6 +273,29 @@ def render_markdown(report: dict) -> str:
                 f"{pv['pred'].get('plate')} ({pv['pred'].get('plate_status')}) |"
             )
         lines.append("")
+
+    # --- İstatistiksel mAP (geniş set) — opsiyonel, aura/eval/map_eval.py üretir --- #
+    lines += ["## İstatistiksel mAP (geniş set)", ""]
+    mp = report.get("map")
+    if mp:
+        lines += [
+            f"- **mAP@50-95:** {mp.get('map50_95')}",
+            f"- **mAP@50:** {mp.get('map50')}",
+            f"- **Precision (ort.):** {mp.get('precision')}",
+            f"- **Recall (ort.):** {mp.get('recall')}",
+            f"- Ağırlık: `{mp.get('weights')}`, data: `{mp.get('data')}`",
+        ]
+        if mp.get("pr_curve"):
+            lines.append(f"- PR eğrisi: `{mp.get('pr_curve')}`")
+        lines.append("")
+    else:
+        lines += [
+            "- Henüz üretilmedi. Geniş etiketli set + ultralytics ile "
+            "`python -m aura.eval --map --weights <w.pt> --data <data.yaml>` çalıştırın",
+            "  (bkz. `aura/eval/map_eval.py`). Yukarıdaki tablolar küçük held-out set "
+            "kanıtıdır; istatistiksel mAP DEĞİLDİR.",
+            "",
+        ]
     return "\n".join(lines) + "\n"
 
 

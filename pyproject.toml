@@ -32,6 +32,9 @@ dependencies = [
 
 [project.optional-dependencies]
 core = []   # çekirdek bağımlılıklar zaten [project.dependencies] içinde
+# OPSİYONEL alternatif OCR motoru: plate.ocr_engine=paddleocr seçilince kullanılır.
+# ASLA zorunlu değil — kurulu değilse build_ocr loglu olarak EasyOCR'a düşer.
+paddle = ["paddleocr"]
 dev = [
   "pytest>=8.0",
   "pytest-asyncio>=0.23",

@@ -1,0 +1,131 @@
+# AURA eksik-sınıf veri seti manifesti (FTR §2 veri seti + §5 kaynakça)
+# ---------------------------------------------------------------------------
+# Bu dosya BİLDİRİMSEL bir manifesttir: hangi açık veri setinin hangi hedef
+# sınıf için, hangi kaynaktan ve hangi lisansla çekileceğini TEK noktada tutar.
+# Kaynak listesi docs/yol_haritasi.md §2'deki Gemini araştırmasından gelir;
+# her giriş kullanım öncesi lisans + içerik açısından TEYİT edilmelidir.
+#
+# Kullanım:
+#   python -m train fetch                 # PLAN bas (varsayılan --dry, AĞ YOK)
+#   python -m train fetch --class minibus # tek sınıfın planını bas
+#   python -m train fetch --run           # GERÇEK indirme (ROBOFLOW_API_KEY gerekir)
+#
+# Önemli alanlar (her kaynak için):
+#   kind        : roboflow | kaggle | url  (indirme mekanizması)
+#   workspace/project/version : roboflow kaynakları için (roboflow_pull argümanları)
+#   ref/url     : kaggle slug'ı veya doğrudan indirme URL'i (bilgilendirme; manuel)
+#   license     : veri seti lisansı (FTR §5 kaynakçaya yazılır)
+#   images      : ~yaklaşık görüntü sayısı (denge planlaması için)
+#   class_map   : kaynak-sınıf-adı -> AURA kanonik adı (aura.taxonomy ile tutarlı).
+#                 Boş bırakılırsa fetch, aura.taxonomy.canonical ile otomatik çözer.
+#
+# class_map'teki kanonik adlar aura/taxonomy.py CLASS_ALIASES çıktısıyla UYUMLU
+# olmalıdır (smoking, no_seatbelt_evidence, minibus ...). İndirme sonrası etiket
+# remap'i train.merge_driver_datasets (sürücü-durum) veya manuel split ile yapılır.
+# ---------------------------------------------------------------------------
+
+version: 1
+
+targets:
+  # --- Sürücü-durum (Stage-2) eksik sınıfları ----------------------------- #
+  cigarette:
+    aura_class: smoking          # AURA şemasında davranış bayrağı 'smoking'
+    notes: >-
+      Sigara nesnesi; AURA taksonomisinde 'smoking' davranışına eşlenir
+      (aura.taxonomy: cigarette -> smoking). Yakın-çekim setleri domain-uyumsuz
+      olabilir; trafik/kabin-içi footage tercih edilir (bkz. driver_merge.json).
+    sources:
+      - kind: roboflow
+        name: driver-smoking-detecor
+        workspace: gordon-v6v6v
+        project: driver-smoking-detecor
+        version: 1
+        format: yolov8
+        images: 1066
+        license: CC BY 4.0
+        class_map:
+          cigarette: smoking
+      - kind: roboflow
+        name: Smoker YOLO.v4
+        workspace: dingguangyu
+        project: smoker
+        version: 4
+        format: yolov8
+        images: 4221
+        license: CC BY 4.0
+        class_map:
+          smoke: smoking
+          cigarette: smoking
+
+  seatbelt:
+    aura_class: no_seatbelt_evidence   # kemer NESNESİ; ihlal Katman B'de türetilir
+    notes: >-
+      Kemer ŞERİDİ (kemer VAR) tespiti. 'no_seatbelt' İHLALİ DriverStateEngine'de
+      kemerin yokluğundan türetilir; nesne sınıfı doğrudan ihlal değildir
+      (aura.taxonomy: seatbelt -> no_seatbelt_evidence). Pozisyon-veto/zemin-koşulu
+      zırhları GEVŞETİLMEZ.
+    sources:
+      - kind: roboflow
+        name: seat_belt_detection
+        workspace: helmet-seatbelt-detection
+        project: seat_belt_detection
+        version: 1
+        format: yolov8
+        images: 3820
+        license: CC BY 4.0
+        class_map:
+          seatbelt: seatbelt
+      - kind: kaggle
+        name: Driver Seat Belt Detection
+        ref: lavdeep1234/driver-seat-belt-detection
+        images: 30000
+        license: CC0
+        class_map:
+          seatbelt: seatbelt
+
+  fatigue:
+    aura_class: fatigue
+    notes: >-
+      Yorgunluk bir DETECTION sınıfı olarak öğrenilir (kapalı göz / esneme /
+      baş düşmesi); MediaPipe/landmark kullanılmaz (mimari kararı). Açık set
+      teyit edilince eklenir — şu an manuel/komite verisi bekleniyor.
+    sources: []                  # ONUR: doğrulanmış açık set yok -> uydurma eklenmez
+
+  # --- Araç (Stage-1) eksik sınıfı --------------------------------------- #
+  minibus:
+    aura_class: minibus
+    notes: >-
+      Minibüs/dolmuş; bazı setler 'van' der (aura.taxonomy: van -> minibus).
+      İstanbul dolmuş seti domain açısından en uyumlu olandır.
+    sources:
+      - kind: roboflow
+        name: traffic (minibus/kamyon/otobüs)
+        workspace: johnny
+        project: traffic
+        version: 1
+        format: yolov8
+        images: 5150
+        license: CC BY 4.0
+        class_map:
+          minibus: minibus
+          van: minibus
+      - kind: roboflow
+        name: _images_oturum3 (İstanbul dolmuş)
+        workspace: geod
+        project: _images_oturum3
+        version: 1
+        format: yolov8
+        images: 3950
+        license: CC BY 4.0
+        class_map:
+          minibus: minibus
+          dolmus: minibus
+
+  # --- Plaka (Stage-1) --------------------------------------------------- #
+  license_plate:
+    aura_class: license_plate
+    notes: >-
+      Plaka tespiti (Stage-1). Plaka onay zırhları (pozisyon-veto / zemin-koşulu)
+      veriyle DEĞİL pipeline'da uygulanır; bu set yalnız LP-dedektör fine-tune'u
+      içindir. Açık set teyit edilince eklenir.
+    sources: []                  # ONUR: teyitli açık set yok -> pending/boş bırakılır

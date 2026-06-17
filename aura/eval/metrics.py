@@ -29,6 +29,36 @@ def accuracy(tp: int, tn: int, fp: int, fn: int) -> float:
     return round((tp + tn) / total, 3) if total else 0.0
 
 
+def mae(preds: list[float], truths: list[float]) -> float | None:
+    """Mean Absolute Error — ortalama |tahmin − gerçek| (mutlak hata, birimi km/h).
+
+    Hız mutlak-GT doğrulaması (gercek_hiz_plani.md §8.2) için: tahmin edilen km/h
+    ile komitenin gerçek hız ölçümü arasındaki ortalama mutlak sapma. Eşleşen
+    örnek yoksa None (sessiz atla — sayı uydurma, K-004).
+    """
+    pairs = [(float(p), float(t)) for p, t in zip(preds, truths, strict=False) if p is not None]
+    if not pairs:
+        return None
+    return round(sum(abs(p - t) for p, t in pairs) / len(pairs), 2)
+
+
+def mape(preds: list[float], truths: list[float]) -> float | None:
+    """Mean Absolute Percentage Error — ortalama |tahmin − gerçek| / |gerçek| (%).
+
+    Yüzde hata: hız büyüdükçe mutlak hata da büyüyeceğinden ölçek-bağımsız doğruluk
+    okuması verir. Gerçek hız 0 olan örnekler (sıfıra bölme) ATLANIR. Geçerli örnek
+    yoksa None (sessiz atla, K-004).
+    """
+    pairs = [
+        (float(p), float(t))
+        for p, t in zip(preds, truths, strict=False)
+        if p is not None and t not in (None, 0) and float(t) != 0.0
+    ]
+    if not pairs:
+        return None
+    return round(100.0 * sum(abs(p - t) / abs(t) for p, t in pairs) / len(pairs), 1)
+
+
 def levenshtein(a: str, b: str) -> int:
     if a == b:
         return 0

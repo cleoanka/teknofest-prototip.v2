@@ -4,6 +4,7 @@ Alt komutlar:
   detector       Stage-1 YOLO26 araç/plaka tespit modeli fine-tune
   driver-state   Stage-2 YOLO26 sürücü-durum modeli fine-tune
   dataset        Ham veriyi YOLO formatına böl (+ veri-dengeleme raporu)
+  fetch          Eksik-sınıf veri seti manifestini oku → indirme planı (varsayılan kuru)
 
 Tüm eğitim koşumları doğrulama (model.val) + metrik export (mAP/P/R/F1) yapar ve
 en iyi ağırlığı weights/ altına kopyalar (config tek satırla geçer). FTR §2/§4 için
@@ -55,10 +56,15 @@ def build_parser() -> argparse.ArgumentParser:
             "  python -m train driver-state --data data/driver/data.yaml --imgsz 320\n"
             "  python -m train dataset --input data/raw/ --output data/processed/ --train 0.8 --val 0.1\n"
             "  python -m train dataset --report --output data/processed/   # veri-dengeleme raporu\n"
+            "  python -m train fetch                       # eksik-sınıf indirme planı (kuru, ağ yok)\n"
+            "  python -m train fetch --class minibus       # tek sınıfın planı\n"
+            "  python -m train fetch --run                 # gerçek indirme (ROBOFLOW_API_KEY)\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    sub = p.add_subparsers(dest="command", required=True, metavar="{detector,driver-state,dataset}")
+    sub = p.add_subparsers(
+        dest="command", required=True, metavar="{detector,driver-state,dataset,fetch}"
+    )
 
     d = sub.add_parser("detector", help="Stage-1 YOLO26 araç/plaka tespit modeli eğit")
     _add_common_train_args(d, "weights/yolo26s.pt", 640, "runs/detector")
@@ -78,6 +84,18 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Sadece veri-dengeleme raporu bas (mevcut --output/--input YOLO setini analiz et)",
     )
+
+    ft = sub.add_parser("fetch", help="Eksik-sınıf veri seti manifestinden indirme planı/çekme")
+    ft.add_argument("--manifest", default=None, help="Manifest yolu (vars: train/datasets.yaml)")
+    ft.add_argument(
+        "--class", dest="klass", default=None, help="Yalnız bu hedef sınıfın planı (örn. minibus)"
+    )
+    ft.add_argument("--output", default=None, help="İndirme kök dizini (vars: data/raw)")
+    ft.add_argument(
+        "--run",
+        action="store_true",
+        help="GERÇEK indirmeyi çalıştır (ROBOFLOW_API_KEY gerekir; vars: kuru plan, ağ yok)",
+    )
     return p
 
 
@@ -96,6 +114,10 @@ def main(argv: list[str] | None = None) -> int:
         from train.prepare_dataset import prepare_dataset
 
         return prepare_dataset(args)
+    if args.command == "fetch":
+        from train.fetch import fetch
+
+        return fetch(args)
     return 1
 
 

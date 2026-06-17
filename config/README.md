@@ -57,6 +57,13 @@ tutarlıysa yazılır (flicker koruması).
 `voting_buffer_size` (rejected-event kadansı), `consensus_ratio`, `ocr_lang`,
 `regex` (Türk plaka), `min_pixel_height` (altında kalite tetiklenir),
 `ocr_max_side` / `ocr_enhance_below_px` (OCR girdi boyut yönetimi),
+`ocr_engine` (`easyocr` varsayılan | `paddleocr`; paddleocr kurulu değilse loglu EasyOCR
+fallback — `pip install 'aura[paddle]'`),
+**`dewarp.enabled`** (WP-A1: fronto-paralel perspektif düzeltme — açılı plaka düzleştirilir,
+köşe bulunamazsa kimlik) ve **`enhance.enabled`/`enhance.clahe_clip`/`enhance.gamma`**
+(WP-A1: CLAHE+gamma+unsharp; LP kırpığına OCR'dan HEMEN ÖNCE bir kez uygulanır — reader'ın
+düşük-güven CLAHE+2x ikinci-şans varyantından AYRIDIR; karanlık/açılı otoparkta il-kodu
+misread'ini 3→0/2 azaltır — bkz. `aura/plate/dewarp.py`, `aura/plate/enhance.py`),
 `lp_detector.*` (sıkı plaka kırpma — özel YOLOv11n plaka modeli; yoksa loglu fallback),
 `lp_vote_min_px` / `lp_qod_below_px` (boyut-farkında kanıt: çok küçük LP oylamaya
 girmez; küçük LP görüldüğü an `plate_too_small` QoD tetiği — consensus_fail beklemeden),

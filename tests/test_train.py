@@ -81,3 +81,103 @@ def test_dataset_report_only_mode(tmp_path):
 
 def test_summarize_metrics_handles_empty():
     assert summarize_metrics(object()) == {}  # box yoksa boş sözlük (çökmeden)
+
+
+# --- Eksik-sınıf manifesti + fetch --dry planı (AĞ YOK) --------------------- #
+from train.fetch import (  # noqa: E402
+    DEFAULT_MANIFEST,
+    build_plan,
+    fetch,
+    load_manifest,
+)
+
+
+def test_default_manifest_parses_and_covers_target_classes():
+    m = load_manifest(DEFAULT_MANIFEST)
+    targets = m["targets"]
+    # Görevde adı geçen tüm hedef sınıflar manifestte tanımlı olmalı.
+    for cls in ("cigarette", "seatbelt", "fatigue", "minibus", "license_plate"):
+        assert cls in targets, cls
+        assert "aura_class" in targets[cls]
+
+
+def test_build_plan_maps_to_aura_taxonomy():
+    m = load_manifest(DEFAULT_MANIFEST)
+    plan = build_plan(m, only_class="cigarette")
+    assert plan, "cigarette için en az bir kaynak olmalı"
+    # cigarette -> smoking (aura.taxonomy ile tutarlı)
+    assert all(step["aura_class"] == "smoking" for step in plan)
+    assert all("smoking" in step["class_map"].values() for step in plan)
+    # Her kaynak lisans taşımalı (FTR §5 kaynakça).
+    assert all(step["license"] for step in plan)
+
+
+def test_build_plan_empty_sources_yields_no_steps():
+    # ONUR: teyitli açık set yoksa (sources: []) plan boş kalır, sayı uydurulmaz.
+    m = load_manifest(DEFAULT_MANIFEST)
+    assert build_plan(m, only_class="license_plate") == []
+    assert build_plan(m, only_class="fatigue") == []
+
+
+def test_build_plan_unknown_class_raises():
+    m = load_manifest(DEFAULT_MANIFEST)
+    import pytest
+
+    with pytest.raises(KeyError):
+        build_plan(m, only_class="yok_boyle_sinif")
+
+
+def test_seatbelt_keeps_raw_class_no_false_warning():
+    # seatbelt NESNESİ ham tutulur; aura_class=no_seatbelt_evidence olduğundan
+    # taksonomi uyarısı BASTIRILIR (bilinçli karar, yanlış-pozitif değil).
+    m = load_manifest(DEFAULT_MANIFEST)
+    plan = build_plan(m, only_class="seatbelt")
+    assert plan
+    assert all(step["warnings"] == [] for step in plan)
+
+
+def test_custom_manifest_taxonomy_warning_surfaces(tmp_path):
+    # Gerçek tutarsızlık (cigarette -> phone) PLANDA uyarı olarak görünmeli.
+    mf = tmp_path / "m.yaml"
+    mf.write_text(
+        "version: 1\n"
+        "targets:\n"
+        "  test:\n"
+        "    aura_class: phone\n"
+        "    sources:\n"
+        "      - kind: roboflow\n"
+        "        name: t\n"
+        "        workspace: w\n"
+        "        project: p\n"
+        "        version: 1\n"
+        "        license: CC0\n"
+        "        class_map:\n"
+        "          cigarette: phone\n",
+        encoding="utf-8",
+    )
+    plan = build_plan(load_manifest(mf), only_class="test")
+    assert plan and plan[0]["warnings"], "cigarette->phone tutarsızlığı uyarı üretmeli"
+
+
+def test_load_manifest_missing_and_malformed(tmp_path):
+    import pytest
+
+    with pytest.raises(FileNotFoundError):
+        load_manifest(tmp_path / "yok.yaml")
+    bad = tmp_path / "bad.yaml"
+    bad.write_text("foo: 1\n", encoding="utf-8")
+    with pytest.raises(ValueError):
+        load_manifest(bad)
+
+
+def test_fetch_dry_run_no_network(capsys):
+    # Varsayılan kuru: ağ yok, çıktı=0, plan basılır. (run=False)
+    args = types.SimpleNamespace(manifest=None, klass="minibus", output=None, run=False)
+    assert fetch(args) == 0
+    out = capsys.readouterr().out
+    assert "Çekme Planı" in out and "minibus" in out
+
+
+def test_fetch_unknown_class_returns_error(capsys):
+    args = types.SimpleNamespace(manifest=None, klass="yok", output=None, run=False)
+    assert fetch(args) == 1
