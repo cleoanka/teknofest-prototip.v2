@@ -1,0 +1,23 @@
+# =============================================================================
+# PROFİL: laptop — hafif/geliştirme (Apple Silicon MPS veya CPU)
+# Kullanım:  python -m aura --profile laptop   |   AURA_PROFILE=laptop ...
+# default.yaml ÜZERİNE derin-merge edilir; yalnız farklılıklar burada.
+#
+# Hedef: dizüstünde hızlı yineleme. Cascade'in hafif ucu: Stage-1 yolo26s,
+# Stage-2 sürücü ROI'sinde yolo26s-pose. Doğruluk server profilinden düşüktür.
+# =============================================================================
+runtime:
+  device: auto          # Apple Silicon'da MPS, diğerinde CPU
+
+models:
+  detector:
+    path: weights/yolo26s.pt
+    conf: 0.12
+    imgsz: 640
+  driver_state:
+    backend: auto
+    path: weights/yolo26s.pt        # hibrit nesne kanıtı için hafif backend
+    pose_path: weights/yolo26s-pose.pt
+    pose_imgsz: 640
+    roi_objects:
+      imgsz: 512

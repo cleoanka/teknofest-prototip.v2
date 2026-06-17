@@ -2,6 +2,14 @@
 # AURA — Merkezi Yapılandırma (tek doğruluk kaynağı)
 # Hiçbir eşik/flag koda gömülmez; tüm çalışma zamanı davranışı buradan yönetilir.
 # Açıklamalar için bkz. config/README.md
+#
+# PROFİLLER (config/profiles/*.yaml): bu taban dosyanın ÜZERİNE derin-merge edilir.
+#   python -m aura --profile server      # sunucu: yolo26l, CUDA, büyük imgsz (VARSAYILANLA AYNI)
+#   python -m aura --profile laptop      # geliştirme: yolo26s, MPS/CPU, hafif
+#   python -m aura --profile v4-finetune # fine-tune v4 (yolov8m, 11 sınıf) birincil
+#   AURA_PROFILE=server python -m aura   # env ile de seçilebilir
+# Mevcut profiller: `python -c "from aura.config import available_profiles as a; print(a())"`
+# Bu repo SUNUCU dağıtımı içindir (edge değil) → varsayılan dedektör yolo26l.
 # =============================================================================
 
 runtime:
@@ -17,16 +25,20 @@ runtime:
 
 models:
   detector:
-    # Birincil dedektör: fine-tune yolguvenligi_types_v4 (11 sınıf: araç tipleri +
-    # person + phone...; held-out test mAP50 .788). Dosya yoksa koda gömülü LOGLU
-    # fallback stok yolo26s.pt'ye düşer (detection/yolo.py).
-    # EŞİK REHBERİ (hidden_prototip gerçek-video dersi): fine-tune model → conf
-    # 0.25-0.35; ÖN-EĞİTİMLİ stok model gerçek trafikte araçlara 0.05-0.15 conf
-    # verir → stok kullanıyorsanız conf'u 0.08-0.10'a düşürün.
-    path: weights/yolguvenligi_types_v4.pt
-    conf: 0.30
+    # VARSAYILAN BİRİNCİL DEDEKTÖR: stok YOLO26l (Ultralytics 8.4 — en güncel YOLO).
+    # Sunucu dağıtımı için doğruluk-önce seçim (edge kısıtı yok). COCO sınıflarından
+    # car/truck/bus/motorcycle + person + 'cell phone'→phone (taxonomy) üretir.
+    #   • Daha hafif/cascade için: --profile laptop  (yolo26s)
+    #   • 11-sınıf fine-tune (minibus/license_plate dahil, mAP50 .788) için:
+    #     --profile v4-finetune  (weights/yolguvenligi_types_v4.pt, yolov8m)
+    # Ağırlık yoksa detection/yolo.py LOGLU olarak stok yolo26s.pt'ye düşer.
+    # EŞİK REHBERİ (hidden_prototip gerçek-video dersi): STOK model gerçek trafikte
+    # araçlara 0.05-0.15 conf verir → stokta conf 0.08-0.12; fine-tune (v4) → 0.25-0.35.
+    path: weights/yolo26l.pt
+    conf: 0.10                     # stok YOLO26 düşük conf üretir; FP'ler dedup+sınıf-oyu+min_track ile elenir
     iou: 0.45
-    imgsz: 768                    # v4 768'de eğitildi; stok yolo26s için 640 yeterli
+    imgsz: 768                    # sunucu: doğruluk için 768 (stok için 640 de yeterli; v4 768'de eğitildi)
+    # minibus stok COCO'da YOK (yalnız v4 fine-tune üretir); listede kalması zararsız.
     vehicle_classes: [car, truck, bus, minibus, motorcycle]
     mock_bright_threshold: 90     # mock dedektör (ağırlık yokken) parlaklık eşiği
     mock_min_area: 300            # mock dedektör min blob alanı (şerit gürültüsünü eler)

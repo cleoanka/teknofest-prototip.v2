@@ -1,0 +1,19 @@
+# =============================================================================
+# PROFİL: v4-finetune — 11-sınıf fine-tune dedektör birincil (yolov8m)
+# Kullanım:  python -m aura --profile v4-finetune
+# default.yaml ÜZERİNE derin-merge edilir; yalnız farklılıklar burada.
+#
+# weights/yolguvenligi_types_v4.pt: car/minibus/bus/truck/motorcycle/license_plate/
+# person/phone/cigarette/seatbelt/headphone (held-out mAP50 .788). DİKKAT: license_plate/
+# cigarette/seatbelt/headphone için eğitim verisi YOKTU → bu sınıflar güvenilmez.
+# Avantaj: minibus + Türk-trafiği araç tipleri + 'phone' nesnesi stok COCO'dan iyi
+# ayırt edilir; v2.2.x gerçek-video doğrulama matrisi BU profil ile ölçülmüştü.
+# YOLO26 mandate'i için varsayılan profil DEĞİLDİR; komite verisi gelince yolo26'ya
+# fine-tune önerilir (bkz. docs/egitim.md, ftr.md).
+# =============================================================================
+models:
+  detector:
+    path: weights/yolguvenligi_types_v4.pt
+    conf: 0.30          # fine-tune model yüksek conf üretir (hidden dersi)
+    imgsz: 768          # v4 768'de eğitildi
+    vehicle_classes: [car, minibus, bus, truck, motorcycle]
