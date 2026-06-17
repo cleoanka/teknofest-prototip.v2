@@ -60,17 +60,27 @@ teknikleri; **train/val/test** dağılım oranları + gerekçe; kullanılan **a�
 
 **Durum (dürüst):** Komite TOGG/etiketli veri setini henüz paylaşmadığından (şartname 4.3
 "ön tasarım raporu değerlendirmesi sonrası" paylaşılır), AURA'nın 11-sınıf fine-tune
-dedektörü (`yolguvenligi_types_v4`, yolov8m, held-out **mAP50 .788**) **açık kaynak köprü
-veriyle** eğitilmiştir. **YOLO26 fine-tune boru hattı `train/` altında hazırdır ve uçtan
-uca doğrulanmıştır** (komite verisi gelince tek komutla yeniden eğitir).
+dedektörü (`yolguvenligi_types_v4`, yolov8m, held-out **mAP50 0.788**) **açık kaynak köprü
+veriyle** eğitilmiştir. NOT (ONUR): bu fine-tune'da `license_plate / cigarette / seatbelt /
+headphone` için eğitim verisi yoktu → o sınıflar güvenilmez; plaka için stok yerine **sıkı
+LP-kırpık + pipeline zırhları** kullanılır (§4). **YOLO26 fine-tune boru hattı `train/`
+altında hazırdır ve uçtan uca doğrulanmıştır** (açık `coco128` setinde gerçek `best.pt` +
+val mAP üretti → §4); komite verisi gelince **tek komutla** domain modeli eğitilir.
 
 **Doldurulacak içerik + komutlar:**
-- **Toplama:** açık kaynak köprü (şartname "açık kaynak veri serbest"):
-  `car/bus/truck/motorcycle/person/phone → COCO`; `minibus → Roboflow Türk-trafiği`;
-  `license_plate → CCPD / OpenALPR / TR-plaka setleri`; `cigarette/seatbelt → küçük özel etiketleme`.
-  Detaylı eşleme: `aura/.../data.yaml` + `docs/veri_seti.md`.
+- **Toplama (açık-kaynak köprü manifesti):** kaynaklar `train/datasets.yaml`'da
+  **bildirimsel** tutulur (her hedef sınıf → kaynak + lisans + ~görüntü + AURA taksonomisine
+  sınıf-eşlemesi). Ölçülen kapsam: `car/bus/truck/motorcycle/person/phone → COCO`;
+  `minibus → Roboflow Türk-trafiği (johnny/traffic ~5150, geod/İstanbul-dolmuş ~3950,
+  CC BY 4.0)`; `cigarette → smoking (gordon/driver-smoking ~1066, dingguangyu/smoker ~4221,
+  CC BY 4.0)`; `seatbelt → no_seatbelt_evidence (helmet-seatbelt ~3820 CC BY 4.0,
+  kaggle/driver-seatbelt ~30000 CC0)`. **ONUR:** `fatigue` ve `license_plate` için teyitli
+  açık set bulunamadığından manifestte `sources: []` boş bırakılır (uydurma kaynak yok).
+  Plan/lisans özeti: `python -m train fetch` (kuru, ağ kullanmaz). Lisanslar §5 kaynakçaya
+  yazılır; **kullanım öncesi lisans/uyumluluk teyidi notu** korunur.
 - **Etiketleme:** YOLO formatı (`<cls> <xc> <yc> <w> <h>` normalize). Roboflow ile çek:
-  `python -m train.roboflow_pull --workspace W --project P --version N`.
+  `python -m train.roboflow_pull --workspace W --project P --version N`; çoklu sürücü-davranış
+  setini birleştir: `python -m train.merge_driver_datasets`.
 - **Dengeleme (data balancing) — KANIT KOMUTU:**
   `python -m train dataset --report --output data/processed/`
   → split başına **sınıf-örnek dağılımı + dengesizlik oranı (max/min)**. Oran > 3 ise
@@ -83,12 +93,19 @@ uca doğrulanmıştır** (komite verisi gelince tek komutla yeniden eğitir).
   istatistiksel anlam taşıması için %10+%10; sınıf-dengesiz setlerde stratify önerilir.
 
 **Doldurulabilir taslak:**
-> Veri seti üç kaynaktan oluşturulmuştur: (i) genel araç/kişi/nesne sınıfları için COCO,
-> (ii) Türk trafiğine özgü `minibus` ve plaka için Roboflow/CCPD açık setleri, (iii)
-> `cigarette/seatbelt` için sınırlı özel etiketleme. Tüm etiketler YOLO formatına
-> dönüştürülmüş, %80/%10/%10 train/val/test olarak bölünmüştür. Sınıf dengesizliği
-> `python -m train dataset --report` ile ölçülmüş; dengesizlik oranı … olarak bulunmuş
-> ve … sınıfları için oversampling + mozaik/HSV augmentasyonu uygulanmıştır.
+> Veri seti açık-kaynak köprü stratejisiyle oluşturulmuştur: (i) genel
+> araç/kişi/nesne sınıfları için COCO; (ii) Türk trafiğine özgü `minibus` için Roboflow
+> Türk-trafiği setleri (~9100 görsel, CC BY 4.0); (iii) `cigarette/seatbelt` davranış
+> sınıfları için Roboflow + Kaggle açık setleri (~39000 görsel, CC BY 4.0 / CC0). Tüm
+> kaynaklar `train/datasets.yaml` manifestinde lisans ve AURA-taksonomisi eşlemesiyle
+> tutulur; `fatigue` ve `license_plate` için teyitli açık set bulunamadığından bunlar
+> dürüstçe boş bırakılmış (komite verisi beklenir). Tüm etiketler YOLO formatına
+> dönüştürülmüş, **%80/%10/%10 train/val/test** olarak bölünmüştür (küçük özel sette
+> val/test'in istatistiksel anlamı için %10+%10). Sınıf dengesizliği
+> `python -m train dataset --report` ile ölçülür (dengesizlik oranı > 3 ise uyarı); seyrek
+> sınıflara hedeflenmiş toplama + oversampling + sınıf-lehine mozaik/HSV/karartma
+> augmentasyonu uygulanır. Komite TOGG verisi geldiğinde aynı boru hattı tek komutla
+> domain modelini yeniden eğitir.
 
 ---
 
@@ -157,40 +174,61 @@ python -m aura.eval --metrics-report --summaries eval_results/ab
 python -m aura.eval --source <video> --ground-truth <gt.json> --qod-comparison
 ```
 
-**ÖLÇÜLEN SONUÇLAR (3 gerçek video, kapalı otopark, TOGG; AURA v2.3, MPS/M4 Pro):**
+**ÖLÇÜLEN SONUÇLAR (3 gerçek video, kapalı otopark, TOGG; AURA v2.3, MPS/M4 Pro;
+ölçüldü 17 Haz 2026, dewarp/enhance OFF; `eval_results/metrics_report.md`):**
 
-| Dedektör | Davranış makro-F1 | Plaka exact | Plaka CER | Araç sınıfı | FPS (MPS) |
-|---|---|---|---|---|---|
-| **v4-finetune** (yolov8m) | **1.00** | **2/3** (66.7%) | **0.083** | 100% | 4.83 |
-| yolo26l (stok, varsayılan) | 0.933 | 1/3 (33.3%) | 0.125 | 100% | 5.69 |
+| Dedektör | Davranış makro-F1 | Plaka exact | Plaka CER | Yanlış plaka onayı | Araç sınıfı | FPS (MPS) |
+|---|---|---|---|---|---|---|
+| **v4-finetune** (yolov8m, ÖNERİLEN plaka) | **1.00** | **2/3** (66.7%) | **0.083** | **0** | 100% | ~5.0 |
+| yolo26l (stok, varsayılan dedektör) | 0.933 | 1/3 (33.3%) | 0.125 | 2 (yanlış-onay) | 100% | ~5.9 |
 
-> **Dürüst yorum (jüriye güven verir):** Davranış tespiti (sigara/telefon/swerving) her iki
-> dedektörde de **çapraz-FP'siz** çalışır (v4 makro-F1 1.0). Plaka okuma bu **karanlık
-> otopark** footage'ında zorlu: EasyOCR il-kodunu (3→0/2) tutarlı yanlış okuyabiliyor.
-> Sistem **asla yanlış plaka kesinleştirmez** — pozisyon-veto + zemin koşulu belirsiz/uzak
-> okumayı `pending`e çevirir (v3'te v4 dürüstçe `pending` der). FPS değerleri MPS içindir;
-> **CUDA sunucuda belirgin daha yüksektir**. Detay tablolar: `eval_results/metrics_report.md`.
+Davranış sınıf-bazlı (her iki dedektörde) — phone / smoking / swerving: P = R = F1 = **1.0**
+(v4). yolo26l yalnız video_2'de 1 `swerving` yanlış-pozitif üretir (swerving F1 0.667 →
+makro-F1 0.933). Araç sınıfı doğruluğu **%100** (her iki dedektör).
 
-**Dedektör tespit mAP'i (rapora ek):**
-- v4 fine-tune: held-out **mAP50 .788** (model kartı).
-- Stok YOLO26: resmi COCO val mAP'i Ultralytics model kartından (docs.ultralytics.com) alın,
-  VEYA kendi ortamınızdan ölçün:
-  `python -c "from ultralytics import YOLO; print(YOLO('weights/yolo26l.pt').val(data='coco.yaml').box.map)"`.
-  Referans (YOLO26'nın selefi **YOLO11**, COCO val @640 — resmi sayılar; YOLO26 bunların
-  üzerine kurulur, kendi kartından teyit edin):
+**Video-düzeyi plaka kararları (GT plaka = `34TC8532`):**
 
-  | Model | mAP50-95 | Params(M) |
-  |---|---|---|
-  | YOLO11s | 47.0 | 9.4 |
-  | YOLO11m | 51.5 | 20.1 |
-  | YOLO11l | 53.4 | 25.3 |
-  | YOLO11x | 54.7 | 56.9 |
+| Video | GT davranış | v4 plaka (durum) | yolo26l plaka (durum) |
+|---|---|---|---|
+| video_1 | smoking | 34TC8532 (confirmed ✓) | 04TC8532 (confirmed — YANLIŞ) |
+| video_2 | phone | 34TC8532 (confirmed ✓) | 34TC8532 (confirmed ✓) |
+| video_3 | swerving | 24IC8532 (partial — dürüst pending) | 24IC8532 (confirmed — YANLIŞ) |
 
-  (Kaynak: docs.ultralytics.com/models/yolo11 · Gemini ile çekildi. NOT: yazım anında bazı
-  kaynaklar YOLO26 tablosunu henüz yayınlamamış olabilir; ortamımızda yolo26 ağırlıkları
-  kuruludur ve çalışır → kesin sayıyı yukarıdaki `model.val` komutuyla üretin.)
-- Eğitim boru hattı doğrulaması (coco8, yolo26s, 1 epoch) gerçek
-  best.pt + mAP üretmiştir (bkz. `docs/egitim.md`).
+> **Dürüst yorum (plaka çerçevesi — jüriye güven verir):** Davranış tespiti
+> (sigara/telefon/swerving) **çapraz-FP'siz** çalışır (v4 makro-F1 1.0). Plaka için
+> **`--profile v4-finetune` ÖNERİLİR**: 2/3 exact-match, CER 0.083 ve **0 yanlış-onay**.
+> Varsayılan stok `yolo26l` ise plaka-kritik DEĞİLDİR — 1/3 exact ama **2 yanlış-onay**
+> (`04TC8532`, `24IC8532`) üretir. Bu, ölçümle kanıtlanmış bir **dedektör-kalitesi
+> sınırıdır** (LP kırpığının karakter çözünürlüğü): voting eşiğini sıkmak overfit
+> olmadan düzeltmez. v4 dedektörü daha sıkı LP kırpığı sağladığından belirsiz/uzak
+> okuma onaylanmaz; sistem yanlış plaka kesinleştirmek yerine **pozisyon-veto + zemin
+> koşulu** zırhlarıyla dürüstçe `pending` (partial) der (video_3, v4). FPS değerleri
+> **MPS alt-sınırıdır**; CUDA sunucuda belirgin daha yüksektir. QoD A/B (aşağıda) plaka
+> doğruluğunu kontrollü sette 66.7→100'e çıkarır.
+
+**Dedektör tespit mAP'i (ÖLÇÜLEN held-out, rapora ek):**
+- **Stok dedektör (varsayılan `yolo26l`) — kendi ortamımızda ölçülen held-out mAP**
+  (COCO val2017, **5000 görsel**; `eval_results/map_yolo26l.json`):
+
+  | Metrik | Değer |
+  |---|---|
+  | mAP50-95 | **0.537** |
+  | mAP50 | **0.709** |
+  | Precision | **0.740** |
+  | Recall | **0.641** |
+
+  Bu, model-kartı iddiası değil **bizim koştuğumuz doğrulama setinin** sonucudur (komut:
+  `python -m aura.eval --map --weights weights/yolo26l.pt --data <coco_val>.yaml`).
+- **v4 fine-tune** (`yolov8m`, 11 sınıf): held-out **mAP50 0.788** (model kartı). DİKKAT —
+  `license_plate / cigarette / seatbelt / headphone` sınıfları için bu fine-tune'da **eğitim
+  verisi yoktu**; o sınıfların mAP'i güvenilir değildir (dürüstçe belirtilir; bu yüzden bu
+  sınıflar açık-kaynak köprü/komite verisiyle yeniden eğitilir, §2).
+- **Eğitim boru hattı doğrulaması (uçtan uca, gerçek best.pt + val mAP):** YOLO26 fine-tune
+  hattı (`train/`) açık `coco128` setinde uçtan uca koşturularak gerçek bir `best.pt` ve
+  gerçek doğrulama metriği üretmiştir (`eval_results/map_yolo26l.json` → `coco128`):
+  **mAP50 0.790, mAP50-95 0.619, P 0.832, R 0.675**. Bu, "boru hattı çalışır; komite/açık
+  veriyle tek komutla domain modeli üretilir" iddiasının somut kanıtıdır (rakamlar smoke-set
+  ölçeğindedir; istatistiksel domain mAP'i komite verisiyle üretilir — `docs/egitim.md`).
 
 **Doldurulabilir taslak (4 bölümü):**
 > Model, etiketli held-out set üzerinde Precision/Recall/F1 ve mAP ile, üç gerçek test
