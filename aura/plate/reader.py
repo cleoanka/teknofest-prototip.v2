@@ -51,6 +51,11 @@ class PlateReader:
             substring_weight=float(pv.get("substring_weight", 0.25)),
             char_consensus=bool(pv.get("char_consensus", True)),
             char_margin=float(pv.get("char_margin", 1.5)),
+            confirm_min_char_margin=(
+                float(pv["confirm_min_char_margin"])
+                if pv.get("confirm_min_char_margin") is not None
+                else None
+            ),
             confirm_peak_weight=float(pv.get("confirm_peak_weight", 0.30)),
         )
         self.ocr = ocr if ocr is not None else build_ocr(cfg)

@@ -75,8 +75,11 @@ ikinci arasındaki min **mutlak** fark (ASIL ayrım kriteri); `consensus_ratio` 
 tutulur, 0.35 — dağınık misread'ler toplamı şişirip oranı düşürdüğünden margin esas
 alınır; `fix1/fix2_weight`, `substring_weight`; `size_full_px`/`size_floor`/`no_lp_weight`
 = okuma ağırlığı OCR güveni × kaynak kalitesi; `char_consensus` = pozisyon-hizalı karakter
-füzyonu (CONFIRMED'e katılır: her pozisyonda kazanan ikinciyi `char_margin` MUTLAK ağırlıkla
-geçmeli, değilse `pending`); **`confirm_peak_weight`** (v2.3) = CONFIRM zemin koşulu: kazanan
+füzyonu (`char_margin` = KANIT-İZİ `best_partial` füzyonunda pozisyon margini; **`confirm_min_char_margin`**
+= ONAY-sıkı pozisyon eşiği, `>= char_margin`, `None`→`char_margin`: CONFIRMED için her pozisyonda
+kazanan ikinciyi bu MUTLAK ağırlıkla geçmeli, değilse `pending` — gerçek ölçüm: yanlış ilk-harf
+`0` margini ~1.55 / doğru `3` ~1.52 ikisi de `char_margin=1.5`'i geçip yanlış onaya gidiyordu, `2.0`
+belirsizi PENDING yapar net plakayı onaylar); **`confirm_peak_weight`** (v2.3) = CONFIRM zemin koşulu: kazanan
 plaka en az bir kez bu etkin-ağırlıkla (OCR güveni × kırpık kalitesi) okunmuş olmalı —
 hep-uzak sistematik misread onaylanmaz; 0 = kapalı. Ek **pozisyon-veto** (v2.3): ayrı-aday
 bütün-string marjını geçse bile her karakter pozisyonu belirsizse onay verilmez. — bkz.

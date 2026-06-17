@@ -126,6 +126,7 @@ class PlateVotePool:
         substring_weight: float = 0.25,
         char_consensus: bool = True,
         char_margin: float = 1.5,
+        confirm_min_char_margin: float | None = None,
         confirm_peak_weight: float = 0.30,
         max_reads: int = 400,
     ):
@@ -148,11 +149,25 @@ class PlateVotePool:
         # (34TC8532/04TC8532/34IC8532 — 3↔0, T↔I); ayrı-aday kararı bunlar arasında
         # bölünür ve hangi varyant baskınsa onu (bazen yanlış 04) seçer. Füzyon
         # pozisyon pozisyon en güçlü karakteri alır; ONAY için her pozisyonda kazanan
-        # ikinciyi 'char_margin' MUTLAK ağırlıkla geçmeli — bir pozisyon belirsizse
-        # dürüst 'pending' (ASLA yanlış plaka onaylanmaz). char_consensus=False ise
-        # füzyon yalnız best_partial kanıt izinde kalır, onaya girmez.
+        # ikinciyi 'confirm_char_margin' (ONAY-sıkı eşik, aşağıda) MUTLAK ağırlıkla geçmeli
+        # — bir pozisyon belirsizse dürüst 'pending' (ASLA yanlış plaka onaylanmaz).
+        # char_consensus=False ise füzyon yalnız best_partial kanıt izinde kalır (orada
+        # 'char_margin' geçerli — kanıt izi gevşek), onaya girmez.
         self.char_consensus = bool(char_consensus)
         self.char_margin = float(char_margin)
+        # ONAY için pozisyon-kesinliği eşiği (char_margin'den SIKI olabilir). Onayda HER
+        # pozisyonda kazanan, ikinciyi bu MUTLAK ağırlıkla geçmeli. Gerçek video ölçümü
+        # (17 Haz, stok yolo26l): yanlış ilk-harf '0' pos0-margin'i ~1.55, doğru '3'
+        # margin'i ~1.52 — ikisi de char_margin=1.5'i geçip YANLIŞ onaya gidiyordu. Bu
+        # ayrı/sıkı eşik (vars. 2.0) belirsiz ilk-karakteri dürüst PENDING yapar; net
+        # plaka (video_2, margin yüksek) onaylanmaya devam eder. best_partial füzyonu ve
+        # diğer kanıt-izi yolları char_margin'i kullanmaya devam eder (kanıt izi gevşek,
+        # ONAY sıkı). None → char_margin'e düşer (geriye dönük uyum). K-004: oran/ağırlık
+        # temelli, videoya-özel sabit DEĞİL — okuma-belirsizliğine bağlı.
+        if confirm_min_char_margin is None:
+            self.confirm_char_margin = self.char_margin
+        else:
+            self.confirm_char_margin = max(self.char_margin, float(confirm_min_char_margin))
         self.max_reads = int(max_reads)
         self.raw_reads: list[tuple[str, float]] = []  # (metin, etkin kanıt ağırlığı)
 
@@ -284,12 +299,12 @@ class PlateVotePool:
 
     def _position_unambiguous(self, winner: str, raw_valid: dict[str, float]) -> bool:
         """Kazanan stringin HER karakteri, aynı-yapıdaki diğer ham-geçerli okumalarda
-        kendisine ``char_margin`` içinde bir rakip karaktere sahip OLMAMALI.
+        kendisine ``confirm_char_margin`` içinde bir rakip karaktere sahip OLMAMALI.
 
         Tek-yapılı (rakipsiz) okuma → çekişme yok → True. Bir pozisyonda kazanan ile
-        ikinci karakter arasındaki ağırlık farkı ``char_margin``'in altındaysa o pozisyon
-        belirsizdir → False (ayrı-aday onayını VETO eder; dürüstlük). char_consensus
-        kapalıysa veto da kapalıdır (eski davranış)."""
+        ikinci karakter arasındaki ağırlık farkı ``confirm_char_margin``'in (ONAY-sıkı
+        eşik) altındaysa o pozisyon belirsizdir → False (ayrı-aday onayını VETO eder;
+        dürüstlük). char_consensus kapalıysa veto da kapalıdır (eski davranış)."""
         if not self.char_consensus:
             return True
         pat = tuple("D" if c.isdigit() else "L" for c in winner)
@@ -306,7 +321,7 @@ class PlateVotePool:
                 char_w[t[i]] = char_w.get(t[i], 0.0) + w
             win_w = char_w.get(wc, 0.0)
             other = max((w for c, w in char_w.items() if c != wc), default=0.0)
-            if (win_w - other) < self.char_margin:
+            if (win_w - other) < self.confirm_char_margin:
                 return False
         return True
 
@@ -317,8 +332,8 @@ class PlateVotePool:
 
         Aynı YAPIDAKİ (uzunluk + rakam/harf deseni) ham-geçerli okumalar pozisyon
         pozisyon birleştirilir. ONAY için HER pozisyonda kazanan karakter, ikinciyi
-        ``char_margin`` MUTLAK ağırlıkla geçmeli + grup toplamı ``min_weight``'i
-        tutmalı. Bir pozisyon belirsizse (ör. 0↔3 neredeyse eşit, ya da uzaktan I↔T)
+        ``confirm_char_margin`` (ONAY-sıkı eşik) MUTLAK ağırlıkla geçmeli + grup toplamı
+        ``min_weight``'i tutmalı. Bir pozisyon belirsizse (ör. 0↔3 neredeyse eşit, ya da uzaktan I↔T)
         ``None`` döner → dürüst ``pending`` (yanlış plaka ASLA onaylanmaz). Bu,
         OCR'ın doğru plakayı birden çok varyanta böldüğü (34TC8532/04TC8532/34IC8532)
         ama her pozisyonun çoğunluğunun doğru olduğu durumu çözer — K-004: kural
@@ -352,8 +367,8 @@ class PlateVotePool:
             ranked = sorted(char_w.items(), key=lambda kv: (kv[1], kv[0]), reverse=True)
             top_c, top_w = ranked[0]
             second_w = ranked[1][1] if len(ranked) > 1 else 0.0
-            if (top_w - second_w) < self.char_margin:
-                return None, 0.0  # bu pozisyon belirsiz → dürüst çekimserlik
+            if (top_w - second_w) < self.confirm_char_margin:
+                return None, 0.0  # bu pozisyon belirsiz → dürüst çekimserlik (ONAY-sıkı eşik)
             out.append(top_c)
         cand = "".join(out)
         if not TR_PLATE_RE.match(cand) or not 1 <= int(cand[:2]) <= 81:

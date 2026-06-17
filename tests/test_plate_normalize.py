@@ -252,3 +252,67 @@ def test_clear_close_read_still_confirms_with_peak_floor():
     for _ in range(4):
         p.add("34TC8532", conf=0.9, weight=1.0)  # peak 0.9 >= 0.30
     assert p.consensus()[0] == "34TC8532"
+
+
+# --- SORUN 1: ONAY-sıkı pozisyon eşiği (confirm_min_char_margin) ---------------
+# Gerçek video ölçümü (17 Haz, stok yolo26l): YANLIŞ ilk-harf '0' pos0-margin'i ~1.55,
+# DOĞRU '3' margin'i ~1.52 — ikisi de char_margin=1.5'i geçip YANLIŞ onaya gidiyordu.
+# Yeni 'confirm_min_char_margin' (vars. 2.0) ile belirsiz ilk-karakter dürüst PENDING;
+# NET plaka (video_2, yüksek margin) onaylanmaya devam eder. (Yanlış-onay sıfır > çok-onay.)
+def _strict_pool() -> PlateVotePool:
+    # default.yaml ile aynı: confirm_min_char_margin=2.0
+    return PlateVotePool(min_weight=2.0, margin_weight=1.5, ratio=0.6, confirm_min_char_margin=2.0)
+
+
+def test_confirm_min_char_margin_blocks_wrong_first_digit_above_old_threshold():
+    # KRİTİK regresyon kapanı: pos0 '0' margini ~1.55 (eski 1.5 eşiğinin ÜSTÜNDE) →
+    # eski kod '04TC8532'yi YANLIŞ onaylıyordu. Sıkı eşik (2.0) → dürüst PENDING.
+    p = _strict_pool()
+    for _ in range(5):
+        p.add("04TC8532", conf=0.62)  # 3.10
+    for _ in range(2):
+        p.add("34TC8532", conf=0.40)  # 0.80
+    for _ in range(2):
+        p.add("34IC8532", conf=0.375)  # 0.75 → pos0 '3' toplam 1.55, '0' 3.10, margin 1.55
+    assert p.consensus()[0] is None  # 1.55 < confirm_min 2.0 → yanlış onay ENGELLENDİ
+    assert p.best_partial() is not None  # kanıt izi yine raporlanır (partial korunur)
+
+
+def test_confirm_min_char_margin_pends_correct_but_uncertain_first_digit():
+    # Doğru '3' margini ~1.52 da (eşik altı) PENDING olur — KABUL: belirsizken
+    # yanlış-onay engellemek > şüpheli-onay (kullanıcı sert direktifi).
+    p = _strict_pool()
+    for _ in range(4):
+        p.add("34TC8532", conf=0.38)  # 1.52 — doğru ama belirsiz (rakipsiz değil)
+    p.add("04TC8532", conf=0.0001)  # zayıf '0' rakibi (pos0 margin ~1.52)
+    assert p.consensus()[0] is None  # belirsiz → pending
+
+
+def test_confirm_min_char_margin_clear_plate_still_confirms():
+    # Net/yüksek-margin plaka (video_2: 34TC8532 baskın) sıkı eşikle de ONAYLANIR.
+    p = _strict_pool()
+    for _ in range(8):
+        p.add("34TC8532", conf=0.9)  # pos0 margin çok yüksek (>2.0)
+    p.add("34IC8532", conf=0.5)  # azınlık T→I misread
+    assert p.consensus()[0] == "34TC8532"
+
+
+def test_confirm_min_char_margin_defaults_to_char_margin_when_none():
+    # confirm_min_char_margin=None → char_margin'e düşer (geriye dönük uyum):
+    # margin 1.55 eski davranışta onaylanır (yeni knob verilmeden eski test korunur).
+    p = PlateVotePool(min_weight=2.0, margin_weight=1.5, ratio=0.6)  # confirm_min=None
+    assert p.confirm_char_margin == p.char_margin == 1.5
+    for _ in range(5):
+        p.add("04TC8532", conf=0.62)
+    for _ in range(2):
+        p.add("34TC8532", conf=0.40)
+    for _ in range(2):
+        p.add("34IC8532", conf=0.375)
+    # eski (gevşek) davranış: 1.55 >= 1.5 → onaylar (knob None iken regresyon yok)
+    assert p.consensus()[0] == "04TC8532"
+
+
+def test_confirm_min_char_margin_never_below_char_margin():
+    # confirm_min < char_margin verilse bile char_margin'in altına düşmez (güvenlik).
+    p = PlateVotePool(char_margin=1.8, confirm_min_char_margin=1.0)
+    assert p.confirm_char_margin == 1.8

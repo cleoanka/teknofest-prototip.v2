@@ -82,6 +82,15 @@ models:
       pad_ratio: 0.10             # sürücü kutusu etrafına bırakılan pay (+%10)
       redetect_every: 15          # önbellekteki kutu bu kadar karede bir tazelenir
       min_gain: 1.25              # ROI/kutu alan oranı bunun altındaysa kırpma atlanır (ROI zaten dar)
+      # Devasa sürücü ROI sınırı (yalnız kişi-kutusu YOKKEN geometrik kabin fallback'inde):
+      # sürücü ROI'si kare alanının bu oranını AŞARSA sürücü köşesine doğru o orana KIRPILIR
+      # (model minimum-alan ilkesi; devasa ROI = ön cam + yolcu yansımaları = FP kaynağı).
+      # Kişi-kutusu varken ROI zaten dardır → bu sınır DEVREYE GİRMEZ (davranış değişmez).
+      # K-004: kare-alanına GÖRELİ oran, videoya-özel sabit DEĞİL. 0 = kapalı (eski davranış).
+      max_roi_area_ratio: 0.10
+      # Alternatif politika: kırpmak yerine devasa-fallback karesinde sürücü-durum
+      # çıkarımını tamamen ATLA (engine boş DriverState → negatif oy → FP üretmez).
+      skip_if_oversized: false
     # --- hibrit ROI nesne kanıtı (pose backend ile) ---
     # Fine-tune dedektör (vars: models.detector.path) sürücü ROI'sinde ayrıca koşar;
     # phone NESNESİ görülürse doğrudan bayrak + latch_frames boyunca geçerli kalır
@@ -142,6 +151,13 @@ tracking:
   # girmediği gibi annotation/event de üretmez (gerçek video_3 dersi: ByteTrack
   # parçalanması 2-karelik hayalet 'truck' track'leri doğuruyor — çıktıya sızmamalı).
   min_track_frames: 3
+  # ÇIKTI kapısı (annotation/event): bir track çıktı üretmek için en az bu kadar kare
+  # KÜMÜLATİF görülmüş olmalı — kısa-ömürlü hayalet track'ler (ByteTrack parçalanması:
+  # 1-2 karelik motorcycle/truck — gerçek ölçüm: video_3 tid=1/4/5) kanıt videosuna/
+  # event'e sızmaz. Heavy-stage kapısından (min_track_frames) AYRI ve >= olmalı; vars.
+  # min_track_frames (mevcut davranış birebir korunur). Ayrıca takip KURULMAMIŞ
+  # (track_id yok) tespitler hiçbir koşulda çıktı/event üretmez (koda gömülü guard).
+  min_output_frames: 3
   # Track başına sınıf oylaması: tek-kare 'car↔truck' titremesini düzeltir. Oy
   # ALAN-AĞIRLIKLI (conf × bbox_alan/kare_alan): yakın/büyük araç sınıfı daha
   # güvenilir — gerçek ölçüm: uzak araç onlarca kare 'truck' görünüyor, yakınlaşınca
@@ -237,7 +253,16 @@ plate:
     # Net olduğunda doğru plakayı onaylar (video_2: 34TC8532). char_consensus=false
     # ise füzyon yalnız 'partial' kanıt izinde kalır, onaya girmez.
     char_consensus: true
-    char_margin: 1.5            # bir pozisyonda kazananın ikinciyi geçmesi gereken min mutlak ağırlık farkı
+    char_margin: 1.5            # KANIT-İZİ (best_partial) füzyonunda bir pozisyonda kazananın ikinciyi geçmesi gereken min mutlak ağırlık farkı
+    # ONAY-SIKI pozisyon eşiği (char_margin'den >= olmalı; None → char_margin'e düşer):
+    # CONFIRMED için HER karakter pozisyonunda kazanan, ikinciyi bu MUTLAK ağırlıkla
+    # geçmeli — geçemeyen pozisyon belirsizdir → plaka ONAYLANMAZ, dürüst 'pending'
+    # (best_partial kanıt izi yine raporlanır). Gerçek video ölçümü (17 Haz, stok yolo26l):
+    # yanlış ilk-harf '0' pos0-margin'i ~1.55, doğru '3' margin'i ~1.52 → ikisi de
+    # char_margin=1.5'i geçip YANLIŞ onaya gidiyordu. 2.0 belirsiz ilk-karakteri PENDING
+    # yapar (yanlış-onay sıfır > çok-onay); NET plaka (video_2, margin yüksek) onaylanır.
+    # K-004: oran/ağırlık temelli, videoya-özel sabit DEĞİL — okuma-belirsizliğine bağlı.
+    confirm_min_char_margin: 2.0
     # CONFIRM zemin koşulu: kazanan plaka EN AZ BİR kez bu etkin-ağırlıkla (OCR güveni ×
     # kırpık-yükseklik kalitesi) okunmuş olmalı = "plakayı en az bir kez NET/YAKIN gördük".
     # Gerçek video_3 dersi: UZAK plaka tutarlı YANLIŞ okunup (24IC8532) yalnız birikimle

@@ -65,6 +65,11 @@ models:
       pad_ratio: 0.10             # sürücü kutusu etrafına bırakılan pay (+%10)
       redetect_every: 15          # önbellekteki kutu bu kadar karede bir tazelenir
       min_gain: 1.25              # ROI/kutu alan oranı bunun altındaysa kırpma atlanır (ROI zaten dar)
+      # Devasa sürücü ROI sınırı (yalnız kişi-kutusu YOKKEN geometrik kabin fallback'inde):
+      # ROI kare alanının bu oranını aşarsa sürücü köşesine doğru o orana KIRPILIR (FP koruma).
+      # Kişi-kutusu varken ROI zaten dardır → sınır devreye girmez. 0 = kapalı.
+      max_roi_area_ratio: 0.10
+      skip_if_oversized: false    # true → kırpmak yerine devasa-fallback karesinde çıkarımı atla
     # --- hibrit ROI nesne kanıtı (pose backend ile) ---
     # Fine-tune dedektör (vars: models.detector.path) sürücü ROI'sinde ayrıca koşar;
     # phone NESNESİ görülürse doğrudan bayrak + latch_frames boyunca geçerli kalır
@@ -104,10 +109,12 @@ driver_lock:
 tracking:
   tracker: bytetrack            # bytetrack | botsort
   reid_model: null              # weights/yolo26s-reid.pt (opsiyonel)
-  # Ağır aşama + ÇIKTI kapısı: track bu kadar kare yaşamadan driver/plaka aşamalarına
-  # girmediği gibi annotation/event de üretmez (gerçek video_3 dersi: ByteTrack
-  # parçalanması 2-karelik hayalet 'truck' track'leri doğuruyor — çıktıya sızmamalı).
+  # Ağır aşama kapısı: track bu kadar kare yaşamadan driver/plaka aşamalarına girmez.
   min_track_frames: 3
+  # ÇIKTI kapısı (annotation/event): track çıktı üretmek için en az bu kadar kare
+  # KÜMÜLATİF görülmüş olmalı (hayalet track bastırma). >= min_track_frames; vars. ona eşit.
+  # Takip KURULMAMIŞ (track_id yok) tespitler hiçbir koşulda çıktı/event üretmez (guard).
+  min_output_frames: 3
   # Track başına sınıf oylaması: tek-kare 'car↔truck' titremesini düzeltir. Oy
   # ALAN-AĞIRLIKLI (conf × bbox_alan/kare_alan): yakın/büyük araç sınıfı daha
   # güvenilir — gerçek ölçüm: uzak araç onlarca kare 'truck' görünüyor, yakınlaşınca
@@ -199,7 +206,12 @@ plate:
     # Net olduğunda doğru plakayı onaylar (video_2: 34TC8532). char_consensus=false
     # ise füzyon yalnız 'partial' kanıt izinde kalır, onaya girmez.
     char_consensus: true
-    char_margin: 1.5            # bir pozisyonda kazananın ikinciyi geçmesi gereken min mutlak ağırlık farkı
+    char_margin: 1.5            # KANIT-İZİ (best_partial) füzyonunda kazananın ikinciyi geçmesi gereken min mutlak ağırlık farkı
+    # ONAY-SIKI pozisyon eşiği (>= char_margin; None → char_margin'e düşer): CONFIRMED için
+    # HER pozisyonda kazanan ikinciyi bu mutlak ağırlıkla geçmeli, yoksa dürüst 'pending'.
+    # Gerçek ölçüm (stok yolo26l): yanlış '0' pos0-margin ~1.55 / doğru '3' ~1.52 ikisi de
+    # 1.5'i geçip yanlış onaya gidiyordu; 2.0 belirsizi PENDING yapar, net plaka onaylanır.
+    confirm_min_char_margin: 2.0
 
 speed:
   mode: metric                  # metric | tripwire | ipm | disabled
