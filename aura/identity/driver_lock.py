@@ -54,8 +54,12 @@ class DriverAssignment:
     streak: int = 0  # sürücü-varlık streak'i (üst üste kaç karedir bir sürücü var)
     newly_locked: bool = False  # sürücü bu karede ilk kez mi kuruldu (DRIVER_LOCKED event)
     driver_bbox: BBox | None = None  # bu kareki sürücünün kutusu (Stage-2 ROI için)
-    passenger_ids: list[int] = field(default_factory=list)  # sürücü-dışı herkes (kilitli+aday yolcu)
-    locked_passenger_ids: list[int] = field(default_factory=list)  # YOLCU olarak kilitlenmiş olanlar
+    passenger_ids: list[int] = field(
+        default_factory=list
+    )  # sürücü-dışı herkes (kilitli+aday yolcu)
+    locked_passenger_ids: list[int] = field(
+        default_factory=list
+    )  # YOLCU olarak kilitlenmiş olanlar
 
 
 def _containment(person: BBox, vehicle: BBox) -> float:

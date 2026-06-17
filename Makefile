@@ -1,5 +1,5 @@
 # AURA — geliştirme kısayolları (cross-platform: macOS/Linux. Windows'ta setup.ps1 / run.ps1 / dev.ps1 kullanın.)
-.PHONY: setup run train eval test lint format clean help
+.PHONY: setup run doctor train eval metrics test lint format clean help
 
 PY := .venv/bin/python
 ifeq ($(OS),Windows_NT)
@@ -15,11 +15,17 @@ setup:          ## Tek-komut kurulum (bootstrap.py)
 run:            ## Tüm servisleri kaldır (inference :8080, qod :8081, nv :8082)
 	./run.sh
 
+doctor:         ## Ortam/sağlık kontrolü (bağımlılık, cihaz, ağırlık, config, profil)
+	$(PY) tools/doctor.py
+
 train:          ## Eğitim CLI yardımı
 	$(PY) -m train --help
 
 eval:           ## Değerlendirme — örnek video + QoD A/B
 	$(PY) -m aura.eval --source data/samples/ornek.mp4 --ground-truth data/samples/ornek_gt.json --qod-comparison
+
+metrics:        ## FTR §4 metrik raporu (test_video özetlerinden P/R/F1; --summaries DIR)
+	$(PY) -m aura.eval --metrics-report --summaries eval_results/ab
 
 test:           ## Unit testler (integration skip)
 	$(PY) -m pytest -m "not integration"

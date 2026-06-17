@@ -5,9 +5,14 @@ madde, onu karşılayan bileşene/dosyaya bağlanır. (Kaynak: şartname PDF + `
 
 ## Zorunluluk → Bileşen eşlemesi
 
+> **v2.3 notu:** Dedektör omurgası artık varsayılan **stok YOLO26l** (sunucu); `v4` fine-tune
+> seçilebilir profil (`--profile v4-finetune`). Sürücü durumu **iki katman**: Katman A model
+> (pose-hibrit/YOLO26l) + Katman B per-ID 16/8 zaman-oylaması (`DriverStateEngine`). Metrik
+> kanıtı: `python -m aura.eval --metrics-report` (P/R/F1+CER+FPS, dedektör A/B). Detay: `ftr.md`.
+
 | # | Şartname zorunluluğu | Karşılayan bileşen | Puan | Durum |
 |---|---|---|---|---|
-| 1 | Araç tespiti | `aura/detection` (fine-tune `v4` 11-sınıf + ByteTrack; stok YOLO26s fallback; kopya-kutu dedup) | %40 | ✅ (gerçek 4K videoda doğrulandı) |
+| 1 | Araç tespiti | `aura/detection` (**varsayılan stok YOLO26l** + ByteTrack; `v4` 11-sınıf fine-tune profili; sınıf-bağımsız kopya-kutu dedup + alan-ağırlıklı sınıf oyu) | %40 | ✅ (3 gerçek videoda araç %100; dedektör A/B `metrics_report.md`) |
 | 2 | Plaka tespiti + okuma | `aura/plate` (sweet spot + **sıkı LP kırpma** + güven-ağırlıklı kalıcı oylama + OCR + Türk regex + `partial` kanıt) | %40 | ✅ (gerçek videoda doğrulandı) |
 | 3 | Hız tespiti | `aura/speed` (tripwire/ipm/disabled/metric + relative flag; `calibrated` etiketi) | %40 | ✅ |
 | 3b | Hız-limiti tabelası + ihlal (yol güvenliği) | `aura/scene` (SignTracker) + `accumulator` `speed.over_limit` → `SPEED_LIMIT_VIOLATION` | %40 | ✅ (custom dataset retrain bekliyor) |
@@ -18,7 +23,7 @@ madde, onu karşılayan bileşene/dosyaya bağlanır. (Kaynak: şartname PDF + `
 | 6 | QoD başarım artışı **kanıtı** | `aura/eval` A/B harness + `GET /eval/results` + dashboard paneli | %40 | ✅ (delta: plaka +33pp, küçük nesne +51pp) |
 | 7 | Number Verification sessiz doğrulama | `services/nv_mock` + `POST /verify` + `mobile/` | — | ✅ |
 | 8 | Tespitlerin mobil ekranda gösterimi | `mobile/` + `WS /stream/events` | — | ✅ |
-| 9 | Doğruluk / hassasiyet / model hızı | `train/` (fine-tune; held-out mAP50 .788) + `aura/eval` metrikleri + `tools/test_video.py` FPS raporu | %40 | ✅ |
+| 9 | Doğruluk / hassasiyet / model hızı | `train/` (YOLO26 fine-tune→`model.val`→mAP/P/R/F1 export) + `aura/eval --metrics-report` (video-düzeyi P/R/F1+CER+FPS, dedektör A/B) + `tools/test_video.py` FPS | %40 | ✅ (v4 makro-F1 1.0; yolo26l 0.933) |
 | 9b | **Her hedefin otomatik üretildiğinin kanıtı** (Bölüm 4.5) | `--save-events` JSONL izi + `tools/test_video.py` (annotated mp4 + JSON özet + oy dökümü) + `PlateState.partial` | — | ✅ |
 | 10 | Modern mimari / rapor | repo yapısı + `docs/` + CI (`.github/workflows/ci.yml`) | %20 | ✅ |
 

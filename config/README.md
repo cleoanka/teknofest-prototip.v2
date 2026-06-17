@@ -7,10 +7,25 @@ yükler, seçili env değişkenlerini override olarak uygular ve noktalı erişi
 
 ```python
 from aura.config import load_config
-cfg = load_config()
-cfg.get("plate.voting_buffer_size")   # 7
-cfg.get("stability.window")           # 16
+cfg = load_config()                       # sadece default.yaml
+cfg = load_config(profile="server")       # default.yaml + profiles/server.yaml (derin-merge)
+cfg.get("plate.voting_buffer_size")       # 7
+cfg.get("stability.window")               # 16
 ```
+
+## Profiller (`config/profiles/*.yaml`)
+`default.yaml` üzerine **derin-merge** edilen overlay'ler; yalnız farkları içerir. Seçim
+sırası: `--profile` argümanı > `AURA_PROFILE` env > yok. CLI: `--profile` bayrağı
+(`aura`, `aura.eval`, `tools/test_video.py`, `tools/doctor.py`).
+
+| Profil | Dedektör | Cihaz | imgsz | Hedef |
+|---|---|---|---|---|
+| `server` | yolo26l | auto (CUDA) | 960 | sunucu, maksimum doğruluk (önerilen) |
+| `laptop` | yolo26s | auto (MPS) | 640 | geliştirme, hafif |
+| `v4-finetune` | yolguvenligi_types_v4 | auto | 768 | 11-sınıf fine-tune (plaka-kritik) |
+
+Kendi profilinizi ekleyin (`config/profiles/uretim.yaml`) → `--profile uretim`. Liste:
+`python -c "from aura.config import available_profiles as a; print(a())"`. Detay: `docs/dagitim.md`.
 
 ## Dosyalar
 | Dosya | Açıklama |
@@ -50,7 +65,12 @@ ikinci arasındaki min **mutlak** fark (ASIL ayrım kriteri); `consensus_ratio` 
 tutulur, 0.35 — dağınık misread'ler toplamı şişirip oranı düşürdüğünden margin esas
 alınır; `fix1/fix2_weight`, `substring_weight`; `size_full_px`/`size_floor`/`no_lp_weight`
 = okuma ağırlığı OCR güveni × kaynak kalitesi; `char_consensus` = pozisyon-hizalı karakter
-füzyonu YALNIZ `partial` (kanıt izi) için, CONFIRMED'e katılmaz — bkz. `aura/plate/normalize.py`).
+füzyonu (CONFIRMED'e katılır: her pozisyonda kazanan ikinciyi `char_margin` MUTLAK ağırlıkla
+geçmeli, değilse `pending`); **`confirm_peak_weight`** (v2.3) = CONFIRM zemin koşulu: kazanan
+plaka en az bir kez bu etkin-ağırlıkla (OCR güveni × kırpık kalitesi) okunmuş olmalı —
+hep-uzak sistematik misread onaylanmaz; 0 = kapalı. Ek **pozisyon-veto** (v2.3): ayrı-aday
+bütün-string marjını geçse bile her karakter pozisyonu belirsizse onay verilmez. — bkz.
+`aura/plate/normalize.py`).
 
 ### `models.driver_state` (backend seçimi)
 `backend: auto|pose|yolo` — pose: YOLO26-pose keypoint geometrisi (`pose_path` =
@@ -61,6 +81,10 @@ hibrit ROI nesne kanıtı (`roi_objects.*`); yolo: fine-tune YOLO26l detection.
 (`redetect_every` = önbellek tazeleme, `min_gain` = ROI zaten darsa kırpmayı atla).
 `fuse_detections` + `aux_classes`: Stage-1'in tam karede gördüğü phone/smoking
 nesneleri araca düşüyorsa sürücü bayrağına OR'lanır.
+`voting.*` (v2.3 — **Katman B `DriverStateEngine`**): per-`track_id` zaman-oylaması;
+`window`/`min_votes` (16/8 = mevcut davranış) bir bayrağı kararlı saymak için pencere +
+min True oy; `max_age` araç görünmeyince tamponun düşürüleceği kare. Eski per-(track,alan)
+StabilityTracker çağrısının ID-merkezli karşılığıdır (aynı davranış + bellek temizliği).
 
 ### `speed`
 `mode`: `metric` (oto-kalibrasyon) / `tripwire` / `ipm` / `disabled` (yalnızca
@@ -94,5 +118,5 @@ kapalıyken import bile yapılmaz (lazy). Detay: `docs/mimari_ek_moduller.md`.
 `serve` (statik serve), `default_bbox`, `theme` (`dark`/`light`).
 
 ## Env override
-`.env` (veya kabuk) bazı değerleri override eder: `AI_MODE`, `AURA_DEVICE`,
-`AURA_INFERENCE_PORT`, `AURA_QOD_MOCK_PORT`, `AURA_NV_MOCK_PORT`.
+`.env` (veya kabuk) bazı değerleri override eder: `AURA_PROFILE` (config profili),
+`AI_MODE`, `AURA_DEVICE`, `AURA_INFERENCE_PORT`, `AURA_QOD_MOCK_PORT`, `AURA_NV_MOCK_PORT`.

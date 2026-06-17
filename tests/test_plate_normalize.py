@@ -208,3 +208,47 @@ def test_char_consensus_off_falls_back_to_weights():
         p.add("34IC0532", conf=0.7)
     # füzyon kapalı → en ağır tek aday (ağırlık) döner, birleştirme yok
     assert p.best_partial() == "34IC8532"
+
+
+# --- v2.3 dürüstlük zırhları: ayrı-aday VETO + uzak-okuma zemin koşulu --------
+def test_separate_candidate_vetoed_when_position_contested():
+    # yolo26l video_1 dersi: '04TC8532' bütün-string baskın (margin+ratio GEÇER) AMA
+    # pos0 0↔3 çekişmeli → ayrı-aday VETO eder, char füzyonu da belirsiz → dürüst pending.
+    # (Eski sürüm bu durumda YANLIŞ '04TC8532' onaylıyordu.)
+    p = _pool()
+    for _ in range(4):
+        p.add("04TC8532", conf=0.6)  # 2.4 — bütün-string lideri
+    for _ in range(2):
+        p.add("34TC8532", conf=0.45)  # 0.9
+    for _ in range(2):
+        p.add("34IC8532", conf=0.35)  # 0.7  → pos0 '3' toplam 1.6
+    # ayrı-aday: w_top=2.4>=2.0, margin 2.4-0.9=1.5>=1.5, ratio 2.4/4.0=0.6>=0.6 → GEÇER
+    # ama pos0: '0'=2.4 vs '3'=1.6, fark 0.8 < char_margin 1.5 → VETO → pending
+    assert p.consensus()[0] is None
+    assert p.best_partial() is not None  # kanıt izi yine verilir
+
+
+def test_far_only_reads_stay_pending_without_clear_view():
+    # video_3 dersi: UZAK plaka tutarlı okunur ('24IC8532') ama hiçbir okuma NET değil
+    # (peak < confirm_peak_weight) → birikim min_weight'i geçse de dürüst pending.
+    p = _pool()  # confirm_peak_weight=0.30 (varsayılan)
+    for _ in range(22):
+        p.add("24IC8532", conf=0.55, weight=0.2)  # eff 0.11 each → toplam ~2.4, peak 0.11
+    assert p.consensus()[0] is None  # zemin koşulu sağlanmadı → pending
+    assert p.best_partial() == "24IC8532"  # kanıt izi görünür
+
+
+def test_peak_floor_disabled_allows_far_only_confirm():
+    # confirm_peak_weight=0 → zemin koşulu kapalı (ayarlanabilirlik); uzak-birikim onaylar.
+    p = PlateVotePool(min_weight=2.0, margin_weight=1.5, ratio=0.6, confirm_peak_weight=0.0)
+    for _ in range(22):
+        p.add("24IC8532", conf=0.55, weight=0.2)
+    assert p.consensus()[0] == "24IC8532"
+
+
+def test_clear_close_read_still_confirms_with_peak_floor():
+    # En az bir NET/yakın okuma (peak >= floor) varsa onay normal sürer.
+    p = _pool()
+    for _ in range(4):
+        p.add("34TC8532", conf=0.9, weight=1.0)  # peak 0.9 >= 0.30
+    assert p.consensus()[0] == "34TC8532"

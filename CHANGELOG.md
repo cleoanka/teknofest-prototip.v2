@@ -3,49 +3,78 @@
 Bu projedeki tüm önemli değişiklikler bu dosyada belgelenir.
 Format [Keep a Changelog](https://keepachangelog.com/tr/1.0.0/) temellidir.
 
-## [2.3.0] — 2026-06-13 (sürücü/yolcu mekaniği — pozisyonel sürücü + yolcu kilidi)
+## [2.3.0] — 2026-06-17 (YOLO26 sunucu sürümü + konfigüre edilebilirlik + FTR hazırlığı)
 
-Sürücü kilidi mekaniği, gerçek video (video_3) kanıtıyla ortaya çıkan bir regresyon
-nedeniyle yeniden tasarlandı: araç-içi kişiler artık "person" olarak değil **SÜRÜCÜ /
-YOLCU** rolüyle çiziliyor ve sürücü seçimi kimliğe kilitlenmek yerine **pozisyonel** hale
-getirildi.
+Hedef: prototipi **YOLO26-merkezli, sunucu-hedefli, yüksek konfigüre edilebilir,
+metrik üreten, FTR'ye hazır** hale getirmek. (Sunucu dağıtımı; edge için puan yok.)
 
-### Değişenler
-- **Sürücü artık KİMLİĞE KİLİTLENMİYOR — her kare POZİSYONEL seçiliyor** (`aura/identity/driver_lock.py`,
-  baştan yazıldı). Eski mekanik sürücüyü 3 karede track-ID'ye kilitliyor ve "bir daha
-  sürücü arama" diyordu; ByteTrack ID titremesiyle kilitli track kaybolunca **görünen
-  gerçek sürücü YOLCU olarak etiketleniyordu** (kare-189 regresyonu: v4/ReID yokken karanlık
-  ön-cam arkasında track sık parçalanıyor). Yeni kural: araçtaki **en alttaki (berabere →
-  en sağdaki) kişi HER ZAMAN sürücü** — her kare yeniden seçilir, kimliğe bağlı değil →
-  track-ID değişse de görünen sürücü hep "sürücü".
-- **Bunun yerine YOLCULAR kilitleniyor**: bir kişi `confirm_frames` ardışık karede yolcu
-  kalırsa **YOLCU olarak kilitlenir** ve o araçta artık sürücü adayı olamaz (anlık konum
-  gürültüsüyle sürücü etiketini çalamaz). Kilitli yolcu global dışlamaya tabi (tek araca ait).
-- **Dikey-öncelikli sürücü seçimi**: eski diyagonal köşe-mesafesi (x, y eşit ağırlık) yerine
-  "**önce en alt, sonra en sağ**" — sürücü/yolcu hizası daha deterministik ayrışıyor.
-- **`confirm_frames` 5 → 3** (config: artık YOLCU kilidi için ardışık-kare eşiği).
-- **`DRIVER_LOCKED` event'i** artık "sürücü kuruldu" (≥`confirm_frames` ardışık kare sürücü-varlığı)
-  anlamında; `DriverAssignment.locked` yapışkan.
+### Eklendi
+- **YOLO26 dedektör omurgası varsayılan.** Birincil Stage-1 dedektör fine-tune v4 (yolov8m)
+  yerine **stok `yolo26l`** (sunucu, doğruluk-önce; mandate). v4 seçilebilir profil olarak kalır.
+- **Config profil katmanı** (`config/profiles/*.yaml`, `default.yaml` üzerine derin-merge):
+  `server` (yolo26l/CUDA/imgsz960), `laptop` (yolo26s/MPS), `v4-finetune` (11-sınıf fine-tune).
+  `--profile` bayrağı (`aura`, `aura.eval`, `tools/test_video.py`) + `AURA_PROFILE` env.
+- **ID-merkezli iki-katmanlı sürücü motoru** (`DriverStateEngine` + `TrackVoter`): Katman A
+  zengin pose-hibrit model, Katman B per-track zaman-oylaması (eski per-alan 16/8'in yerine,
+  aynı davranış + araç çıkınca tampon prune). Mustafa'nın `feature/stage2-driver-state`
+  dalı regresyonsuz entegre edildi; voting `models.driver_state.voting` ile ayarlanır.
+- **FTR §4 metrik harness'ı** (`aura/eval/report.py`): `python -m aura.eval --metrics-report`
+  → video-düzeyi P/R/F1, plaka exact-match+CER, araç doğruluğu, FPS; dedektöre göre A/B;
+  `metrics_report.md`+`.csv`+`.json`. `metrics.prf1()`/`accuracy()` eklendi.
+- **Eğitim tool'u mükemmelleştirildi** (`train/`): eğit→`model.val`→metrik export(mAP/P/R/F1)→
+  best→`weights/`; otomatik cihaz (CUDA→MPS→CPU); `--lr0/--patience/--resume/--no-augment/--no-val/--out`;
+  `dataset --report` veri-dengeleme dağılımı (FTR §2). Boru hattı coco8/yolo26s ile doğrulandı.
+- **`tools/doctor.py`** sağlık kontrolü (bağımlılık/cihaz/ağırlık/config/profil) + `make doctor`/`metrics`.
+- **`ftr.md`** (Final Tasarım Raporu doldurma rehberi + doldurulabilir taslak + final demo hazırlığı),
+  `docs/dagitim.md` (sunucu dağıtımı), `docs/egitim.md`/`docs/veri_seti.md` genişletildi.
 
-### Eklenenler
-- **Annotation'da kişi rolleri** (`aura/schema.py` `AnnotationFrame.persons`, `aura/pipeline/pipeline.py`):
-  pipeline her kare araç-içi kişileri **sürücü/yolcu** rolüyle yayınlıyor
-  (`bbox + role + track_id + vehicle_id + locked`). Renderer-bağımsız tek kaynak.
-- **Dashboard SÜRÜCÜ/YOLCU çizimi** (`dashboard/assets/video-renderer.js`): insanlar artık
-  "person" olarak değil sürücü kilidinin kararıyla **SÜRÜCÜ** (yeşil, düz) / **YOLCU**
-  (turuncu, kesik çizgi) çiziliyor; sürücü kurulduysa `SÜRÜCÜ 🔒`. Etiketler kutunun altında
-  (araç ID'siyle çakışmaz).
-- **`DriverAssignment.passenger_ids` + `locked_passenger_ids`**: araçtaki sürücü-dışı kişiler
-  ve YOLCU olarak kilitlenmiş olanlar; `DriverLock.passengers_of(vehicle_id)` sorgusu.
-- **`tools/show_driver_rois.py` başlığı** sürücü durumu + yolcu sayısını gösteriyor
-  (`ID{n} {SURUCU/SURUCU+/-} y:{yolcu}`; `+` = sürücü kuruldu).
+### Düzeltmeler / sağlamlaştırma
+- **Plaka CONFIRM dürüstlük zırhları** (dedektör A/B'de ortaya çıktı): (1) **pozisyon-veto** —
+  ayrı-aday bütün-string marjını geçse bile her karakter pozisyonu `char_margin` önde olmalı,
+  değilse `pending`; (2) **zemin koşulu** (`confirm_peak_weight=0.30`) — kazanan plaka en az bir
+  kez net/yakın okunmuş olmalı (hep-uzak sistematik misread onaylanmaz). Her ikisi de K-004 (genel).
 
-### Doğrulama
-- **Kare-189 (video_3)**: eski mekanikte kilitli sürücü track'i kaybolduğundan görünen sürücü
-  **YOLCU** etiketleniyordu; yeni pozisyonel mekanikte sağ-en-alt görünen kişi doğru şekilde
-  **SÜRÜCÜ** (yeşil) seçiliyor, diğerleri YOLCU. Stage-2 ROI artık doğru sürücüyü besliyor.
-- **`tests/test_driver_lock.py` yeniden yazıldı (13 test)**: pozisyonel sürücü, yolcu kilidi,
-  kilitli-yolcu dışlama, dikey-öncelikli seçim, global eşleştirme. Tüm suite yeşil, ruff temiz.
+### Dedektör A/B (3 gerçek video, dürüst ölçüm — `eval_results/metrics_report.md`)
+| Dedektör | Davranış makro-F1 | Plaka exact | CER | FPS(MPS) |
+|---|---|---|---|---|
+| v4-finetune | 1.00 | 2/3 | 0.083 | 4.83 |
+| yolo26l (varsayılan) | 0.933 | 1/3 | 0.125 | 5.69 |
+> Davranış tespiti çapraz-FP'siz. Karanlık otopark footage'ında EasyOCR il-kodunu (3→0/2)
+> tutarlı yanlış okuyabiliyor; sistem yanlış onay yerine `pending` der. Plaka-kritik demoda
+> `--profile v4-finetune` önerilir; kalıcı çözüm perspektif düzeltme / komite footage'ı.
+
+### Sürücü/Yolcu mekaniği (takım katkısı — `feature/...` main'den entegre)
+Bu sürümde main'e gelen pozisyonel sürücü/yolcu mekaniği de korunarak birleştirildi:
+- **Sürücü KİMLİĞE değil POZİSYONA göre seçilir** (`aura/identity/driver_lock.py` yeniden yazıldı):
+  araçtaki **en alttaki (berabere → en sağdaki) kişi HER ZAMAN sürücü**; her kare yeniden
+  seçilir → ByteTrack ID titrese de görünen sürücü hep "sürücü" (kare-189 regresyonu giderildi).
+- **Yolcular kilitlenir** (`confirm_frames` ardışık kare → YOLCU; o araçta sürücü adayı olamaz).
+- **Annotation'da kişi rolleri** (`AnnotationFrame.persons`) + **dashboard SÜRÜCÜ/YOLCU çizimi**
+  (`video-renderer.js`); `DriverAssignment.passenger_ids`/`locked_passenger_ids`;
+  `tools/show_driver_rois.py` sürücü/yolcu başlığı. `tests/test_driver_lock.py` (13 test).
+
+> Not: Bu mekanik, v2.3'ün Katman B sürücü-durum motoruyla uyumludur (sürücü ROI'sini doğru
+> kişiye yönlendirir; motor o ROI'de davranış oylaması yapar).
+
+### Takım dalları entegre edildi (plate-speed-calibration + stage2 domain/kemer)
+- **Plaka→hız oto-kalibrasyonu** (`feature/plate-speed-calibration`): LP plaka kutusu (520mm
+  referans) `speed.observe_plate`'e beslenir → metrik ppm kalibrasyonu (`aura/speed/estimator.py`,
+  `aura/plate/reader.py`, `tools/diag_speed_plate.py`, `tests/test_speed_plate_calib.py`).
+  Ayrıca **CI black/ruff sürümleri pinlendi** (`ruff==0.15.17 black==26.5.1`) — lint kırılması önlenir.
+- **Kemer (seatbelt) iki-katman tasarımı** (`feature/stage2-driver-state` c570c9a, MY engine'e
+  port edildi): model ham **`seatbelt`** (kemer VAR) tespit eder; **`no_seatbelt` İHLALİ Katman
+  B'de kemerin yokluğundan türetilir** (`models.driver_state.no_seatbelt.enabled`, **VARSAYILAN
+  KAPALI** — kemer görünürlüğü düşük footage'da FP koruması). `imgsz 320→640` (küçük telefon),
+  `conf 0.45`; domain modeli (`custom_driver.pt`) + dataset birleştirme aracı
+  (`train/merge_driver_datasets.py`). Pose varsayılanı korunur; domain modeli `backend: yolo` ile açılır.
+
+### Kalite
+- **183 unit test** yeşil (`pytest -m "not integration"`); yeni/genişletilen: `test_config` (10),
+  `test_driver_engine` (12, kemer-türetme dahil), `test_report` (8), plaka zırh testleri,
+  train veri-istatistiği + entegre `test_driver_lock` (13) + `test_speed_plate_calib`.
+  `ruff` + `black` temiz; CI black/ruff sürümleri pinli.
+
+---
 
 ## [2.2.1] — 2026-06-13 (geri bildirim düzeltmesi — plaka ilk-karakter + sınıf salınımı)
 

@@ -1,0 +1,11 @@
+{
+  "_aciklama": "Domain-eslesmis surucu-ihlal dataseti (jui/driver-behaviors v10): trafik denetleme kamerasi / cam-ardi / los isik footage'i — TEKNOFEST test videolariyla ortusur. Onceki yakin-cekim datasetleri (phone-detection/cigarette/seatbelt-ghcca) DOMAIN UYUMSUZ oldugu icin cikarildi. 'map' SOL=kaynak sinif, SAG=hedef. seatbelt=kemer VAR; no_seatbelt ihlali Katman B'de turetilir.",
+  "target_classes": ["phone", "smoking", "seatbelt"],
+  "sources": [
+    {
+      "dir": "data/raw/driverbehaviors",
+      "tag": "db",
+      "map": { "phone": "phone", "cigarette": "smoking", "seatbelt": "seatbelt" }
+    }
+  ]
+}

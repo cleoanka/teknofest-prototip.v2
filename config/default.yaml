@@ -2,6 +2,14 @@
 # AURA — Merkezi Yapılandırma (tek doğruluk kaynağı)
 # Hiçbir eşik/flag koda gömülmez; tüm çalışma zamanı davranışı buradan yönetilir.
 # Açıklamalar için bkz. config/README.md
+#
+# PROFİLLER (config/profiles/*.yaml): bu taban dosyanın ÜZERİNE derin-merge edilir.
+#   python -m aura --profile server      # sunucu: yolo26l, CUDA, büyük imgsz (VARSAYILANLA AYNI)
+#   python -m aura --profile laptop      # geliştirme: yolo26s, MPS/CPU, hafif
+#   python -m aura --profile v4-finetune # fine-tune v4 (yolov8m, 11 sınıf) birincil
+#   AURA_PROFILE=server python -m aura   # env ile de seçilebilir
+# Mevcut profiller: `python -c "from aura.config import available_profiles as a; print(a())"`
+# Bu repo SUNUCU dağıtımı içindir (edge değil) → varsayılan dedektör yolo26l.
 # =============================================================================
 
 runtime:
@@ -17,16 +25,20 @@ runtime:
 
 models:
   detector:
-    # Birincil dedektör: fine-tune yolguvenligi_types_v4 (11 sınıf: araç tipleri +
-    # person + phone...; held-out test mAP50 .788). Dosya yoksa koda gömülü LOGLU
-    # fallback stok yolo26s.pt'ye düşer (detection/yolo.py).
-    # EŞİK REHBERİ (hidden_prototip gerçek-video dersi): fine-tune model → conf
-    # 0.25-0.35; ÖN-EĞİTİMLİ stok model gerçek trafikte araçlara 0.05-0.15 conf
-    # verir → stok kullanıyorsanız conf'u 0.08-0.10'a düşürün.
-    path: weights/yolguvenligi_types_v4.pt
-    conf: 0.30
+    # VARSAYILAN BİRİNCİL DEDEKTÖR: stok YOLO26l (Ultralytics 8.4 — en güncel YOLO).
+    # Sunucu dağıtımı için doğruluk-önce seçim (edge kısıtı yok). COCO sınıflarından
+    # car/truck/bus/motorcycle + person + 'cell phone'→phone (taxonomy) üretir.
+    #   • Daha hafif/cascade için: --profile laptop  (yolo26s)
+    #   • 11-sınıf fine-tune (minibus/license_plate dahil, mAP50 .788) için:
+    #     --profile v4-finetune  (weights/yolguvenligi_types_v4.pt, yolov8m)
+    # Ağırlık yoksa detection/yolo.py LOGLU olarak stok yolo26s.pt'ye düşer.
+    # EŞİK REHBERİ (hidden_prototip gerçek-video dersi): STOK model gerçek trafikte
+    # araçlara 0.05-0.15 conf verir → stokta conf 0.08-0.12; fine-tune (v4) → 0.25-0.35.
+    path: weights/yolo26l.pt
+    conf: 0.10                     # stok YOLO26 düşük conf üretir; FP'ler dedup+sınıf-oyu+min_track ile elenir
     iou: 0.45
-    imgsz: 768                    # v4 768'de eğitildi; stok yolo26s için 640 yeterli
+    imgsz: 768                    # sunucu: doğruluk için 768 (stok için 640 de yeterli; v4 768'de eğitildi)
+    # minibus stok COCO'da YOK (yalnız v4 fine-tune üretir); listede kalması zararsız.
     vehicle_classes: [car, truck, bus, minibus, motorcycle]
     mock_bright_threshold: 90     # mock dedektör (ağırlık yokken) parlaklık eşiği
     mock_min_area: 300            # mock dedektör min blob alanı (şerit gürültüsünü eler)
@@ -39,10 +51,15 @@ models:
     #          fine-tune ağırlık GEREKTİRMEZ). Bkz. aura/driver_state/pose.py.
     #   auto → pose ağırlığı diskte varsa pose, yoksa yolo.
     backend: auto
+    # yolo backend ağırlığı: stok yolo26l (pose varsayılan olduğundan bu yalnız backend=yolo'da
+    # kullanılır). AURA özel eğitimli domain modeli (phone/smoking/seatbelt) için bunu
+    # weights/custom_driver.pt yapıp `backend: yolo` seçin (bkz. docs/egitim.md).
     path: weights/yolo26l.pt
-    conf: 0.40
-    imgsz: 320
-    classes: [phone, smoking, no_seatbelt, fatigue]
+    conf: 0.45                     # fine-tune/domain model için (yolo backend)
+    imgsz: 640                     # 320 küçük telefonu kaybediyordu (cam-ardı sürücü); 640 korur
+    # Modelin HAM tespit sınıfları. 'seatbelt' = kemer ŞERİDİ (kemer VAR) tespiti;
+    # 'no_seatbelt' İHLALİ bundan TÜRETİLİR (Katman B), bu yüzden burada yer almaz.
+    classes: [phone, smoking, seatbelt, fatigue]
     # --- pose backend ayarları ---
     # l-pose: minimum alana (sürücü kırpığı) maksimum model — kullanıcı kararı.
     # Diskte yoksa koda gömülü LOGLU fallback stok yolo26s-pose.pt'ye düşer.
@@ -83,9 +100,26 @@ models:
       suppress_conf: 0.30
     # --- Stage-1 kanıt füzyonu ---
     # Dedektör tam karede phone/smoking NESNESİ görür ve kutu araca düşerse sürücü
-    # bayrağına OR'lanır (16/8 süzgecinden geçer). v4 modeli 'phone' üretebilir.
+    # bayrağına OR'lanır (Katman B oylamasından geçer). v4/yolo26 'phone' üretebilir.
     fuse_detections: true
     aux_classes: [phone, smoking]
+    # --- Katman B: ID-merkezli zaman-oylaması (DriverStateEngine + TrackVoter) ---
+    # Ham bayrak (Katman A: pose-hibrit / YOLO26l / mock) her track_id için pencere
+    # boyunca oylanır; bayrak yalnız son `window` karenin >= `min_votes` tanesinde
+    # True ise event'e döner → tek-karelik FP'ler (flicker) elenir. Bu, eski
+    # per-(track,alan) StabilityTracker 16/8 çağrısının ID-merkezli karşılığıdır
+    # (varsayılan 16/8 → aynı davranış); araç sahneden çıkınca tampon `max_age`
+    # karede düşer (bellek). Tümü ayarlanabilir.
+    voting:
+      window: 16                  # oylama penceresi (kare)
+      min_votes: 8                # pencerede aktiflik için min True oy (16/8 = mevcut davranış)
+      max_age: 30                 # ID bu kadar kare görünmezse tamponu düşür
+    # Kemer ihlali (no_seatbelt) TÜRETME aç/kapa. Model kemer ŞERİDİNİ (kemer VAR) tespit
+    # eder; ihlal bunun yokluğundan Katman B'de türetilir. Kemer görünmeyen (cam-ardı/loş/
+    # uzak) footage'da yanlış pozitif üretebileceğinden VARSAYILAN KAPALI. Net kemer
+    # görünümü olan kamerada + domain modelinde açın.
+    no_seatbelt:
+      enabled: false
 
 # Sürücü/Yolcu atama: araç kabininde EN ALTTAKİ (berabere → en sağdaki) kişi HER ZAMAN
 # sürücüdür (dikey öncelikli, POZİSYONEL — kimliğe kilitlenmez). Diğer herkes yolcu; bir
@@ -186,6 +220,11 @@ plate:
     # ise füzyon yalnız 'partial' kanıt izinde kalır, onaya girmez.
     char_consensus: true
     char_margin: 1.5            # bir pozisyonda kazananın ikinciyi geçmesi gereken min mutlak ağırlık farkı
+    # CONFIRM zemin koşulu: kazanan plaka EN AZ BİR kez bu etkin-ağırlıkla (OCR güveni ×
+    # kırpık-yükseklik kalitesi) okunmuş olmalı = "plakayı en az bir kez NET/YAKIN gördük".
+    # Gerçek video_3 dersi: UZAK plaka tutarlı YANLIŞ okunup (24IC8532) yalnız birikimle
+    # onaya gidebiliyordu; bu zemin hep-uzak okumayı dürüst 'pending'e çevirir. 0 = kapalı.
+    confirm_peak_weight: 0.30
 
 speed:
   mode: metric                  # metric | tripwire | ipm | disabled

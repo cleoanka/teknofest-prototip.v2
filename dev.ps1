@@ -3,8 +3,10 @@
 #   .\dev.ps1 test                      # unit testler (integration hariç)
 #   .\dev.ps1 lint                      # ruff check
 #   .\dev.ps1 format                    # black
+#   .\dev.ps1 doctor                    # ortam/sağlık kontrolü (bağımlılık/cihaz/ağırlık/profil)
 #   .\dev.ps1 train                     # eğitim CLI yardımı
 #   .\dev.ps1 eval                      # örnek video + QoD A/B değerlendirmesi
+#   .\dev.ps1 metrics                   # FTR §4 metrik raporu (eval_results\ab özetlerinden)
 #   .\dev.ps1 video-test C:\yol\video.mp4   # gerçek video testi (annotated mp4 + JSON)
 #   .\dev.ps1 clean                     # cache temizliği
 param(
@@ -23,6 +25,8 @@ try {
     "test"       { & $PY -m pytest -m "not integration" @Rest; exit $LASTEXITCODE }
     "lint"       { & $PY -m ruff check . @Rest; exit $LASTEXITCODE }
     "format"     { & $PY -m black . @Rest; exit $LASTEXITCODE }
+    "doctor"     { & $PY tools/doctor.py @Rest; exit $LASTEXITCODE }
+    "metrics"    { & $PY -m aura.eval --metrics-report --summaries eval_results/ab @Rest; exit $LASTEXITCODE }
     "train"      { & $PY -m train --help; exit $LASTEXITCODE }
     "eval"       {
       & $PY -m aura.eval --source data/samples/ornek.mp4 `
@@ -42,7 +46,7 @@ try {
       exit 0
     }
     default      {
-      Write-Host "Hedefler: test | lint | format | train | eval | video-test <video> | clean"
+      Write-Host "Hedefler: test | lint | format | doctor | train | eval | metrics | video-test <video> | clean"
       exit 0
     }
   }

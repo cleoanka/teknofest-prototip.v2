@@ -6,18 +6,19 @@ downstream'i (dashboard/mobil) bilmez; yalnızca event + annotation stream yayar
 
 ## Pipeline akışı
 ```
-preprocessing → detection(+ByteTrack) → ROI crop ──┬─ driver_state (16/8 ile kararlı)
-                                                    └─ plate (sweet spot+voting+OCR)
+preprocessing → detection(+ByteTrack+sınıf oyu) → ROI ──┬─ driver_state (Katman A model + Katman B ID-oylaması)
+                                                        └─ plate (LP kırpma+voting+OCR)
                                           → speed → accumulator → events + annotations
 ```
+Dedektör/cihaz/eşikler **config profilleriyle** seçilir (`--profile server|laptop|v4-finetune`).
 
 ## Modüller
 | Paket | Sorumluluk | Milestone |
 |---|---|---|
 | `preprocessing/` | Far/blur/yansıma/occlusion ön-işleme | M-sonrası |
-| `detection/` | YOLO26s + ByteTrack + ROI crop | M3 |
-| `stability/` | 16/8 state machine (flicker koruması) | M4 |
-| `driver_state/` | YOLO26l: phone/smoking/no_seatbelt/fatigue (no-landmark) | M4 |
+| `detection/` | YOLO26 (l/s) + ByteTrack + sınıf oyu + ROI crop | M3 |
+| `stability/` | 16/8 state machine + alan-ağırlıklı sınıf oyu (flicker koruması) | M4 |
+| `driver_state/` | Katman A model (pose-hibrit/YOLO26l) + Katman B `DriverStateEngine` ID-oylaması (no-landmark) | M4 |
 | `plate/` | Sweet spot + voting buffer + OCR + Türk plaka regex | M5 |
 | `speed/` | tripwire / ipm / disabled (relative_velocity_flag) | M6 |
 | `accumulator/` | ID-merkezli TrackRecord + risk kuralları | M3+ |
