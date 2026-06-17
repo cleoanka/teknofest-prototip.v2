@@ -56,10 +56,23 @@ Bu sürümde main'e gelen pozisyonel sürücü/yolcu mekaniği de korunarak birl
 > Not: Bu mekanik, v2.3'ün Katman B sürücü-durum motoruyla uyumludur (sürücü ROI'sini doğru
 > kişiye yönlendirir; motor o ROI'de davranış oylaması yapar).
 
+### Takım dalları entegre edildi (plate-speed-calibration + stage2 domain/kemer)
+- **Plaka→hız oto-kalibrasyonu** (`feature/plate-speed-calibration`): LP plaka kutusu (520mm
+  referans) `speed.observe_plate`'e beslenir → metrik ppm kalibrasyonu (`aura/speed/estimator.py`,
+  `aura/plate/reader.py`, `tools/diag_speed_plate.py`, `tests/test_speed_plate_calib.py`).
+  Ayrıca **CI black/ruff sürümleri pinlendi** (`ruff==0.15.17 black==26.5.1`) — lint kırılması önlenir.
+- **Kemer (seatbelt) iki-katman tasarımı** (`feature/stage2-driver-state` c570c9a, MY engine'e
+  port edildi): model ham **`seatbelt`** (kemer VAR) tespit eder; **`no_seatbelt` İHLALİ Katman
+  B'de kemerin yokluğundan türetilir** (`models.driver_state.no_seatbelt.enabled`, **VARSAYILAN
+  KAPALI** — kemer görünürlüğü düşük footage'da FP koruması). `imgsz 320→640` (küçük telefon),
+  `conf 0.45`; domain modeli (`custom_driver.pt`) + dataset birleştirme aracı
+  (`train/merge_driver_datasets.py`). Pose varsayılanı korunur; domain modeli `backend: yolo` ile açılır.
+
 ### Kalite
-- **175 unit test** yeşil (`pytest -m "not integration"`); yeni: `test_config` (10),
-  `test_driver_engine` (9), `test_report` (8), plaka zırh testleri, train veri-istatistiği +
-  birleştirilen `test_driver_lock` (13). `ruff` + `black` temiz.
+- **183 unit test** yeşil (`pytest -m "not integration"`); yeni/genişletilen: `test_config` (10),
+  `test_driver_engine` (12, kemer-türetme dahil), `test_report` (8), plaka zırh testleri,
+  train veri-istatistiği + entegre `test_driver_lock` (13) + `test_speed_plate_calib`.
+  `ruff` + `black` temiz; CI black/ruff sürümleri pinli.
 
 ---
 
