@@ -100,7 +100,13 @@ li.ev-DRIVER_STATE { border-color: var(--accent-2); }
 .badge { display: inline-block; padding: 1px 6px; border-radius: 10px; font-size: 10px; }
 .badge.qod { background: var(--warn); color: #2a2200; }
 .badge.plate-confirmed { background: var(--ok); color: #06231a; }
+/* kısmi tahmin: henüz onaylanmadı → sarı (CONFIRMED yeşilinden net ayrı). */
+.badge.plate-partial { background: var(--warn); color: #2a2200; }
 .badge.plate-pending { background: var(--panel); color: var(--muted); border: 1px solid var(--border); }
+/* risk token rozetleri (kart içi). */
+.badge.risk-flag { background: var(--risk); color: #fff; font-weight: 700; }
+.tcard .risk-row { flex-wrap: wrap; gap: 4px; }
+.tcard .risk-row span:last-child { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
 
 /* QoD panel */
 .qod-head { display: flex; justify-content: space-between; align-items: center; }

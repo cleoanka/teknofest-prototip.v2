@@ -4,11 +4,14 @@
 **Proje:** AURA — 5G & Yapay Zekâ ile Akıllı Yol Güvenliği (TEKNOFEST 2026 prototipi)
 **Lisans:** MIT · **Diller:** Python %81 · JavaScript %7 · TypeScript %4 · CSS/HTML/PowerShell
 
-> **v2.3 güncel durum (2026-06-17):** dedektör omurgası varsayılan **stok YOLO26l** (sunucu),
-> seçilebilir config **profilleri** (`--profile server|laptop|v4-finetune`); sürücü durumu
-> **iki katmanlı** (`DriverStateEngine`); FTR metrik harness'ı (`aura.eval --metrics-report`);
-> eğitim tool'u doğrulama+metrik export ile mükemmelleştirildi; `tools/doctor.py`. Güncel
-> ayrıntı için: `README.md`, `CHANGELOG.md` (2.3.0), `docs/`, ve FTR rehberi `ftr.md`.
+> **v2.3 + W1 güncel durum (2026-06-17):** dedektör omurgası varsayılan **stok YOLO26l**
+> (sunucu, `conf 0.10`), seçilebilir config **profilleri** (`--profile server|laptop|v4-finetune`,
+> `default.yaml` üzerine derin-merge); sürücü durumu **iki katmanlı** (`DriverStateEngine`);
+> hız varsayılanı **`metric` oto-kalibrasyon** (plaka/araç-genişliği → ppm, Kalman+EMA) +
+> **swerving** (yanal yörünge); FTR metrik harness'ı (`aura.eval --metrics-report` / `--map`);
+> plaka W1 yenilikleri (dewarp + enhance + opsiyonel PaddleOCR); eğitim tool'u doğrulama+metrik
+> export ile mükemmelleştirildi; `tools/doctor.py` + `tools/bench.py`. Güncel ayrıntı için:
+> `README.md`, `CHANGELOG.md` (2.3.0), `docs/`, ve FTR rehberi `ftr.md`.
 
 ---
 
@@ -38,12 +41,12 @@ Eğer YOLO26 model ağırlıkları yoksa, sistem **deterministik mock modda** t�
 Sistem **cascade (kademeli) pipeline** mantığıyla çalışır — hafif model önce, ağır model sonra ve yalnızca gerektiği yerde:
 
 ```
-[Kamera] → [Ön-İşleme] → [YOLO26s + ByteTrack] ──┬─→ [Sürücü Kabini ROI] → [YOLO26l Driver State]
-                                ↑                 └─→ [Plaka ROI] → [Sweet Spot + Voting + OCR]
-                          [16/8 State Machine]                              ↓
-                                                                     [QoD Tetikleyici]
+[Kamera] → [Ön-İşleme] → [YOLO26l + ByteTrack] ──┬─→ [Sürücü ROI] → Katman A: pose-hibrit / YOLO26l
+                                ↑                 │                  Katman B: per-ID 16/8 zaman-oylaması
+                          [Sınıf oyu]            └─→ [Plaka ROI] → [LP dedektör + dewarp/enhance + Oylama + OCR]
                                                                            ↓
-                              [ID-Merkezli Accumulator] ← [Hız (kalibrasyon-bağımlı)]
+                                                          [QoD Tetik (yaklaşma/kalite/anomali)]
+                              [ID-Merkezli Accumulator] ← [Hız (metric oto-kalibrasyon) + Swerving]
                                           ↓
                               [Event / Annotation Stream] → Dashboard + Mobil
 ```
@@ -59,14 +62,14 @@ Görüntü herhangi bir modele girmeden çevresel gürültüyü temizleyen ilk f
 - **Yansıma süpürme:** Ön cam ve ıslak yüzey yansımalarını bastırır.
 - **Occlusion handling:** Direk/ağaç/araç çakışması gibi geçici kapanmaları yönetir.
 
-### Aşama 2 — Tespit ve Takip (YOLO26s + ByteTrack)
+### Aşama 2 — Tespit ve Takip (YOLO26 + ByteTrack)
 
-Uç cihazda çalışan ana tespit motoru. Hedef araç sınıflarını (araba, kamyon, otobüs, minibüs, motosiklet) tespit eder. **Püf noktası:** Tam çözünürlüklü kareyi ağır bileşenlere göndermek yerine yalnızca **iki ROI kırpması** üretir:
+Ana tespit motoru. Varsayılan **stok `yolo26l`** (sunucu, doğruluk-önce; `conf 0.10` — stok model gerçek trafikte düşük güven üretir, FP'ler dedup + track-başına sınıf-oyu + `min_track_frames` ile elenir). **Konfigüre edilebilir:** `--profile laptop` (`yolo26s`/MPS), `--profile v4-finetune` (11-sınıf fine-tune, plaka-kritik). Hedef araç sınıflarını (araba, kamyon, otobüs, minibüs, motosiklet) tespit eder. **Püf noktası:** Tam çözünürlüklü kareyi ağır bileşenlere göndermek yerine yalnızca **iki ROI kırpması** üretir:
 
 | ROI | Nereye gider |
 |-----|--------------|
-| Sürücü Kabini | YOLO26l Driver State'e |
-| Plaka Bölgesi | OCR Konsensüs Döngüsüne |
+| Sürücü | İki-katmanlı sürücü motoruna (pose-hibrit / YOLO26l) |
+| Plaka Bölgesi | LP dedektör + OCR Konsensüs Döngüsüne |
 
 Böylece pahalı modüller hiçbir zaman tam kare üzerinde çalışmaz; hesap yükü ve gecikme minimumda kalır.
 
@@ -78,20 +81,26 @@ Kamera kaynaklı anlık "hayalet" tespitlerin (flickering) sistemi yanıltmasın
 
 **Kural:** Bir ID'ye atanmış durumun güncellenebilmesi için, sistemin **16 ardışık karenin en az 8'inde** yeni durumu tutarlı biçimde tespit etmesi şarttır. Bu eşik sağlanmazsa önceki yüksek-güvenilirlikli veri korunur, override yapılmaz. Özellikle kötü ışık ve geçici kapanma senaryolarında yanlış alarmı önler.
 
-### Aşama 4 — Sürücü Durumu (YOLO26l)
+### Aşama 4 — Sürücü Durumu (iki katmanlı, ID-merkezli)
 
-Aşama 1'in ürettiği Sürücü Kabini ROI'sini girdi alır ve şu durumları tespit eder: **telefon kullanımı, sigara içme, emniyet kemeri takmama, yorgunluk.** Birden fazla sınıf aynı anda aktif olabilir (bu bir *detection* problemi, *classification* değil).
+Sürücü ROI'sini girdi alır ve şu durumları tespit eder: **telefon kullanımı, sigara içme, emniyet kemeri takmama, yorgunluk.** Birden fazla sınıf aynı anda aktif olabilir (bu bir *detection* problemi, *classification* değil). İki katmanlı çalışır:
 
-**Önemli mimari karar — MediaPipe yok:** Yorgunluk dahil tüm sürücü durumları YOLO26l detection sınıfı olarak öğrenilir. Landmark/pose tabanlı yaklaşımlar (MediaPipe gibi) kullanılmaz. Gerekçe: Trafik kamerası montaj açıları ve değişken görüş mesafelerinde landmark sistemleri tutarsız ve kırılgan sonuç üretir (yüz çözünürlüğü düşük, açı uç, occlusion sık). Yorgunluk; kapalı göz, esneme, baş düşmesi sahnelerinin `fatigue` sınıfı olarak etiketlenmesiyle çözülür.
+- **Katman A (ham bayrak üretici):** `models.driver_state.backend` ile seçilir. Varsayılan `auto` → pose ağırlığı diskte varsa **YOLO26-pose** keypoint geometrisi (bilek↔ağız/kulak göreli yakınlığı; fine-tune ağırlık gerektirmez), yoksa `yolo` (fine-tune/domain detection ağırlığı). Pose backend'inde fine-tune dedektör ROI'de ayrıca koşar (**hibrit nesne kanıtı**: telefon nesnesi görülürse geometrik 'sigara' bastırılır). Sürücü ROI'si POZİSYONA göre seçilir (kabindeki en alttaki/en sağdaki kişi → sürücü; `aura/identity/driver_lock.py`).
+- **Katman B (`DriverStateEngine` + `TrackVoter`):** Her `track_id` için ham bayrak **16/8 zaman-oylamasından** geçer (son 16 karenin ≥8'inde True ise event'e döner) → tek-karelik FP'ler elenir; araç sahneden çıkınca tampon `max_age` karede düşer. **Kemer ihlali (`no_seatbelt`) Katman B'de kemer ŞERİDİNİN yokluğundan türetilir** (`no_seatbelt.enabled`, **varsayılan kapalı** — kemer görünürlüğü düşük footage'da FP koruması).
+
+**Önemli mimari karar — landmark kütüphanesi yok:** Pose backend'i Ultralytics YOLO26-pose keypoint'lerini kullanır; MediaPipe gibi ayrı landmark kütüphaneleri kullanılmaz. Gerekçe: trafik kamerası açıları ve değişken görüş mesafelerinde harici landmark sistemleri kırılgandır.
 
 ### Aşama 5 — Plaka Okuma ve Konsensüs Döngüsü
 
 Hesap yükü en yüksek parça olduğu için katı kaynak yönetimiyle çalışır:
 
 - **Sweet Spot (Sanal Okuma Bölgesi):** Araç uzaktayken OCR pasiftir. Araç, kameranın en yüksek optik netlik sağladığı önceden tanımlı sanal koordinata girince OCR etkinleşir (config'te `x1,y1,x2,y2` ile tanımlı).
-- **Voting Buffer (Oy Havuzu):** Araç sweet-spot içindeyken ardışık OCR okumaları havuzlanır (varsayılan 7 okuma, %60 konsensüs oranı).
+- **LP dedektör + sıkı kırpma:** Özel plaka dedektörü (YOLOv11n LP fine-tune, ~5MB) plakayı araç-altı geniş crop içinde bulup sıkı kırpar → karakter doğruluğu artar. Ağırlık yoksa loglu olarak geniş-crop'a düşülür.
+- **W1 — OCR öncesi hazırlık (`plate.dewarp` + `plate.enhance`):** LP kırpığına OCR'dan hemen önce bir kez **fronto-paralel perspektif düzeltme** (açılı plaka → düz; köşe yoksa kimlik) + **CLAHE/gamma/unsharp** uygulanır (karanlık/açılı otopark footage'ı için). Reader'ın düşük-güven CLAHE+2x ikinci-şans varyantından ayrıdır.
+- **OCR motoru (`plate.ocr_engine`):** varsayılan **EasyOCR**; opsiyonel **PaddleOCR** (`paddleocr` çıktısı EasyOCR `readtext` ile uyumlu normalize edilir; kurulu değilse loglu EasyOCR fallback).
+- **Voting Buffer (Oy Havuzu):** Araç sweet-spot içindeyken ardışık OCR okumaları havuzlanır (varsayılan 7 okuma, %60 konsensüs oranı). Oylar OCR güveni × kaynak kalitesi (LP kırpık yüksekliği) ile ağırlıklanır.
 - **Karar:**
-  - **Konsensüs varsa** → plaka ID'ye kalıcı yazılır, OCR kapatılır (erken çıkış), `PLATE_CONFIRMED` event'i üretilir.
+  - **Konsensüs varsa** → plaka ID'ye kalıcı yazılır, OCR kapatılır (erken çıkış), `PLATE_CONFIRMED` event'i üretilir. Dürüstlük zırhları: pozisyon-veto (her karakter pozisyonu `char_margin` önde olmalı) + zemin koşulu (`confirm_peak_weight` — kazanan plaka en az bir kez net/yakın okunmuş olmalı). Aksi halde `pending`.
   - **Konsensüs yoksa / piksel yetersizse** → `QOD_TRIGGER` (kalite tetiği) + yeniden okuma döngüsü.
 - **Post-validasyon:** Türk plaka regex'i `^\d{2}[A-Z]{1,3}\d{2,4}$` ile doğrulanır.
 
@@ -103,17 +112,20 @@ Bu, projeyi gerçekten **5G-native** kılan parçadır. 5G ağını statik bir b
 - **Kalite tetiği (HIGH_THROUGHPUT):** Voting buffer ret kararı verdiğinde veya piksel kalitesi yetersiz kaldığında — amaç yüksek çözünürlük talep etmek.
 - **Histerezis:** Minimum aktif süre (3 sn) + cooldown (5 sn) ile "tetikle-bırak-tetikle" salınımı önlenir.
 
-### Aşama 7 — Hız Tahmini (Kalibrasyon Bağımlı)
+### Aşama 7 — Hız Tahmini (varsayılan: metric oto-kalibrasyon) + Swerving
 
-Hız ölçümü kamera kurulumuna bağlı olduğundan üç moddan biriyle çalışır:
+Hız varsayılanı artık **`metric`** modudur (`speed.mode: metric`) — manuel kalibrasyon dosyası **gerektirmez**:
 
 | Mod | Şart | Yöntem |
 |-----|------|--------|
+| `metric` (**varsayılan**) | — (oto-kalibre) | Araç-genişliği (varsa plaka 520 mm referansı) → `ppm(y)` ölçek-alanı (aykırı-dayanıklı regresyon) → yer-düzlemi metrik yer değiştirme → pencere-medyan + ivme aykırı reddi + **Kalman + EMA** → gerçek km/h. Isınma bitene dek `is_calibrated=False` (km/h iddia edilmez). Kadraj kenarında ölü bölge (`frame_margin_px`). |
 | `tripwire` | Sabit kamera + bilinen mesafe | İki sanal çizgi arası ByteTrack frame-delta × gerçek mesafe |
 | `ipm` | Kamera intrinsics + montaj verisi | Homography/IPM ile piksel → gerçek dünya dönüşümü |
-| `disabled` | Kalibrasyon verisi yok | Hız üretilmez; bunun yerine `relative_velocity_flag` (göreli hız bayrağı) üretilir |
+| `disabled` | — | Hız üretilmez; yalnız `relative_velocity_flag` (göreli hız bayrağı) |
 
-**Mimari felsefe:** Kalibrasyon şartları sağlanamıyorsa sistem hız iddiasında bulunmaz. Bu, sistemin kendi sınırlarını tanıyan ve aşmayan bir tasarımıdır — yarışma jürisine karşı dürüstlük ve güvenilirlik gösterir.
+**Swerving (dikkatsiz sürüş / yalpalama):** Yanal yörüngede zigzag ekstremum sayacı; pencere **saniye** cinsinden (fps-bağımsız), genlik **araç-genişliği** biriminde (ölçek-bağımsız, K-004). Monoton hareket (yaklaşma kayması, tek şerit değişimi) yapısal olarak 0 üretir. Bayrak 16/8 süzgecinden geçer → `swerving_vehicle` kuralı `RISK_ALERT` üretir + QoD optimize tetiği. Ayrıca `SignTracker` + `speed.over_limit` ile aktif hız-limiti tabelası geçilince ihlal (`SPEED_LIMIT_VIOLATION`) üretilir.
+
+**Mimari felsefe:** Oto-kalibrasyon ısınmasını tamamlamadan sistem mutlak km/h iddia etmez (`is_calibrated=False`). Sistemin kendi sınırlarını tanıyan ve aşmayan bu tasarım — jüriye karşı dürüstlük ve güvenilirlik gösterir.
 
 ---
 
@@ -185,10 +197,11 @@ Mobil uygulama açılışta `POST /verify` (nv_mock) çağırır → sessiz doğ
 Tüm çalışma zamanı davranışı tek YAML dosyasından yönetilir — kodda gömülü sihirli sayı yoktur. Öne çıkan ayar blokları:
 
 - **`runtime`** — cihaz seçimi (`auto/cpu/cuda/mps`), kaynak, log seviyesi ve **`ai_mode`** (`real` = gerçek YOLO, `mock` = numpy deterministik, `auto` = ağırlık varsa gerçek).
-- **`models`** — detector (YOLO26s, conf 0.35) ve driver_state (YOLO26l, conf 0.40, 4 sınıf) ayarları; mock dedektör eşikleri.
+- **`models`** — detector (varsayılan stok **`yolo26l`**, conf **0.10**, imgsz 768) ve driver_state (backend `auto` → pose/yolo; pose/voting 16/8 ayarları, `no_seatbelt` varsayılan kapalı); mock dedektör eşikleri. Dedektör/cihaz/eşikler **config profilleriyle** (`server/laptop/v4-finetune`) derin-merge edilir.
 - **`stability`** — `window: 16`, `min_consistent: 8` (16/8 kuralı).
-- **`plate`** — sweet spot koordinatları, voting buffer boyutu (7), konsensüs oranı (0.6), Türk plaka regex'i, minimum piksel yüksekliği.
-- **`speed`** — mod (`disabled` varsayılan), tripwire çizgi konumları ve gerçek mesafe.
+- **`plate`** — sweet spot koordinatları, LP dedektör (`lp_detector`), W1 **`dewarp`** + **`enhance`**, OCR motoru (`ocr_engine: easyocr|paddleocr`), voting buffer boyutu (7), konsensüs oranı (0.6), Türk plaka regex'i, minimum piksel yüksekliği, dürüstlük zırhları (`char_margin`, `confirm_peak_weight`).
+- **`speed`** — mod (**`metric` varsayılan**, oto-kalibrasyon: Kalman+EMA), plaka/araç-genişliği referansları, `swerving` bloğu; alternatifler `tripwire`/`ipm`/`disabled`.
+- **`sign`** — hız-limiti tabelası tespiti (`SignTracker`) → `speed.over_limit` ihlali.
 - **`qod`** — backend (`mock`), profiller (LOW_LATENCY / HIGH_THROUGHPUT), histerezis süreleri.
 - **`risk`** — ID-merkezli risk kuralları; örneğin `distracted_speeding` (telefon + yüksek hız → high), `prolonged_fatigue` (yorgunluk + uzun ömürlü track → high), `unbelted` (kemersiz → medium). Genişletilebilir.
 - **`optional_modules`** — sıfır-atık payload, süper çözünürlük, homography/IPM — hepsi varsayılan kapalı.
@@ -212,6 +225,8 @@ Sonra her ikisini ground-truth'a karşı karşılaştırıp ölçülebilir delta
 
 Bu sayılar `python -m aura.eval` veya `POST /eval/run` ile üretilir, dashboard'daki Chart.js paneli görselleştirir, `/eval/results/export` ile Markdown rapor indirilir. Yani "QoD gerçekten fark yaratıyor mu?" sorusuna **somut, tekrar üretilebilir kanıt** sunar. Metrikler Levenshtein/CER tabanlı hesaplanır.
 
+**FTR metrik harness'ı (`--metrics-report`) ve mAP (`--map`):** `python -m aura.eval --metrics-report` video-düzeyi **P/R/F1 + plaka exact-match/CER + araç doğruluğu + FPS** üretir (dedektöre göre A/B; `eval_results/metrics_report.md/.csv/.json`). `python -m aura.eval --map` ise standart bir doğrulama setinde **mAP** ölçer (`eval_results/map_*.json`). Bu çıktılar Final Tasarım Raporu'nun §4 metrik tablolarını dürüst sayılarla doldurur.
+
 ---
 
 ## 7. API Yüzeyi (Özet)
@@ -233,11 +248,11 @@ Bu sayılar `python -m aura.eval` veya `POST /eval/run` ile üretilir, dashboard
 
 ## 8. Kalite, Test ve CI
 
-- **58 unit test** (mock modda, model ağırlığı gerektirmez) — `pytest -m "not integration"`.
+- **238 unit test** (mock modda, model ağırlığı gerektirmez) — `pytest -m "not integration"` (2 integration test CI'da deselect).
 - Model gerektiren testler `@pytest.mark.integration` ile işaretli, CI'da skip edilir.
-- **`ruff` + `black`** ile lint/format temiz.
+- **`ruff` + `black`** ile lint/format temiz (CI'da sürümler pinli: `ruff==0.15.17`, `black==26.5.1`).
 - **GitHub Actions CI** (`.github/workflows/ci.yml`): ruff + black + pytest; torch/ultralytics olmadan hafif kurulumla koşar.
-- Test kapsamı: state machine (7/16→ret, 8/16→kabul, flicker senaryoları), voting/konsensüs, risk kuralları, QoD histerezis, API sözleşmeleri, eval metrikleri, opsiyonel modüllerin lazy-import davranışı.
+- Test kapsamı: state machine (7/16→ret, 8/16→kabul, flicker), Katman B sürücü motoru (kemer-türetme dahil), per-track sınıf oyu, voting/konsensüs + plaka dürüstlük zırhları, swerving, metric hız (sentetik doğruluk/ısınma/EMA), sürücü/yolcu kilidi, hız-limiti tabelası, risk kuralları, QoD histerezis, API sözleşmeleri, eval metrikleri (P/R/F1, CER), opsiyonel modüllerin lazy-import davranışı.
 
 ---
 
@@ -261,6 +276,13 @@ CHANGELOG, projenin disiplinli ve katmanlı kurulduğunu gösterir. Kısa özet:
 14. **M14** — API referans dokümanı.
 15. **M15** — Mimari v2.0 + doküman tamamlama.
 16. **M16** — Testler + CI + izlenebilirlik (şartname ↔ modül eşlemesi).
+
+M1–M16'dan sonra gerçek-video geri bildirimi ve FTR hazırlığıyla sürüm-bazlı iyileştirmeler:
+
+- **v2.1** (gece bakım/yenileme) — pose-tabanlı sürücü davranışı (`driver_state/pose.py`, MediaPipe geometrisinin saf-YOLO portu); **swerving** tespiti; TR plaka normalizasyonu + format-öncelikli kalıcı oy havuzu; Stage-1 kanıt füzyonu; **QoD yaklaşma tetiği** (`vehicle_approach`); fine-tune v4 dedektör birincil; araç-kutusu dedup + ağır-aşama kapısı; `tools/test_video.py` (annotated mp4 + JSON kanıt) + `--save-events` JSONL.
+- **v2.2** (geri bildirim turu) — sürücü-içi sıkı kırpma (yalnız sürücü kişi kutusu); l-pose yükseltmesi; per-track araç-sınıfı oylaması (car↔truck titremesi giderildi); pozisyon-hizalı plaka karakter füzyonu (yanlış plaka asla onaylanmaz, aksi halde `pending`); boyut-farkında plaka kanıtı + QoD erken bırakma; Windows araç paritesi (`dev.ps1`); **metric hız** (oto-kalibrasyon: Kalman+EMA) + ölü bölge.
+- **v2.3** (YOLO26 sunucu sürümü) — varsayılan dedektör stok **`yolo26l`**; **config profil katmanı** (`server/laptop/v4-finetune`, derin-merge); **iki katmanlı sürücü motoru** (`DriverStateEngine` + `TrackVoter`); FTR §4 **metrik harness'ı** (`--metrics-report`); eğitim tool'u doğrulama+metrik export ile mükemmelleştirildi; plaka CONFIRM dürüstlük zırhları (pozisyon-veto + zemin koşulu); sürücü/yolcu pozisyonel kilidi; plaka→hız oto-kalibrasyonu; kemer iki-katman tasarımı; `tools/doctor.py`; hız-limiti tabelası (`SignTracker`).
+- **W1** (FTR ön-hazırlık, `feat/ultraplan-w1`) — plaka OCR-öncesi **dewarp + enhance**; opsiyonel **PaddleOCR** motoru; `aura.eval --map` (mAP harness); hız mutlak-GT MAE/MAPE doğrulaması; eğitim **veri manifesti / fetch** akışı; `tools/bench.py` (FPS + p50/p95 kare-süresi profilleme).
 
 ---
 
@@ -291,14 +313,14 @@ Ardından: Dashboard → `http://localhost:8080/` · OpenAPI → `http://localho
 - **Ağırlıksız çalışma:** Model olmadan tüm hat deterministik koşar — taşınabilir demo.
 - **Ölçülebilir QoD kanıtı:** A/B harness somut delta üretir (%40 puan için kanıt aracı).
 - **Mimari olgunluk:** Cascade pipeline, ID-merkezli birikim, 16/8 kararlılık, edge-first işlem, decoupled mikroservisler.
-- **Mühendislik disiplini:** 58 test, lint/format temiz, CI, cross-platform, tek config kaynağı, kapsamlı dokümantasyon.
+- **Mühendislik disiplini:** 238 test, lint/format temiz (sürüm-pinli CI), cross-platform, tek config kaynağı, kapsamlı dokümantasyon.
 
 **Dikkat edilecek noktalar:**
 
-- YOLO26s/YOLO26l ve OCR şu an **yer tutucu** — projenin kendi veri setiyle eğitilmiş custom modellerle değiştirilmesi planlanıyor (mimari dokümanda belirtilmiş).
+- Varsayılan dedektör **stok YOLO26l**; sürücü-durum domain modeli ve plaka OCR komite footage'ı ile fine-tune edilince doğruluk artacak (`--profile v4-finetune` halihazırda 11-sınıf fine-tune sunar).
 - Telekom katmanı tamamen mock; gerçek CAMARA/5G entegrasyonu final aşamasında yapılacak.
-- Hız modülü varsayılan `disabled` — kalibrasyon verisi olmadan mutlak hız üretilmiyor (bilinçli karar).
+- Hız modülü varsayılan **`metric` oto-kalibrasyon** — ısınma tamamlanana dek mutlak km/h iddia edilmez (`is_calibrated=False`); sabit kamera + bilinen mesafe varsa `tripwire`/`ipm` daha kesindir.
 
 ---
 
-*Bu doküman repo README'si, v1.1/v2.0 mimari belgeleri, `config/default.yaml`, CHANGELOG (16 milestone) ve API referansı incelenerek hazırlanmıştır.*
+*Bu doküman repo README'si, v1.1/v2.0 mimari belgeleri, `config/default.yaml`, CHANGELOG (M1–M16 + v2.1/v2.2/v2.3 + W1) ve API referansı incelenerek hazırlanmıştır.*

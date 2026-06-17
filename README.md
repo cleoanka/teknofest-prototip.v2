@@ -19,7 +19,11 @@ sözleşmesini birebir taklit eden **mock**'lardır — final ortamında yalnız
 - **ID-merkezli iki-katmanlı sürücü motoru:** Katman A (pose-hibrit model) + Katman B
   (`DriverStateEngine` per-track 16/8 zaman-oylaması) → tek-kare FP'leri eler, araç çıkınca tampon düşer.
 - **FTR'ye hazır metrikler:** `python -m aura.eval --metrics-report` → video-düzeyi
-  **P/R/F1 + plaka exact-match/CER + FPS** (dedektör A/B); `eval_results/metrics_report.md`.
+  **P/R/F1 + plaka exact-match/CER + FPS** (dedektör A/B); `python -m aura.eval --map`
+  doğrulama setinde **mAP**; hız mutlak-GT **MAE/MAPE** (kalibre kareler). `eval_results/`.
+- **W1 plaka & hız sağlamlaştırma:** LP kırpığına OCR-öncesi **dewarp + enhance** (açılı/karanlık
+  otopark); opsiyonel **PaddleOCR** motoru (`ocr_engine: paddleocr`, kuruluysa); hız varsayılanı
+  **`metric` oto-kalibrasyon** (Kalman+EMA) + **swerving**; `tools/bench.py` ile FPS profilleme.
 - **Eğitim boru hattı (YOLO26 fine-tune):** `python -m train` eğit→doğrula→metrik→best;
   `dataset --report` veri-dengeleme dağılımı (FTR §2). Komite verisi gelince tek komut.
 - **Ağırlıksız da çalışır:** ağırlık yoksa pipeline deterministik *mock* modda tüm hattı
@@ -28,7 +32,7 @@ sözleşmesini birebir taklit eden **mock**'lardır — final ortamında yalnız
   şartnamenin "TOGG yaklaşınca QoD" senaryosunu birebir karşılar — %40 QoD puanı için kanıt.
 - **Denetim izi + sağlık:** `tools/test_video.py` annotated mp4 + JSON kanıt; `--save-events`
   JSONL iz (şartname 4.5); `python tools/doctor.py` tek-bakış ortam/hazırlık kontrolü.
-- **Kalite:** 170+ unit test, `ruff` + `black` temiz, GitHub Actions CI.
+- **Kalite:** 238 unit test, `ruff` + `black` temiz (sürüm-pinli), GitHub Actions CI.
 - **FTR rehberi:** [`ftr.md`](ftr.md) — Final Tasarım Raporu'nu bu kanıtlarla doldurma kılavuzu.
 
 ---
@@ -88,7 +92,9 @@ profilleriyle** seçilir (`--profile`). Detay: [`docs/mimari.md`](docs/mimari.md
 | `python -m aura --help` | Ana inference pipeline (`--profile`, `--save-events` JSONL kanıt izi) |
 | `python tools/test_video.py --help` | Gerçek video testi → annotated mp4 + JSON kanıt (`--profile` ile A/B) |
 | `python -m aura.eval --metrics-report` | FTR §4 metrik raporu (P/R/F1 + plaka CER + FPS + dedektör A/B) |
+| `python -m aura.eval --map` | Doğrulama setinde mAP (`eval_results/map_*.json`) |
 | `python -m aura.eval --qod-comparison` | QoD A/B delta (şartname %40 QoD kanıtı) |
+| `python tools/bench.py --help` | Video + profil → ortalama FPS + p50/p95 kare-süresi (`eval_results/bench_<device>.md`) |
 | `python -m train --help` | YOLO26 eğitimi (detector / driver-state / dataset `--report`) |
 | `python -m aura.synthetic` | Sentetik örnek video + ground-truth üret |
 | `make help` | Geliştirme kısayolları (`make doctor` / `metrics` / `test`) |
@@ -111,7 +117,7 @@ Tüm API endpoint'leri: [`docs/api_referans.md`](docs/api_referans.md).
 | `dashboard/` | Vanilla JS + Canvas profesyonel web arayüzü |
 | `mobile/` | Expo (React Native) iskeleti |
 | `train/` | YOLO26 fine-tune pipeline'ları |
-| `tools/` | `test_video.py` — gerçek video testi (annotated mp4 + JSON kanıt) |
+| `tools/` | `test_video.py` (annotated mp4 + JSON kanıt), `doctor.py` (sağlık), `bench.py` (FPS profilleme) |
 | `config/` | `default.yaml` — tek config kaynağı |
 | `weights/` | Model ağırlıkları (bootstrap doldurur, `.gitignore`'lu) |
 | `data/samples/` | Örnek video + ground-truth |
@@ -147,11 +153,12 @@ Her dizin kendi `README.md`'sini taşır.
 ## Test & Kalite
 
 ```bash
-pytest -m "not integration"        # 170+ unit test (mock modda, ağırlık gerektirmez)
+pytest -m "not integration"        # 238 unit test (mock modda, ağırlık gerektirmez)
 ruff check . && black --check .    # lint + format
 ```
 Model gerektiren testler `@pytest.mark.integration` ile işaretli (CI'da skip edilir).
-CI iskeleti: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — ruff + black + pytest.
+CI iskeleti: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — ruff + black + pytest
+(sürümler pinli: `ruff==0.15.17`, `black==26.5.1`).
 
 ---
 
