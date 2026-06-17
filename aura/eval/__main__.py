@@ -19,7 +19,7 @@ def build_parser() -> argparse.ArgumentParser:
             "--ground-truth data/samples/ornek_gt.json\n"
             "  python -m aura.eval --source test.mp4 --ground-truth gt.json --qod-comparison\n"
             "  python -m aura.eval --metrics-report --summaries eval_results/ab   # FTR §4 P/R/F1\n"
-            "  python -m aura.eval --map --weights weights/yolo26l.pt --data data/coco.yaml"
+            "  python -m aura.eval --map --weights weights/yolo26l.pt --data data/coco.yaml\n"
             "  # FTR §4 istatistiksel mAP\n"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,

@@ -184,12 +184,50 @@ def _detector_key(summary: dict) -> str:
     return Path(path).stem
 
 
+def _load_map_report(summaries_dir: Path, output_dir: str | Path | None) -> dict | None:
+    """Varsa `map_report.json`'u bul ve yükle (aura/eval/map_eval.py üretir).
+
+    `--map` ayrı çalıştırıldığında çıktı tipik olarak `output_dir`'a (vars: eval_results)
+    yazılır; metrik raporu ise farklı bir `--summaries` dizininden okunabilir. Bu yüzden
+    birkaç olası konuma bakılır (output_dir > summaries_dir > summaries_dir.parent >
+    varsayılan eval_results). İlk bulunan, geçerli JSON döner; yoksa None (kopuk değil,
+    DÜRÜST 'henüz üretilmedi' notuna düşülür).
+    """
+    candidates: list[Path] = []
+    if output_dir is not None:
+        candidates.append(Path(output_dir) / "map_report.json")
+    candidates += [
+        summaries_dir / "map_report.json",
+        summaries_dir.parent / "map_report.json",
+        Path("eval_results") / "map_report.json",
+    ]
+    seen: set[Path] = set()
+    for c in candidates:
+        if c in seen:
+            continue
+        seen.add(c)
+        if c.exists():
+            try:
+                data = json.loads(c.read_text(encoding="utf-8"))
+                if isinstance(data, dict) and data.get("map50_95") is not None:
+                    log.info("mAP raporu bağlandı: %s", c)
+                    return data
+            except (ValueError, OSError) as e:
+                log.warning("map_report.json okunamadı (%s): %s", c, e)
+    return None
+
+
 def build_report(
     summaries_dir: str | Path,
     gt_dir: str | Path = "data/samples",
     min_frames: int = 3,
+    output_dir: str | Path | None = None,
 ) -> dict:
-    """summaries_dir/*.json + GT → dedektöre göre gruplu metrik sözlüğü."""
+    """summaries_dir/*.json + GT → dedektöre göre gruplu metrik sözlüğü.
+
+    Varsa `map_report.json` (aura/eval/map_eval.py çıktısı) bulunup `report["map"]`'e
+    işlenir → render_markdown 'İstatistiksel mAP' bölümü gerçek sayıları gösterir.
+    """
     summaries_dir = Path(summaries_dir)
     gt_dir = Path(gt_dir)
     groups: dict[str, list[tuple[dict, dict, str, float]]] = {}
@@ -221,6 +259,10 @@ def build_report(
             "mean_fps": round(sum(fps_vals) / len(fps_vals), 2) if fps_vals else 0.0,
             "per_video": [{"video": stem, "gt": gt, "pred": pred} for gt, pred, stem, _ in items],
         }
+    # İstatistiksel mAP (geniş set) — varsa map_eval.py'nin gerçek sayılarını bağla.
+    map_data = _load_map_report(summaries_dir, output_dir)
+    if map_data is not None:
+        report["map"] = map_data
     return report
 
 
@@ -279,21 +321,41 @@ def render_markdown(report: dict) -> str:
     mp = report.get("map")
     if mp:
         lines += [
-            f"- **mAP@50-95:** {mp.get('map50_95')}",
-            f"- **mAP@50:** {mp.get('map50')}",
-            f"- **Precision (ort.):** {mp.get('precision')}",
-            f"- **Recall (ort.):** {mp.get('recall')}",
+            "- Kaynak: `map_report.json` (ultralytics `YOLO.val()` çıktısı; "
+            "ayrıntılı tablo + PR eğrisi `map_report.md`'de).",
+            "",
+            "| Metrik | Değer |",
+            "|---|---|",
+            f"| mAP@50-95 | {mp.get('map50_95')} |",
+            f"| mAP@50 | {mp.get('map50')} |",
+            f"| Precision (ort.) | {mp.get('precision')} |",
+            f"| Recall (ort.) | {mp.get('recall')} |",
+            "",
             f"- Ağırlık: `{mp.get('weights')}`, data: `{mp.get('data')}`",
         ]
+        per_class = mp.get("per_class") or []
+        if per_class:
+            lines += [
+                "",
+                "### Sınıf-bazlı mAP@50-95",
+                "",
+                "| Sınıf ID | Sınıf | mAP@50-95 |",
+                "|---|---|---|",
+            ]
+            for row in per_class:
+                lines.append(
+                    f"| {row.get('class_id')} | {row.get('class_name')} | {row.get('map50_95')} |"
+                )
         if mp.get("pr_curve"):
-            lines.append(f"- PR eğrisi: `{mp.get('pr_curve')}`")
+            lines.append(f"\n- PR eğrisi: `{mp.get('pr_curve')}`")
         lines.append("")
     else:
         lines += [
-            "- Henüz üretilmedi. Geniş etiketli set + ultralytics ile "
-            "`python -m aura.eval --map --weights <w.pt> --data <data.yaml>` çalıştırın",
-            "  (bkz. `aura/eval/map_eval.py`). Yukarıdaki tablolar küçük held-out set "
-            "kanıtıdır; istatistiksel mAP DEĞİLDİR.",
+            "- Henüz üretilmedi (`map_report.json` bulunamadı). Geniş etiketli set + "
+            "ultralytics ile `python -m aura.eval --map --weights <w.pt> --data <data.yaml>`",
+            "  çalıştırın → ayrı `map_report.md` (+ `.json`) üretilir ve bir sonraki metrik "
+            "raporunda bu bölüm gerçek sayılarla DOLAR (bkz. `aura/eval/map_eval.py`).",
+            "  Yukarıdaki tablolar küçük held-out set kanıtıdır; istatistiksel mAP DEĞİLDİR.",
             "",
         ]
     return "\n".join(lines) + "\n"
@@ -329,7 +391,7 @@ def run_metrics_report(
     output_dir: str | Path = "eval_results",
     min_frames: int = 3,
 ) -> dict:
-    report = build_report(summaries_dir, gt_dir, min_frames=min_frames)
+    report = build_report(summaries_dir, gt_dir, min_frames=min_frames, output_dir=output_dir)
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
     md = render_markdown(report)

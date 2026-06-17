@@ -8,6 +8,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from train.fetch import DEFAULT_MANIFEST, build_plan, fetch, load_manifest
 from train.prepare_dataset import prepare_dataset, split_items, write_data_yaml
 from train.utils import class_distribution, dataset_stats, summarize_metrics
 
@@ -84,14 +85,6 @@ def test_summarize_metrics_handles_empty():
 
 
 # --- Eksik-sınıf manifesti + fetch --dry planı (AĞ YOK) --------------------- #
-from train.fetch import (  # noqa: E402
-    DEFAULT_MANIFEST,
-    build_plan,
-    fetch,
-    load_manifest,
-)
-
-
 def test_default_manifest_parses_and_covers_target_classes():
     m = load_manifest(DEFAULT_MANIFEST)
     targets = m["targets"]
@@ -134,6 +127,39 @@ def test_seatbelt_keeps_raw_class_no_false_warning():
     plan = build_plan(m, only_class="seatbelt")
     assert plan
     assert all(step["warnings"] == [] for step in plan)
+
+
+def test_unknown_source_class_warns(tmp_path):
+    # Taksonomide TANIMSIZ kaynak sınıfı, hedefe de eşlenmiyorsa sessizce 'temiz'
+    # sayılmaz → uyarı üretilir (W1 adversaryal düzeltmesi: kopuk yol giderildi).
+    mf = tmp_path / "m.yaml"
+    mf.write_text(
+        "version: 1\n"
+        "targets:\n"
+        "  test:\n"
+        "    aura_class: smoking\n"
+        "    sources:\n"
+        "      - kind: roboflow\n"
+        "        name: t\n"
+        "        workspace: w\n"
+        "        project: p\n"
+        "        version: 1\n"
+        "        license: CC0\n"
+        "        class_map:\n"
+        "          zibidi_class: foobar\n",  # zibidi_class taksonomide yok, foobar != aura_class
+        encoding="utf-8",
+    )
+    plan = build_plan(load_manifest(mf), only_class="test")
+    assert plan and plan[0]["warnings"], "tanımsız kaynak sınıf adı uyarı üretmeli"
+    assert any("TANIMSIZ" in w for w in plan[0]["warnings"])
+
+
+def test_intentional_identity_mapping_no_warning():
+    # minibus->minibus / dolmus->minibus gibi hedefe bilinçli eşleme uyarı ÜRETMEZ.
+    m = load_manifest(DEFAULT_MANIFEST)
+    plan = build_plan(m, only_class="minibus")
+    assert plan
+    assert all(step["warnings"] == [] for step in plan), "bilinçli kimlik-eşlemesi uyarmamalı"
 
 
 def test_custom_manifest_taxonomy_warning_surfaces(tmp_path):

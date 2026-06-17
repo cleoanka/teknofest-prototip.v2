@@ -175,16 +175,64 @@ class PaddleOCRReader(RealOCR):
         from aura.device import cuda_is_usable
 
         use_gpu = bool(cfg.get("plate.ocr_gpu", True)) and cuda_is_usable()
-        # PaddleOCR sürümleri parametre adlarında değişir (use_gpu vs device);
-        # en uyumlu kurulum: önce sade, başarısızsa GPU/dil argümanlarıyla dene.
-        try:
-            self._engine = PaddleOCR(use_angle_cls=True, lang="en", show_log=False)
-        except TypeError:
-            self._engine = PaddleOCR(lang="en")
+        self._engine = self._build_engine(PaddleOCR, use_gpu)
         self.reader = _PaddleAdapter(self._engine)
         self.max_side = int(cfg.get("plate.ocr_max_side", 1280))
         self.enhance_below = int(cfg.get("plate.ocr_enhance_below_px", 64))
-        log.info("PaddleOCR yüklendi (gpu=%s)", use_gpu)
+
+    @staticmethod
+    def _build_engine(PaddleOCR, use_gpu: bool):
+        """PaddleOCR'ı sürüm-bağımsız kur — açı/oryantasyon sınıflandırması ASLA sessizce kaybolmaz.
+
+        PaddleOCR 2.7+/3.x imzayı kırdı: ``show_log`` kaldırıldı, ``use_angle_cls``
+        → ``use_textline_orientation`` oldu, GPU seçimi ``use_gpu=bool`` yerine
+        ``device="gpu"/"cpu"`` ile yapılır. Sıra:
+          1) MODERN imza: ``use_textline_orientation=True`` + ``device=``
+          2) TypeError → ESKİ imza: ``use_angle_cls=True`` + ``use_gpu=``
+          3) son çare: yalnız ``lang`` (orientation default'a bırakılır, loglanır)
+        Her iki başarılı yolda da textline-orientation / angle-cls AÇIK kalır.
+        """
+        device = "gpu" if use_gpu else "cpu"
+        # 1) Modern imza (PaddleOCR 3.x / PP-OCRv4+).
+        try:
+            engine = PaddleOCR(use_textline_orientation=True, lang="en", device=device)
+            log.info(
+                "PaddleOCR yüklendi (modern imza: use_textline_orientation=True, device=%s)",
+                device,
+            )
+            return engine
+        except TypeError:
+            pass
+        # 2) Eski imza (PaddleOCR <=2.6: use_angle_cls + use_gpu).
+        try:
+            engine = PaddleOCR(use_angle_cls=True, lang="en", use_gpu=use_gpu)
+            log.info("PaddleOCR yüklendi (eski imza: use_angle_cls=True, use_gpu=%s)", use_gpu)
+            return engine
+        except TypeError:
+            pass
+        # 3) Ara sürüm: angle bayrağı kabul ama GPU bayrağı reddediyor (ya da tersi).
+        #    Orientation sınıflandırmasını yine de AÇIK tutmaya çalış (sessizce kaybetme).
+        for kwargs, note in (
+            ({"use_textline_orientation": True, "lang": "en"}, "use_textline_orientation=True"),
+            ({"use_angle_cls": True, "lang": "en"}, "use_angle_cls=True"),
+        ):
+            try:
+                engine = PaddleOCR(**kwargs)
+                log.warning(
+                    "PaddleOCR yüklendi (%s; GPU/device bayrağı bu sürümde geçirilemedi → "
+                    "varsayılan cihaz kullanılıyor)",
+                    note,
+                )
+                return engine
+            except TypeError:
+                continue
+        # 4) Son çare: yalnız lang. Orientation default'a kalır — bunu AÇIKÇA logla.
+        log.warning(
+            "PaddleOCR kurulumu yalnız lang ile yapıldı (use_gpu=%s istenmişti); açı/oryantasyon "
+            "sınıflandırması ve cihaz seçimi bu sürümde geçirilemedi.",
+            use_gpu,
+        )
+        return PaddleOCR(lang="en")
 
 
 class MockOCR(OCREngine):

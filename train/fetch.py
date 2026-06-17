@@ -66,8 +66,20 @@ def _taxonomy_warnings(class_map: dict[str, str], aura_class: str) -> list[str]:
     warns: list[str] = []
     for src_name, mapped in class_map.items():
         canon = canonical(src_name)
-        if canon == src_name or canon == mapped:
-            continue  # taksonomi src_name'i tanımıyor ya da hedefle uyumlu → sorun yok
+        if canon == src_name:
+            # Taksonomi src_name'i TANIMIYOR (canonical bilinmeyeni aynen döndürür).
+            # Hedef sınıfa (aura_class) bilinçli eşlenmişse (örn. minibus->minibus,
+            # dolmus->minibus) sorun yok. Aksi halde eşleme DOĞRULANAMAZ → uyar
+            # (ONUR: bilinmeyen sınıf sessizce 'temiz' sayılmasın; planda görünür).
+            if mapped != aura_class:
+                warns.append(
+                    f"kaynak sınıf '{src_name}' aura/taxonomy.py'de TANIMSIZ ve '{mapped}' "
+                    f"hedef sınıf '{aura_class}' değil → eşleme doğrulanamadı "
+                    f"(CLASS_ALIASES'a ekleyin ya da class_map'i düzeltin)"
+                )
+            continue
+        if canon == mapped:
+            continue  # taksonomi src_name'i hedefle uyumlu çözüyor → sorun yok
         # Hedef sınıf, src_name'in kanoniğini zaten ÜSTLENMİŞ → ham adı tutmak bilinçli.
         if aura_class == canon:
             continue
