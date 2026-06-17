@@ -58,6 +58,9 @@ dengesizlik oranı (en kalabalık / en seyrek sınıf)**. Oran **> 3** ise uyar�
 > FTR'ye: `dataset --report` çıktısını tablo olarak koyun + uyguladığınız dengeleme
 > tekniklerini ve gerekçesini yazın. Komut + sayılar = "veriyi nasıl dengelediğinizin" kanıtı.
 
+**Eksik sınıflar için somut açık veri setleri** (cigarette/seatbelt/minibus — URL + lisans +
+görüntü sayısı): `docs/yol_haritasi.md` §2 (Gemini araştırması; kullanım öncesi lisans teyidi).
+
 ## Dizin yapısı
 ```
 data/

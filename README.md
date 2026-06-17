@@ -136,7 +136,9 @@ Tüm API endpoint'leri: [`docs/api_referans.md`](docs/api_referans.md).
 | [`docs/mimari_ek_moduller.md`](docs/mimari_ek_moduller.md) | §8 opsiyonel modüller (lazy) |
 | [`docs/sartname_izlenebilirlik.md`](docs/sartname_izlenebilirlik.md) | Şartname ↔ modül eşlemesi |
 | [`docs/dagitim.md`](docs/dagitim.md) | Sunucu dağıtımı (CUDA, profil, servis, ölçeklenme) |
+| [`docs/yol_haritasi.md`](docs/yol_haritasi.md) | Sıradaki işler (plaka dewarp+OCR, açık veri setleri, final hazırlığı) — Gemini destekli |
 | [`ftr.md`](ftr.md) | Final Tasarım Raporu doldurma rehberi + doldurulabilir taslak |
+| [`gemini.md`](gemini.md) | Gemini CLI kullanım rehberi (araştırma/ikinci-görüş) |
 
 Her dizin kendi `README.md`'sini taşır.
 
