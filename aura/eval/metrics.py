@@ -1,6 +1,32 @@
-"""Değerlendirme metrikleri — plaka doğruluğu/CER, tespit oranı, sürücü F1."""
+"""Değerlendirme metrikleri — plaka doğruluğu/CER, tespit oranı, P/R/F1 (FTR §4)."""
 
 from __future__ import annotations
+
+
+def prf1(tp: int, fp: int, fn: int) -> dict:
+    """İkili sınıflandırma Precision/Recall/F1 (FTR §4 "Çözümün Sınanması").
+
+    Pozitif örnek yoksa (tp+fn==0) recall tanımsızdır → 1.0 kabul edilir yalnızca
+    hiç yanlış-pozitif de yoksa (mükemmel kaçınma); aksi halde 0.0. Küçük örnek
+    (3 video) için bilinçli, dürüst bir konvansiyon — rapor bunu belirtir.
+    """
+    precision = tp / (tp + fp) if (tp + fp) else (1.0 if fn == 0 else 0.0)
+    recall = tp / (tp + fn) if (tp + fn) else (1.0 if fp == 0 else 0.0)
+    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) else 0.0
+    return {
+        "tp": tp,
+        "fp": fp,
+        "fn": fn,
+        "precision": round(precision, 3),
+        "recall": round(recall, 3),
+        "f1": round(f1, 3),
+    }
+
+
+def accuracy(tp: int, tn: int, fp: int, fn: int) -> float:
+    """(TP+TN) / toplam — ikili doğruluk."""
+    total = tp + tn + fp + fn
+    return round((tp + tn) / total, 3) if total else 0.0
 
 
 def levenshtein(a: str, b: str) -> int:
