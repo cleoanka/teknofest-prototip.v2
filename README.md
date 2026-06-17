@@ -81,6 +81,11 @@ kütüphanesi yok** (sürücü davranışı YOLO26-pose keypoint geometrisi veya
 `models.driver_state.backend`), kalibrasyon-bağımlı hız. Dedektör/cihaz/eşikler **config
 profilleriyle** seçilir (`--profile`). Detay: [`docs/mimari.md`](docs/mimari.md).
 
+**Yayın diyagramları (FTR §3.2):** yukarıdaki ASCII'nin yayın-kalite Mermaid karşılıkları
+`docs/diagrams/`'tadır — [pipeline kuşbakışı](docs/diagrams/pipeline_kusbakisi.mmd) ·
+[sistem topolojisi (gerçek↔mock)](docs/diagrams/sistem_topolojisi.mmd) ·
+[plaka karar akışı](docs/diagrams/plaka_karar_akisi.mmd). Render: [`docs/diagrams/README.md`](docs/diagrams/README.md).
+
 ---
 
 ## Komut Rehberi
@@ -131,6 +136,7 @@ Tüm API endpoint'leri: [`docs/api_referans.md`](docs/api_referans.md).
 | Belge | İçerik |
 |---|---|
 | [`docs/mimari.md`](docs/mimari.md) | Tam sistem mimarisi v2.0 |
+| [`docs/diagrams/`](docs/diagrams/README.md) | Yayın-kalite Mermaid mimari diyagramları (FTR §3.2) |
 | [`docs/kurulum.md`](docs/kurulum.md) | Platform-bazlı kurulum + sorun giderme |
 | [`docs/calistirma.md`](docs/calistirma.md) | Uçtan uca demo senaryosu |
 | [`docs/cli_referans.md`](docs/cli_referans.md) | Tüm `--help` çıktıları |

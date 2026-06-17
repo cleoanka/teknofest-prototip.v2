@@ -1,0 +1,53 @@
+%% AURA — Sistem Topolojisi (servisler + gerçek/mock sınırı)
+%% Kaynak: docs/mimari.md §8 + services/{inference_api,qod_mock,nv_mock}/README.md
+%% GERÇEK = YZ çekirdeği (inference_api içinde pipeline) · MOCK = telekom sözleşme taklidi
+flowchart LR
+    SRC["Kamera / Video / RTSP<br/>(GET /cameras · POST /stream/start)"]
+
+    subgraph REAL["GERÇEK — YZ Çekirdeği"]
+        direction TB
+        subgraph API["inference_api (:8080) — FastAPI"]
+            direction TB
+            PIPE["Pipeline (gerçek YZ)<br/>preprocessing→detection→ROI→driver∥plate→speed→accumulator"]
+            EM["EventEmitter (iki-kanal)"]
+            QODC["QoDController (in-process karar + histerezis)"]
+            MJPEG["GET /stream/video — MJPEG (?bbox=true server-side)"]
+            WSA["WS /stream/annotations — AnnotationFrame"]
+            WSE["WS /stream/events — AuraEvent"]
+            EVAL["POST /eval/run · GET /eval/results (A/B delta)"]
+            PIPE --> EM
+            EM --> WSA
+            EM --> WSE
+            PIPE --> MJPEG
+            PIPE --> QODC
+            PIPE --> EVAL
+        end
+    end
+
+    subgraph MOCK["MOCK — Telekom Sözleşme Taklidi"]
+        direction TB
+        QODM["qod_mock (:8081)<br/>CAMARA QoD: session aç/sorgula/sil"]
+        NVM["nv_mock (:8082)<br/>Number Verification: POST /verify (sessiz)"]
+    end
+
+    DASH["Dashboard (statik serve @ :8080)<br/>canvas: bbox · plaka · LİMİT banner · QoD paneli"]
+    MOBILE["Mobil (Expo)<br/>EXPO_PUBLIC_API_URL=:8080 · EXPO_PUBLIC_NV_URL=:8082"]
+
+    SRC --> PIPE
+    API -. "statik serve" .-> DASH
+    MJPEG --> DASH
+    WSA --> DASH
+    WSE --> DASH
+
+    QODC -. "opsiyonel HTTP sync (M7)" .-> QODM
+    MOBILE -- "POST /verify (açılış)" --> NVM
+    MOBILE -- "WS /stream/events" --> WSE
+
+    classDef real fill:#1b5e20,stroke:#0d3010,color:#fff;
+    classDef mock fill:#b71c1c,stroke:#6a0e0e,color:#fff,stroke-dasharray:5 4;
+    classDef client fill:#4a148c,stroke:#2a0c50,color:#fff;
+    class PIPE,EM,QODC,MJPEG,WSA,WSE,EVAL real;
+    class QODM,NVM mock;
+    class DASH,MOBILE client;
+
+    %% Not: Final ortamda yalnızca endpoint/credential değişir; sözleşme + YZ çekirdeği aynı kalır.
