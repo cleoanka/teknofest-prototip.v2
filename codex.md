@@ -1,5 +1,11 @@
 # Codex CLI — AURA Kod İnceleme & İkinci-Görüş Rehberi
 
+> 🔴 **GÜNCEL DURUM (18.06.2026) — DÜRÜST NOT:** Codex CLI bu oturumlarda **çalışmadı**:
+> salt-okunur danışma çağrıları **0-çıktı ile takıldı / yanıt vermedi** (bkz. `gozlem.md` §7,
+> `plan1.md` §6). Aşağıdaki rehber kurulum/kullanım için **referans** olarak korunur, ancak
+> şu an **fiilen kullanılamıyor**; bu projedeki kararlar ve incelemeler Claude (Opus) tarafından
+> yapıldı. Codex tekrar yanıt verir hale gelirse rehber olduğu gibi geçerlidir.
+>
 > **Bu belge ne?** Bu repoda **Codex CLI**'yi (OpenAI/ChatGPT kod ajanı) ne zaman ve nasıl
 > kullanacağımızın rehberi. Codex CLI **v0.140.0** kurulu (`~/.local/bin/codex`) ve
 > **ChatGPT ile login** (auth çalışıyor: `codex login status` → "Logged in using ChatGPT").

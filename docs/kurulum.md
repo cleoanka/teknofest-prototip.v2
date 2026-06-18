@@ -34,6 +34,12 @@ python bootstrap.py --skip-deps      # pip atla (yapı/config/ağırlık)
 python bootstrap.py --force          # .venv'i sıfırdan
 ```
 
+## Kurulumu doğrula
+```bash
+python tools/doctor.py    # bağımlılık, cihaz (MPS/CUDA/CPU), ağırlık, config, profil ✓
+```
+Tüm çekirdek satırlar ✓ ise sistem gerçek modda hazır. Ağırlık eksikse `python bootstrap.py`.
+
 ## Kullanım
 ```bash
 ./run.sh             # inference :8080, qod :8081, nv :8082

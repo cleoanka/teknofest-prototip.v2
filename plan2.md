@@ -2,7 +2,7 @@
 
 > 18.06.2026 · Salt-planlama. Eş-belge: **plan1.md** (teknik yol haritası). İş paketleri plan1'den gelir.
 > Şartname: takım 2–5 kişi + (ops.) danışman; finalde sahada **max 3 yarışmacı**; bir iletişim sorumlusu (kaptan) zorunlu.
-> Roller işlevsel tanımlıdır; gerçek isimleri (örn. Selman/Boray, Mustafa, +2) takım atar. Tartışma: kendi sentezim + Codex (eklenecek); Gemini 403 → yok.
+> Roller işlevsel tanımlıdır; gerçek isimleri (örn. Selman/Boray, Mustafa, +2) takım atar. Tartışma: kendi sentezim. **Codex ölü** (0-çıktı); **Gemini kısmi** (pro `403`, `gemini-2.5-flash` çalıştı). Detay §sonu.
 
 ## Rol Haritası (plan1 iş paketleriyle eşleşme)
 

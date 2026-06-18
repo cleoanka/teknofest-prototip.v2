@@ -6,6 +6,13 @@ Kurulu sistemde tipik bir demo akışını adım adım gösterir.
 ## Gereksinimler
 `./setup.sh` tamamlanmış olmalı.
 
+> **Önce sağlık kontrolü (önerilir):**
+> ```bash
+> python tools/doctor.py        # bağımlılık, cihaz (MPS/CUDA/CPU), ağırlık, config ✓
+> ```
+> Tüm çekirdek bileşenler ✓ ise sistem **gerçek modda** hazırdır. Ağırlık eksikse pipeline
+> sessizce `mock` moda düşer (çökmez) — `python bootstrap.py` ile ağırlıkları indirin.
+
 ## Senaryo
 
 ### 1. Servisleri kaldır
@@ -35,7 +42,15 @@ gösterir (plaka doğruluğu, küçük nesne, tespit oranı).
 .venv/bin/python -m aura.eval --source data/samples/ornek.mp4 --qod-comparison
 ```
 
-### 5. Mobil (opsiyonel)
+### 5. Gerçek video testi (kanıt üretimi)
+Gerçek 4K test videosunu pipeline'dan geçirip **annotated mp4 + JSON kanıt** üretir
+(şartname 4.5 izi: plaka kararı, sürücü bayrak süreleri, swerving, FPS):
+```bash
+.venv/bin/python tools/test_video.py --source ~/video_1.mp4 --device mps
+#   → eval_results/video_1_annotated.mp4 + eval_results/video_1_summary.json
+```
+
+### 6. Mobil (opsiyonel)
 ```bash
 cd mobile && EXPO_PUBLIC_API_URL=http://<LAN-IP>:8080 npx expo start
 ```

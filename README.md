@@ -11,29 +11,71 @@ gerçek bir YZ çekirdeği ile, bu çekirdeği **5G QoD** (CAMARA Quality-on-Dem
 **gerçektir**. Ağ/telekom/mobil katmanları (QoD gateway, NV API, 5G şebekesi) gerçek API
 sözleşmesini birebir taklit eden **mock**'lardır — final ortamında yalnızca endpoint/credential değişir.
 
-**Öne çıkanlar (v2.3 — YOLO26 sunucu sürümü):**
+**Öne çıkanlar (v2.3 + W1 — YOLO26 sunucu sürümü):**
 - **YOLO26 omurga, konfigüre edilebilir:** varsayılan Stage-1 dedektör **stok `yolo26l`**
   (sunucu, doğruluk-önce); **config profilleri** (`--profile server|laptop|v4-finetune`)
   `default.yaml` üzerine derin-merge edilir. Sürücü davranışı **YOLO26-pose** geometrisi +
   hibrit nesne kanıtı; plaka **YOLO11n LP dedektörü + format-öncelikli güven-ağırlıklı oylama**.
+- **Plaka OCR varsayılanı `fast-plate-ocr`:** plakaya-özel hafif ONNX modeli
+  (`global-plates-mobile-vit-v2`, ~5MB; ilk koşuda otomatik iner). 3 gerçek videoda
+  **3/3 exact-match (CER 0.0)** ölçüldü — EasyOCR'ın video_3'te kalan il-kodu misread'ini
+  (3→2, T→I) giderir; v1/v2 exact'ini korur. Kurulu değilse loglu `easyocr` fallback
+  (`ocr_engine: easyocr|paddleocr|fastplate`). Ölçüm K-004 uyumlu: oran-bazlı, videoya-özel sabit yok.
 - **ID-merkezli iki-katmanlı sürücü motoru:** Katman A (pose-hibrit model) + Katman B
   (`DriverStateEngine` per-track 16/8 zaman-oylaması) → tek-kare FP'leri eler, araç çıkınca tampon düşer.
 - **FTR'ye hazır metrikler:** `python -m aura.eval --metrics-report` → video-düzeyi
   **P/R/F1 + plaka exact-match/CER + FPS** (dedektör A/B); `python -m aura.eval --map`
   doğrulama setinde **mAP**; hız mutlak-GT **MAE/MAPE** (kalibre kareler). `eval_results/`.
+  Ölçülen (held-out): davranış makro-F1 **1.0** (3 video), araç sınıfı **%100**,
+  stok `yolo26l` COCO-val2017 **mAP50-95 0.537 / mAP50 0.709** (5000 görsel).
 - **W1 plaka & hız sağlamlaştırma:** LP kırpığına OCR-öncesi **dewarp + enhance** (açılı/karanlık
   otopark); opsiyonel **PaddleOCR** motoru (`ocr_engine: paddleocr`, kuruluysa); hız varsayılanı
   **`metric` oto-kalibrasyon** (Kalman+EMA) + **swerving**; `tools/bench.py` ile FPS profilleme.
 - **Eğitim boru hattı (YOLO26 fine-tune):** `python -m train` eğit→doğrula→metrik→best;
-  `dataset --report` veri-dengeleme dağılımı (FTR §2). Komite verisi gelince tek komut.
+  `dataset --report` veri-dengeleme dağılımı (FTR §2). Açık veri (CC BY 4.0, PIL-doğrulanmış)
+  toplandı: license_plate 9123, seatbelt 3104, phone 659, smoking 557. **Eğitim sürüyor**
+  (YOLO26s fine-tune): license_plate mAP50 ≈ 0.97 (epoch ~12/35), smoking + seatbelt sırada —
+  *final mAP'ler henüz kesinleşmedi*.
 - **Ağırlıksız da çalışır:** ağırlık yoksa pipeline deterministik *mock* modda tüm hattı
   (tespit→plaka→sürücü→hız→QoD→event) uçtan uca koşturur; demo ve testler model olmadan geçer.
 - **QoD kanıtı:** A/B harness ölçülebilir delta üretir; **yaklaşma tetiği** (`vehicle_approach`)
   şartnamenin "TOGG yaklaşınca QoD" senaryosunu birebir karşılar — %40 QoD puanı için kanıt.
 - **Denetim izi + sağlık:** `tools/test_video.py` annotated mp4 + JSON kanıt; `--save-events`
   JSONL iz (şartname 4.5); `python tools/doctor.py` tek-bakış ortam/hazırlık kontrolü.
-- **Kalite:** 238 unit test, `ruff` + `black` temiz (sürüm-pinli), GitHub Actions CI.
+- **Kalite:** 600+ unit test (mock modda; `services/` testleri genişletiliyor), `ruff` + `black`
+  temiz (sürüm-pinli), GitHub Actions CI.
 - **FTR rehberi:** [`ftr.md`](ftr.md) — Final Tasarım Raporu'nu bu kanıtlarla doldurma kılavuzu.
+
+---
+
+## Durum Tablosu
+
+Bir bakışta neyin **bittiği** (ölçülmüş) vs neyin **sürdüğü** (devam eden çalışma). K-004 gereği
+biten ile süren net ayrılır; rakamlar repo ölçümleriyle (`eval_results/`, `config/default.yaml`) doğrulanmıştır.
+
+| Bileşen | Durum | Kanıt / not |
+|---|---|---|
+| Plaka OCR (`fast-plate-ocr`) | ✅ | 3 gerçek videoda 3/3 exact-match, CER 0.0 (`config/default.yaml` ölçüm notu) |
+| Davranış tespiti (telefon/sigara/swerving) | ✅ | held-out makro-F1 **1.0** (3 video; `eval_results/metrics_report.md`) |
+| Araç tespiti / sınıfı | ✅ | held-out araç sınıfı doğruluğu **%100** |
+| Stok `yolo26l` mAP (genel) | ✅ | COCO-val2017 mAP50-95 **0.537** / mAP50 **0.709** (`eval_results/map_yolo26l.json`) |
+| QoD A/B kanıtı | ✅ | plaka +33pp · küçük nesne +51pp · tespit +25pp (sentetik kontrollü set) |
+| YZ çekirdeği (CV/track/state/OCR/speed) | ✅ | gerçek kod; ağırlıksız mock modda da uçtan uca koşar |
+| Telekom katmanı (QoD/NV/5G) | ⏳ mock | CAMARA sözleşmesini birebir taklit eder; final'de yalnız endpoint/credential değişir |
+| Domain fine-tune (license_plate/seatbelt/phone/smoking) | ⏳ sürüyor | YOLO26s; license_plate mAP50 ≈ 0.97 (epoch ~12/35); final mAP'ler henüz kesin değil |
+| Mobil (Expo/RN) | ✅ iskelet | NV sessiz giriş + canlı WS tespit panosu + QoD histerezis; tsc-temiz |
+
+---
+
+## Puanlama Uyumu (TEKNOFEST 2026)
+
+Puanlama: **%40 YZ · %40 QoD · %20 rapor** (FTR son teslim 28.06.2026).
+
+| Eksen | Ağırlık | AURA'nın kanıtı |
+|---|---|---|
+| YZ başarımı | %40 | Gerçek CV çekirdeği; held-out davranış makro-F1 1.0, plaka 3/3 exact, araç %100, stok mAP50-95 0.537 |
+| QoD kullanımı | %40 | A/B harness ölçülebilir delta üretir (+33/+51/+25pp); `vehicle_approach` tetiği şartnamenin "TOGG yaklaşınca QoD" senaryosunu birebir karşılar |
+| Rapor / sunum | %20 | `ftr.md` doldurma rehberi + yayın-kalite Mermaid diyagramlar (`docs/diagrams/`) + şartname izlenebilirlik tablosu |
 
 ---
 
@@ -67,7 +109,7 @@ otomatik seçilir (Apple Silicon→MPS, NVIDIA→CUDA, diğer→CPU).
 ```
 [Kamera] → [Ön-İşleme] → [YOLO26 + ByteTrack] ─┬─→ [Sürücü ROI] → Katman A: YOLO26-pose geometri+hibrit nesne
                               ↑                 │                  Katman B: per-ID 16/8 zaman-oylaması (engine)
-                       [Sınıf oyu]             └─→ [Plaka ROI] → [YOLO11n LP + Güven-Ağırlıklı Oylama + OCR]
+                       [Sınıf oyu]             └─→ [Plaka ROI] → [YOLO11n LP + Güven-Ağırlıklı Oylama + fast-plate-ocr]
                                                                           ↓
                                                           [QoD Tetik (yaklaşma/kalite/anomali)]
                               [ID-Merkezli Accumulator] ← [Hız + Swerving (yanal yörünge)]
@@ -159,7 +201,7 @@ Her dizin kendi `README.md`'sini taşır.
 ## Test & Kalite
 
 ```bash
-pytest -m "not integration"        # 238 unit test (mock modda, ağırlık gerektirmez)
+pytest -m "not integration"        # 600+ unit test (mock modda, ağırlık gerektirmez)
 ruff check . && black --check .    # lint + format
 ```
 Model gerektiren testler `@pytest.mark.integration` ile işaretli (CI'da skip edilir).

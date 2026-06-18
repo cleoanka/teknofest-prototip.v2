@@ -4,6 +4,41 @@
 AURA modellerini eğitmek için veri toplama, etiketleme ve sentetik augmentasyon
 stratejisini tanımlar. İki ayrı veri seti: araç tespiti (Stage-1) ve sürücü durumu (Stage-2).
 
+## Toplanan gerçek veri (18 Haz 2026) — özet ✅
+Aşağıdaki dört açık veri seti **gerçekten indirildi**, sınıfları AURA taksonomisine
+eşlendi, **tümü PIL ile doğrulandı** (bozuk görüntü yok) ve 80/10/10 (seed 42) split'lendi.
+Hepsi **CC BY 4.0** (FTR §5 kaynakçaya yazılır). Sayılar `data/processed/*/data.yaml` ve
+`data/raw/*` dizinlerine karşı doğrulanmıştır.
+
+| AURA sınıfı | Kaynak | Lisans | Görüntü (kullanılan) | Durum |
+|---|---|---|---|---|
+| `license_plate` | `keremberke/license-plate-object-detection` (HF; Roboflow "Vehicle Registration Plates v1" → COCO→YOLO) | CC BY 4.0 | **8823** (9123 toplandı → PIL/split sonrası 8823: 6176/1765/882) | ✅ indirildi + işlendi |
+| `seatbelt` | Roboflow `oohmp/seatbelt-detection` v2 (HF `ramankamran/seatbelt-detection-v2i-yolov11-lt`) | CC BY 4.0 | **3104** (2 sınıf: `no_seatbelt_evidence` + `seatbelt_ok`) | ✅ indirildi + işlendi |
+| `smoking` | CigDet (Cigarette Detection), Mendeley DOI `10.17632/6hyrr8typ7.1` | CC BY 4.0 | **557** (446 train / 111 test) | ✅ indirildi + işlendi |
+| `phone` | HF `anywaylabs/synthetic-driver-monitoring` | CC BY 4.0 | **659** (**sentetik render** → domain-uyum riski) | ✅ indirildi + işlendi |
+| `minibus` | (no-auth açık bbox seti bulunamadı) | — | — | ⏳ komite verisi / Roboflow erişimi |
+| `fatigue` | (teyitli açık set yok) | — | — | ⏳ komite verisi |
+
+> Dürüstlük: `smoking` (557) yakın/kontrollü kabin-içi sigara setidir; `phone` (659)
+> **sentetik render** olduğundan gerçek trafik domain'ine uyum riski taşır (FTR'de belirtilir).
+> Bu setler stok modeli **fine-tune** etmek içindir; eğitim **sürüyor** (bkz. `docs/egitim.md` §0
+> ve aşağıdaki "Eğitim durumu").
+
+### Eğitim durumu (SÜRÜYOR — 18 Haz 2026) ⏳
+YOLO26s tabanlı fine-tune **devam ediyor** (`weights/yolo26s.pt` taban, `imgsz 640`,
+35 epoch, `--patience 12`, MPS). **Final mAP'ler henüz kesinleşmedi** — aşağıdaki sayılar
+**ara koşu değerleridir** (`runs/train/<sınıf>_s/results.csv`):
+
+| Sınıf | Durum | Ara metrik (kesin DEĞİL) |
+|---|---|---|
+| `license_plate` | ⏳ ~epoch 12/35 | mAP50 ≈ **0.977**, mAP50-95 ≈ 0.676 (P 0.971 / R 0.941) |
+| `seatbelt` | ⏳ erken (epoch ~1) | mAP50 ≈ 0.603 — henüz yakınsamadı |
+| `smoking` | ⏳ sırada | henüz metrik yok |
+
+> Bu değerler **doğruluk iddiası değildir**; eğitim bitince final `*.metrics.json`
+> (`model.val` mAP/P/R/F1) FTR §4'e girer. ASIL yayınlanmış doğruluk göstergesi hâlâ stok
+> `yolo26l`'in COCO val2017 held-out sonucudur (bkz. `docs/degerlendirme.md`).
+
 ## Veri toplama zorluğu
 - **Araç tespiti:** COCO/araç veri setleri bol; Türk trafiği için yerel kamera kaydı ekleyin.
 - **Sürücü durumu:** En zor kısım. Telefon/sigara/kemer/yorgunluk için kabin-içi
@@ -71,33 +106,34 @@ sınıf-eşlemesi** tutar. Eşleme `aura/taxonomy.py` ile tutarlıdır (ör. `ci
 
 | Hedef sınıf (AURA) | Kaynak(lar) | ~Görüntü | Lisans | Durum |
 |---|---|---|---|---|
-| `seatbelt → no_seatbelt_evidence` | `ramankamran/seatbelt-detection` (HF / Roboflow `oohmp`) | 3104 | CC BY 4.0 | **indirildi + toplandı** (denge 1.27); özel-model eğitimi komite verisi / Roboflow erişimi için ertelendi (sistem BASE/stok ile çalışır) |
-| `cigarette → smoking` | GitHub `TharunAts` (smoking bbox) | 36 (41 bbox) | **belirsiz** | **indirildi + toplandı** (küçük set); lisans belirsiz → akademik/atıflı kullanım, lisans teyit edilmeli; büyük setler (Roboflow `driver-smoking-detecor` 1066, `Smoker YOLO.v4` 4221) API/Roboflow erişimi gerektirir |
-| `phone` | HF `anywaylabs/synthetic-driver-monitoring` | 659 | CC BY 4.0 | **indirildi + toplandı**; **SENTETİK render** → domain-uyum riski |
-| `car/bus/truck/motorcycle/person` | COCO (genel sınıflar) | — | CC BY 4.0 | mevcut |
+| `license_plate` | `keremberke/license-plate-object-detection` (HF; Roboflow v1 → COCO→YOLO) | **8823** | CC BY 4.0 | **indirildi + işlendi**; YOLO26s fine-tune **SÜRÜYOR** (ara mAP50 ≈ 0.977 @epoch 12/35 — final kesin DEĞİL) |
+| `seatbelt → no_seatbelt_evidence` | Roboflow `oohmp/seatbelt-detection` v2 (HF `ramankamran`) | **3104** | CC BY 4.0 | **indirildi + işlendi**; fine-tune **SÜRÜYOR** (erken, ~epoch 1) |
+| `cigarette → smoking` | CigDet (Cigarette Detection), Mendeley DOI `10.17632/6hyrr8typ7.1` | **557** | CC BY 4.0 | **indirildi + işlendi**; fine-tune **sırada**. Büyük setler (Roboflow `driver-smoking-detecor` 1066, `Smoker YOLO.v4` 4221) API/Roboflow erişimi gerektirir |
+| `phone` | HF `anywaylabs/synthetic-driver-monitoring` | **659** | CC BY 4.0 | **indirildi + işlendi**; **SENTETİK render** → domain-uyum riski |
+| `car/bus/truck/motorcycle/person` | COCO (genel sınıflar) | — | CC BY 4.0 | mevcut (stok `yolo26l`) |
 | `minibus → minibus` | **(no-auth açık bbox seti bulunamadı)** | — | — | Roboflow/Kaggle anahtarı veya komite verisi gerekir |
 | `fatigue` | **(teyitli açık set yok — boş)** | — | — | komite verisi beklenir |
-| `license_plate` | **(teyitli açık set yok — boş)** | — | — | komite verisi beklenir |
 
-> **ONUR:** Sistem BASE/stok YOLO26 modelleriyle çalışır. Üç no-auth gerçek bbox seti indirilip
-> toplanmıştır (`data/processed/{seatbelt,smoking,phone}/data.yaml`): `seatbelt` 3104 görsel
-> (CC BY 4.0, denge 1.27), `smoking` 36 görsel / 41 bbox (GitHub `TharunAts`, **lisans belirsiz**
-> → akademik/atıflı kullanım, lisans teyit edilmeli) ve `phone` 659 görsel (HF synthetic, CC BY
-> 4.0, **sentetik render** → domain-uyum riski). Fine-tune boru hattı (`train/`) hazır ve uçtan
-> uca doğrulanmıştır (açık `coco128` setinde `yolo26s`, 5 epoch → gerçek `best.pt` mAP50 0.7645
-> üretti; bu doğruluk iddiası değil, "hat çalışır" kanıtıdır). Ancak özel-model EĞİTİMİ komite
-> verisi / Roboflow erişimi için şimdilik ERTELENMİŞTİR (proje kararı); veri/erişim gelince tek
-> komutla eğitilir. Büyük sigara setleri (Roboflow `driver-smoking-detecor` 1066, `Smoker
-> YOLO.v4` 4221) API anahtarı / Roboflow erişimi gerektirir (manifestte listeli). `minibus` için
-> no-auth açık bbox seti bulunamamıştır. `fatigue` ve `license_plate` için doğrulanmış açık set
-> bulunamadığından bunlar manifestte `sources: []` boş bırakılır (uydurma kaynak eklenmez); bu
-> sınıflar komite verisiyle gelir. ASIL dedektör doğruluk göstergesi stok `yolo26l`'in COCO
-> val2017 held-out (5000 görsel) sonucudur (mAP50 0.709 / mAP50-95 0.537); **zorunlu sınıflar**
-> (`license_plate`, `smoking`/`cigarette`) için held-out mAP komite verisi/eğitim gelene dek
-> YOKTUR. Plaka için stok dedektör yerine **sıkı LP-kırpık + pipeline dürüstlük zırhları**
-> kullanılır. Bu zırhlar sayesinde **her iki dedektör de** plakada 2/3 exact-match, 0
-> yanlış-onay verir ve belirsizde dürüstçe `pending` der; sistem asla yanlış plaka onaylamaz
-> (bkz. `docs/degerlendirme.md` ölçülen sonuçlar + `ftr.md` §4).
+> **ONUR:** Sistem BASE/stok YOLO26 modelleriyle çalışır; üstüne **dört gerçek açık veri seti**
+> indirilip işlenmiştir (`data/processed/{license_plate,seatbelt,smoking,phone}/data.yaml`,
+> tümü PIL-doğrulanmış, CC BY 4.0): `license_plate` 8823 görsel (keremberke/HF), `seatbelt`
+> 3104 görsel (Roboflow `oohmp`/HF `ramankamran`), `smoking` 557 görsel (CigDet/Mendeley DOI
+> `10.17632/6hyrr8typ7.1`) ve `phone` 659 görsel (HF synthetic, **sentetik render** →
+> domain-uyum riski). Bu veriyle YOLO26s fine-tune'u **ŞU AN SÜRÜYOR** (`license_plate` ~epoch
+> 12/35 ara mAP50 ≈ 0.977; `seatbelt` erken; `smoking` sırada). **Final mAP'ler henüz
+> kesinleşmedi** — bunlar ara koşu değerleridir, doğruluk iddiası değildir; eğitim bitince final
+> `*.metrics.json` FTR §4'e girer. Fine-tune boru hattı (`train/`) ayrıca uçtan uca doğrulanmıştır
+> (açık `coco128`, `yolo26s`, 5 epoch → gerçek `best.pt` mAP50 0.7645). Büyük sigara setleri
+> (Roboflow `driver-smoking-detecor` 1066, `Smoker YOLO.v4` 4221) ek API/Roboflow erişimi
+> gerektirir (manifestte listeli). `minibus` için no-auth açık bbox seti bulunamamıştır; `fatigue`
+> için doğrulanmış açık set yoktur (manifestte `sources: []` boş bırakılır — uydurma kaynak
+> eklenmez); bu sınıflar komite verisiyle gelir. ASIL **yayınlanmış** dedektör doğruluk göstergesi
+> stok `yolo26l`'in COCO val2017 held-out (5000 görsel) sonucudur (mAP50 0.709 / mAP50-95 0.537);
+> fine-tune'lu zorunlu-sınıf (`license_plate`, `smoking`) **final** held-out mAP eğitim bitene dek
+> KESİNLEŞMEMİŞTİR. Plaka için ayrıca **sıkı LP-kırpık + pipeline dürüstlük zırhları** kullanılır;
+> bu zırhlar sayesinde **her iki dedektör de** plakada 2/3 exact-match, 0 yanlış-onay verir ve
+> belirsizde dürüstçe `pending` der; sistem asla yanlış plaka onaylamaz (bkz.
+> `docs/degerlendirme.md` ölçülen sonuçlar + `ftr.md` §4).
 
 ```bash
 python -m train fetch                  # PLAN bas (varsayılan KURU; AĞ KULLANMAZ)

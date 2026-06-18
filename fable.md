@@ -1,7 +1,16 @@
-# fable.md — 12 Haziran 2026 Gece Oturumu: Yapılan Her Şey
+# fable.md — Oturum Günlüğü (12 → 17 Haziran 2026): Yapılan Her Şey
 
-> Bu belge, 12 Haziran 2026 gecesi Claude (Fable 5) tarafından otonom yürütülen
-> bakım + yenileme oturumunun **tam dökümüdür**. Plan: [`plan.md`](plan.md).
+> 🗒️ **TARİHSEL OTURUM GÜNLÜĞÜ (kronolojik kayıt; v2.1 → v2.3).** Bu belge ardışık
+> geliştirme oturumlarının **tam dökümüdür** ve her bölüm KENDİ TARİHİNE aittir.
+> ⚠️ **Sonradan eskiyen sayılar:** buradaki plaka sonuçları **EasyOCR dönemine** aittir
+> (v2.2'de video_1/2 CONFIRMED, video_3 `pending`); **W1'de fast-plate-ocr getirildi → bugün
+> plaka 3/3 exact, CER 0.** Test sayıları da dönemseldir (118 → 137 → 170; **güncel ~600**,
+> servis testleri sürüyor). Özel-model fine-tune burada "ertelendi" yazar; **bugün koşuyor**
+> (license_plate ara `mAP50≈0.97`, nihai değil). Güncel durum: `gozlem.md` · `CHANGELOG.md` ·
+> `ultraplan.md`. Bu günlük tarihsel doğruluğu korumak için olduğu gibi bırakılmıştır.
+>
+> Bu belge, Claude tarafından otonom yürütülen bakım + yenileme oturumlarının
+> **tam dökümüdür**. Plan: [`plan.md`](plan.md).
 > Sürüm: **2.1.0**. Her madde gerçekten yapıldı ve doğrulandı; hiçbir sonuç
 > tek videoya özel sabitle (hile ile) üretilmedi — K-004 ilkesi: tüm eşikler
 > oran-bazlı / ölçek-bağımsız / fps-bağımsız.

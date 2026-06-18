@@ -617,8 +617,14 @@ Dashboard CSS'i CSS custom properties (dark theme default, light theme toggle) i
 
 ## 9. Eğitim Modülü (`train/`)
 
+> **Durum (18 Haz 2026):** Bu modül uygulandı; zorunlu sınıflar için **gerçek açık veri toplandı
+> ve YOLO26s fine-tune SÜRÜYOR** (`license_plate` 8823, `seatbelt` 3104, `smoking` 557, `phone` 659
+> — hepsi CC BY 4.0). Ara `license_plate` mAP50 ≈ 0.977 (epoch 12/35; **final kesin DEĞİL**). Güncel
+> sayılar ve eğitim durumu: `docs/veri_seti.md` + `docs/egitim.md`. (Not: domain sürücü-modelinde
+> `imgsz` 320 → 640'a yükseltildi; 320 küçük telefonu kaybediyordu.)
+
 - `train_detector.py`: YOLO26s fine-tune. Araç sınıfları (car, truck, bus, minibus). ultralytics `model.train()`.
-- `train_driver_state.py`: YOLO26l fine-tune. Sınıflar: `phone`, `smoking`, `no_seatbelt`, `fatigue`. 320px imgsz (cabin ROI küçük).
+- `train_driver_state.py`: YOLO26l fine-tune. Sınıflar: `phone`, `smoking`, `no_seatbelt`, `fatigue`. 320px imgsz (cabin ROI küçük; domain modelinde 640'a yükseltildi).
 - `prepare_dataset.py`: YOLO format dönüşümü, train/val/test split, augmentasyon (mozaik, flip, renk jitter, karartma — gece koşulları için).
 - `roboflow_pull.py`: `ROBOFLOW_API_KEY` env ile Roboflow'dan veri çek. Yoksa local veriyle çalış.
 - Çıktı `weights/custom_detector.pt`, `weights/custom_driver.pt` → config'te `model_path` swap.

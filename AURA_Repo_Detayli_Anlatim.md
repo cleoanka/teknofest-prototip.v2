@@ -4,14 +4,16 @@
 **Proje:** AURA — 5G & Yapay Zekâ ile Akıllı Yol Güvenliği (TEKNOFEST 2026 prototipi)
 **Lisans:** MIT · **Diller:** Python %81 · JavaScript %7 · TypeScript %4 · CSS/HTML/PowerShell
 
-> **v2.3 + W1 güncel durum (2026-06-17):** dedektör omurgası varsayılan **stok YOLO26l**
+> **v2.3 + W1 güncel durum (2026-06-18):** dedektör omurgası varsayılan **stok YOLO26l**
 > (sunucu, `conf 0.10`), seçilebilir config **profilleri** (`--profile server|laptop|v4-finetune`,
 > `default.yaml` üzerine derin-merge); sürücü durumu **iki katmanlı** (`DriverStateEngine`);
 > hız varsayılanı **`metric` oto-kalibrasyon** (plaka/araç-genişliği → ppm, Kalman+EMA) +
 > **swerving** (yanal yörünge); FTR metrik harness'ı (`aura.eval --metrics-report` / `--map`);
-> plaka W1 yenilikleri (dewarp + enhance + opsiyonel PaddleOCR); eğitim tool'u doğrulama+metrik
-> export ile mükemmelleştirildi; `tools/doctor.py` + `tools/bench.py`. Güncel ayrıntı için:
-> `README.md`, `CHANGELOG.md` (2.3.0), `docs/`, ve FTR rehberi `ftr.md`.
+> plaka OCR varsayılanı **`fast-plate-ocr`** (3 gerçek videoda 3/3 exact, CER 0.0) + W1
+> dewarp/enhance + opsiyonel PaddleOCR; eğitim tool'u doğrulama+metrik export ile
+> mükemmelleştirildi; `tools/doctor.py` + `tools/bench.py`. **Süren:** açık veriyle YOLO26s
+> domain fine-tune (license_plate mAP50 ≈ 0.97, epoch ~12/35; final mAP'ler henüz kesin değil).
+> Güncel ayrıntı için: `README.md`, `CHANGELOG.md` (2.3.0), `docs/`, ve FTR rehberi `ftr.md`.
 
 ---
 
@@ -97,7 +99,7 @@ Hesap yükü en yüksek parça olduğu için katı kaynak yönetimiyle çalış�
 - **Sweet Spot (Sanal Okuma Bölgesi):** Araç uzaktayken OCR pasiftir. Araç, kameranın en yüksek optik netlik sağladığı önceden tanımlı sanal koordinata girince OCR etkinleşir (config'te `x1,y1,x2,y2` ile tanımlı).
 - **LP dedektör + sıkı kırpma:** Özel plaka dedektörü (YOLOv11n LP fine-tune, ~5MB) plakayı araç-altı geniş crop içinde bulup sıkı kırpar → karakter doğruluğu artar. Ağırlık yoksa loglu olarak geniş-crop'a düşülür.
 - **W1 — OCR öncesi hazırlık (`plate.dewarp` + `plate.enhance`):** LP kırpığına OCR'dan hemen önce bir kez **fronto-paralel perspektif düzeltme** (açılı plaka → düz; köşe yoksa kimlik) + **CLAHE/gamma/unsharp** uygulanır (karanlık/açılı otopark footage'ı için). Reader'ın düşük-güven CLAHE+2x ikinci-şans varyantından ayrıdır.
-- **OCR motoru (`plate.ocr_engine`):** varsayılan **EasyOCR**; opsiyonel **PaddleOCR** (`paddleocr` çıktısı EasyOCR `readtext` ile uyumlu normalize edilir; kurulu değilse loglu EasyOCR fallback).
+- **OCR motoru (`plate.ocr_engine`):** varsayılan **`fast-plate-ocr`** — plakaya-özel hafif ONNX modeli (`global-plates-mobile-vit-v2`, ~5MB; ilk koşuda otomatik iner). 3 gerçek videoda ölçüldü (18 Haz 2026, GT=34TC8532): **3/3 exact-match, CER 0.0** — EasyOCR baseline'ının video_3'te kalan il-kodu misread'ini (3→2, T→I; konsensüse girmediği için `pending`) giderir, v1/v2 exact'ini korur. Alternatifler: **EasyOCR** ve **PaddleOCR** (`paddleocr` çıktısı EasyOCR `readtext` ile uyumlu normalize edilir). Seçilen motor kurulu değilse her durumda **loglu EasyOCR fallback**. Motor seçimi K-004 uyumlu: config-driven, oran-bazlı, videoya-özel sabit/kara-liste yok.
 - **Voting Buffer (Oy Havuzu):** Araç sweet-spot içindeyken ardışık OCR okumaları havuzlanır (varsayılan 7 okuma, %60 konsensüs oranı). Oylar OCR güveni × kaynak kalitesi (LP kırpık yüksekliği) ile ağırlıklanır.
 - **Karar:**
   - **Konsensüs varsa** → plaka ID'ye kalıcı yazılır, OCR kapatılır (erken çıkış), `PLATE_CONFIRMED` event'i üretilir. Dürüstlük zırhları: pozisyon-veto (her karakter pozisyonu `char_margin` önde olmalı) + zemin koşulu (`confirm_peak_weight` — kazanan plaka en az bir kez net/yakın okunmuş olmalı). Aksi halde `pending`.
@@ -199,7 +201,7 @@ Tüm çalışma zamanı davranışı tek YAML dosyasından yönetilir — kodda 
 - **`runtime`** — cihaz seçimi (`auto/cpu/cuda/mps`), kaynak, log seviyesi ve **`ai_mode`** (`real` = gerçek YOLO, `mock` = numpy deterministik, `auto` = ağırlık varsa gerçek).
 - **`models`** — detector (varsayılan stok **`yolo26l`**, conf **0.10**, imgsz 768) ve driver_state (backend `auto` → pose/yolo; pose/voting 16/8 ayarları, `no_seatbelt` varsayılan kapalı); mock dedektör eşikleri. Dedektör/cihaz/eşikler **config profilleriyle** (`server/laptop/v4-finetune`) derin-merge edilir.
 - **`stability`** — `window: 16`, `min_consistent: 8` (16/8 kuralı).
-- **`plate`** — sweet spot koordinatları, LP dedektör (`lp_detector`), W1 **`dewarp`** + **`enhance`**, OCR motoru (`ocr_engine: easyocr|paddleocr`), voting buffer boyutu (7), konsensüs oranı (0.6), Türk plaka regex'i, minimum piksel yüksekliği, dürüstlük zırhları (`char_margin`, `confirm_peak_weight`).
+- **`plate`** — sweet spot koordinatları, LP dedektör (`lp_detector`), W1 **`dewarp`** + **`enhance`**, OCR motoru (`ocr_engine: fastplate|easyocr|paddleocr`, varsayılan **`fastplate`**), voting buffer boyutu (7), konsensüs oranı (0.6), Türk plaka regex'i, minimum piksel yüksekliği, dürüstlük zırhları (`char_margin`, `confirm_peak_weight`).
 - **`speed`** — mod (**`metric` varsayılan**, oto-kalibrasyon: Kalman+EMA), plaka/araç-genişliği referansları, `swerving` bloğu; alternatifler `tripwire`/`ipm`/`disabled`.
 - **`sign`** — hız-limiti tabelası tespiti (`SignTracker`) → `speed.over_limit` ihlali.
 - **`qod`** — backend (`mock`), profiller (LOW_LATENCY / HIGH_THROUGHPUT), histerezis süreleri.
@@ -227,6 +229,17 @@ Bu sayılar `python -m aura.eval` veya `POST /eval/run` ile üretilir, dashboard
 
 **FTR metrik harness'ı (`--metrics-report`) ve mAP (`--map`):** `python -m aura.eval --metrics-report` video-düzeyi **P/R/F1 + plaka exact-match/CER + araç doğruluğu + FPS** üretir (dedektöre göre A/B; `eval_results/metrics_report.md/.csv/.json`). `python -m aura.eval --map` ise standart bir doğrulama setinde **mAP** ölçer (`eval_results/map_*.json`). Bu çıktılar Final Tasarım Raporu'nun §4 metrik tablolarını dürüst sayılarla doldurur.
 
+**Ölçülen başarım (held-out, gerçek sayılar):**
+
+| Metrik | Değer | Kaynak |
+|--------|-------|--------|
+| Plaka exact-match (fast-plate-ocr) | **3/3 (CER 0.0)** | 3 gerçek video, `config/default.yaml` ölçüm notu |
+| Davranış makro-F1 | **1.0** | 3 video held-out, `eval_results/metrics_report.md` |
+| Araç sınıfı doğruluğu | **%100** | aynı set |
+| Stok `yolo26l` mAP50-95 / mAP50 | **0.537 / 0.709** | COCO-val2017 held-out (5000 görsel), `eval_results/map_yolo26l.json` |
+
+> **Süren çalışma (dürüst ayrım):** Yukarıdaki mAP **stok** `yolo26l`'in genel başarımıdır. Açık veriyle (CC BY 4.0; license_plate 9123, seatbelt 3104, phone 659, smoking 557) **YOLO26s domain fine-tune'u sürüyor** (license_plate mAP50 ≈ 0.97 @ epoch ~12/35; smoking + seatbelt sırada). Domain-spesifik final mAP'ler henüz kesinleşmedi. Davranış makro-F1 küçük (3-videoluk) held-out sette çalıştığının kanıtıdır; istatistiksel mAP için geniş etiketli set gerekir.
+
 ---
 
 ## 7. API Yüzeyi (Özet)
@@ -248,7 +261,7 @@ Bu sayılar `python -m aura.eval` veya `POST /eval/run` ile üretilir, dashboard
 
 ## 8. Kalite, Test ve CI
 
-- **238 unit test** (mock modda, model ağırlığı gerektirmez) — `pytest -m "not integration"` (2 integration test CI'da deselect).
+- **600+ unit test** (mock modda, model ağırlığı gerektirmez) — `pytest -m "not integration"` (integration testleri CI'da deselect; `services/` test seti genişletiliyor).
 - Model gerektiren testler `@pytest.mark.integration` ile işaretli, CI'da skip edilir.
 - **`ruff` + `black`** ile lint/format temiz (CI'da sürümler pinli: `ruff==0.15.17`, `black==26.5.1`).
 - **GitHub Actions CI** (`.github/workflows/ci.yml`): ruff + black + pytest; torch/ultralytics olmadan hafif kurulumla koşar.
@@ -282,7 +295,7 @@ M1–M16'dan sonra gerçek-video geri bildirimi ve FTR hazırlığıyla sürüm-
 - **v2.1** (gece bakım/yenileme) — pose-tabanlı sürücü davranışı (`driver_state/pose.py`, MediaPipe geometrisinin saf-YOLO portu); **swerving** tespiti; TR plaka normalizasyonu + format-öncelikli kalıcı oy havuzu; Stage-1 kanıt füzyonu; **QoD yaklaşma tetiği** (`vehicle_approach`); fine-tune v4 dedektör birincil; araç-kutusu dedup + ağır-aşama kapısı; `tools/test_video.py` (annotated mp4 + JSON kanıt) + `--save-events` JSONL.
 - **v2.2** (geri bildirim turu) — sürücü-içi sıkı kırpma (yalnız sürücü kişi kutusu); l-pose yükseltmesi; per-track araç-sınıfı oylaması (car↔truck titremesi giderildi); pozisyon-hizalı plaka karakter füzyonu (yanlış plaka asla onaylanmaz, aksi halde `pending`); boyut-farkında plaka kanıtı + QoD erken bırakma; Windows araç paritesi (`dev.ps1`); **metric hız** (oto-kalibrasyon: Kalman+EMA) + ölü bölge.
 - **v2.3** (YOLO26 sunucu sürümü) — varsayılan dedektör stok **`yolo26l`**; **config profil katmanı** (`server/laptop/v4-finetune`, derin-merge); **iki katmanlı sürücü motoru** (`DriverStateEngine` + `TrackVoter`); FTR §4 **metrik harness'ı** (`--metrics-report`); eğitim tool'u doğrulama+metrik export ile mükemmelleştirildi; plaka CONFIRM dürüstlük zırhları (pozisyon-veto + zemin koşulu); sürücü/yolcu pozisyonel kilidi; plaka→hız oto-kalibrasyonu; kemer iki-katman tasarımı; `tools/doctor.py`; hız-limiti tabelası (`SignTracker`).
-- **W1** (FTR ön-hazırlık, `feat/ultraplan-w1`) — plaka OCR-öncesi **dewarp + enhance**; opsiyonel **PaddleOCR** motoru; `aura.eval --map` (mAP harness); hız mutlak-GT MAE/MAPE doğrulaması; eğitim **veri manifesti / fetch** akışı; `tools/bench.py` (FPS + p50/p95 kare-süresi profilleme).
+- **W1** (FTR ön-hazırlık, `feat/ultraplan-w1`) — plaka OCR varsayılanı **`fast-plate-ocr`** (3 gerçek videoda 3/3 exact, CER 0.0; EasyOCR'ın video_3 il-kodu misread'ini kapatır) + opsiyonel **PaddleOCR**; OCR-öncesi **dewarp + enhance**; `aura.eval --map` (mAP harness, stok yolo26l COCO-val2017 0.537/0.709 ölçüldü); hız mutlak-GT MAE/MAPE doğrulaması; **açık veri toplama** (license_plate/seatbelt/phone/smoking, CC BY 4.0) + YOLO26s domain fine-tune (sürüyor); `tools/bench.py` (FPS + p50/p95 kare-süresi profilleme).
 
 ---
 
@@ -313,7 +326,7 @@ Ardından: Dashboard → `http://localhost:8080/` · OpenAPI → `http://localho
 - **Ağırlıksız çalışma:** Model olmadan tüm hat deterministik koşar — taşınabilir demo.
 - **Ölçülebilir QoD kanıtı:** A/B harness somut delta üretir (%40 puan için kanıt aracı).
 - **Mimari olgunluk:** Cascade pipeline, ID-merkezli birikim, 16/8 kararlılık, edge-first işlem, decoupled mikroservisler.
-- **Mühendislik disiplini:** 238 test, lint/format temiz (sürüm-pinli CI), cross-platform, tek config kaynağı, kapsamlı dokümantasyon.
+- **Mühendislik disiplini:** 600+ test, lint/format temiz (sürüm-pinli CI), cross-platform, tek config kaynağı, kapsamlı dokümantasyon.
 
 **Dikkat edilecek noktalar:**
 

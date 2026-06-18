@@ -11,8 +11,16 @@
   geometrisiyle fine-tune'suz çalışır. Yani **plaka/davranış demosu eğitim olmadan** çalışır.
 - 11-sınıf fine-tune `yolguvenligi_types_v4` (yolov8m, held-out mAP50 .788) açık-kaynak köprü
   veriyle eğitilmişti (`--profile v4-finetune`).
-- **Komite TOGG/etiketli verisi paylaşıldığında** bu doküman ile **YOLO26'yı fine-tune edin** →
-  hem mandate (YOLO26) hem en yüksek doğruluk. Boru hattı uçtan uca doğrulandı (aşağıda §6).
+- **YENİ (18 Haz 2026): zorunlu sınıflar için YOLO26s fine-tune ŞU AN SÜRÜYOR.** Dört gerçek açık
+  veri seti indirilip işlendi (hepsi CC BY 4.0, PIL-doğrulanmış; bkz. `docs/veri_seti.md`):
+  `license_plate` 8823, `seatbelt` 3104, `smoking` 557, `phone` 659. Eğitim taban=`weights/yolo26s.pt`,
+  `imgsz 640`, 35 epoch, `--patience 12`, MPS (`runs/train/<sınıf>_s/`).
+  - **ARA değerler (kesin DEĞİL — eğitim sürüyor):** `license_plate` ~epoch 12/35 → mAP50 ≈ **0.977**,
+    mAP50-95 ≈ 0.676; `seatbelt` erken (~epoch 1); `smoking` sırada. **Final mAP'ler bitince
+    `*.metrics.json`'a yazılır** ve doğruluk iddiası ancak o zaman yapılır.
+- **Komite TOGG/etiketli verisi paylaşıldığında** aynı akışla `minibus`/`fatigue` dahil tüm
+  sınıflar için **YOLO26'yı fine-tune edin** → hem mandate (YOLO26) hem en yüksek doğruluk. Boru
+  hattı uçtan uca doğrulandı (aşağıda §6).
 
 ## 1. Gereksinimler
 - `./setup.sh` ile kurulmuş ortam (ultralytics 8.4 + torch). Kontrol: `python tools/doctor.py`.

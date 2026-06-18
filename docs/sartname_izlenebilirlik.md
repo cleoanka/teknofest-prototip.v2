@@ -17,13 +17,13 @@ madde, onu karşılayan bileşene/dosyaya bağlanır. (Kaynak: şartname PDF + `
 | 3 | Hız tespiti | `aura/speed` (tripwire/ipm/disabled/metric + relative flag; `calibrated` etiketi) | %40 | ✅ |
 | 3b | Hız-limiti tabelası + ihlal (yol güvenliği) | `aura/scene` (SignTracker) + `accumulator` `speed.over_limit` → `SPEED_LIMIT_VIOLATION` | %40 | ✅ (custom dataset retrain bekliyor) |
 | 3c | Dikkatsiz sürüş / swerving (risk unsuru) | `aura/speed` ZigZag yanal yörünge analizi → `speed.swerving` → `RISK_ALERT` + QoD | %40 içinde | ✅ (gerçek videoda doğrulandı) |
-| 4 | Araç-içi nesne / sürücü davranışı — **sigara, telefon** (şartname 4.4 birebir) + kemer/yorgunluk | `aura/driver_state` (pose-geometri + hibrit nesne kanıtı **veya** fine-tune YOLO26l; **no-landmark-lib**) | %40 içinde | ✅ (sigara+telefon gerçek videoda doğrulandı; kemer/yorgunluk fine-tune bekliyor) |
+| 4 | Araç-içi nesne / sürücü davranışı — **sigara, telefon** (şartname 4.4 birebir) + kemer/yorgunluk | `aura/driver_state` (pose-geometri + hibrit nesne kanıtı **veya** fine-tune YOLO26s; **no-landmark-lib**) | %40 içinde | ✅/⏳ (sigara+telefon gerçek videoda doğrulandı; `seatbelt` 3104 + `smoking` 557 gerçek veriyle YOLO26s fine-tune SÜRÜYOR — final mAP kesin değil; `fatigue` komite verisi bekliyor) |
 | 4b | **TOGG aracının yaklaştığını algılama** (QoD birincil senaryosu, Bölüm 1-2) | `aura/pipeline` bbox alan-büyüme yaklaşma tetiği → `QOD_TRIGGER reason=vehicle_approach` | %40 | ✅ (gerçek videoda tetiklendi) |
 | 5 | QoD yalnızca kritik anda | `aura/qod` (histerezis; yaklaşma + kalite + anomali/swerving tetikleri) | %40 | ✅ |
-| 6 | QoD başarım artışı **kanıtı** | `aura/eval` A/B harness + `GET /eval/results` + dashboard paneli | %40 | ✅ (delta: plaka +33.3pp, küçük nesne +51.4pp, tespit oranı +25.5pp; `eval_results/report.json` `qod_comparison=true`, yeniden-üretilebilir. **Kontrollü sentetik sette** `data/samples/ornek.mp4` ölçülür — gerçek videoda kare-düzeyi GT olmadığından A/B orada ölçülemez) |
+| 6 | QoD başarım artışı **kanıtı** | `aura/eval` A/B harness + `GET /eval/results` + dashboard paneli | %40 | ✅ (baskılı-OFF örnek koşusu: plaka +33.3pp, küçük nesne +51.4pp, tespit oranı +25.5pp. **Kontrollü sentetik sette** `data/samples/ornek.mp4`, `--qod-comparison` ile ölçülür — gerçek videoda kare-düzeyi GT olmadığından A/B orada ölçülemez. Delta OFF-simülasyonu baskısına bağlıdır; güncel sayı her zaman mevcut `eval_results/report.json`'dan okunur — bkz. `docs/degerlendirme.md` dürüstlük notu) |
 | 7 | Number Verification sessiz doğrulama | `services/nv_mock` + `POST /verify` + `mobile/` | — | ✅ |
 | 8 | Tespitlerin mobil ekranda gösterimi | `mobile/` + `WS /stream/events` | — | ✅ |
-| 9 | Doğruluk / hassasiyet / model hızı | `train/` (YOLO26 fine-tune→`model.val`→mAP/P/R/F1 export) + `aura/eval --metrics-report` (video-düzeyi P/R/F1+CER+FPS, dedektör A/B) + `tools/test_video.py` FPS | %40 | ✅ (**her iki dedektör** makro-F1 1.0; plaka 2/3 exact, 0 yanlış-onay; araç %100. Stok `yolo26l` COCO val2017 held-out mAP50 0.709 / mAP50-95 0.537 — zorunlu-sınıf held-out mAP komite verisi gelene dek YOK) |
+| 9 | Doğruluk / hassasiyet / model hızı | `train/` (YOLO26 fine-tune→`model.val`→mAP/P/R/F1 export) + `aura/eval --metrics-report` (video-düzeyi P/R/F1+CER+FPS, dedektör A/B) + `tools/test_video.py` FPS | %40 | ✅/⏳ (**her iki dedektör** makro-F1 1.0; plaka 2/3 exact, 0 yanlış-onay; araç %100. Stok `yolo26l` COCO val2017 held-out mAP50 0.709 / mAP50-95 0.537. Zorunlu-sınıf YOLO26s fine-tune SÜRÜYOR — `license_plate` ara mAP50 ≈ 0.977; **final mAP kesinleşmedi**) |
 | 9b | **Her hedefin otomatik üretildiğinin kanıtı** (Bölüm 4.5) | `--save-events` JSONL izi + `tools/test_video.py` (annotated mp4 + JSON özet + oy dökümü) + `PlateState.partial` | — | ✅ |
 | 10 | Modern mimari / rapor | repo yapısı + `docs/` + CI (`.github/workflows/ci.yml`) | %20 | ✅ |
 
@@ -49,5 +49,5 @@ python -m aura.eval --source data/samples/ornek.mp4 --qod-comparison   # QoD A/B
 python tools/test_video.py --source <video.mp4> --device mps           # annotated mp4 + JSON kanıt
 python -m aura --source <video.mp4> --save-events kanit.jsonl          # event JSONL izi
 curl -s localhost:8080/eval/results                                    # JSON metrik
-pytest -m "not integration"                                            # 256 unit test
+pytest -m "not integration"                                            # birim testler (services testleri sürüyor)
 ```

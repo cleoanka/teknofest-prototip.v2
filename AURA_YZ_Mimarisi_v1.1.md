@@ -91,6 +91,7 @@ YOLO26s'in kırpıp ilettiği Sürücü Kabini ROI'sini girdi olarak alır. Aşa
 - Telefon kullanımı
 - Sigara içme
 - Emniyet kemeri takmama
+- Yorgunluk (fatigue)
 
 MediaPipe gibi landmark tabanlı yaklaşımlar bu mimaride kullanılmaz. Trafik kamerası montaj açıları ve değişken görüş mesafeleri göz önüne alındığında landmark sistemleri tutarsız ve kırılgan sonuçlar üretir.
 
@@ -146,8 +147,12 @@ Hız ve yörünge analizinde anormallik veya tehlike sezildiğinde anında devre
 
 Hız ölçümü doğrudan kamera kurulum parametrelerine bağımlıdır. Bu modül, sahaya özgü kalibrasyon şartlarına göre üç moddan biriyle çalışır:
 
+> **Güncelleme (v2.2+):** Varsayılan mod artık `metric` (oto-kalibrasyon) olup manuel kalibrasyon
+> dosyası gerektirmez — ayrıntı için `docs/mimari.md` / `AURA_Repo_Detayli_Anlatim.md` §2.
+
 | Mod | Şart | Açıklama |
 |-----|------|----------|
+| `metric` (**varsayılan**) | — (oto-kalibre) | Araç-genişliği (varsa plaka 520 mm) → `ppm(y)` ölçek-alanı → metrik yer değiştirme → Kalman + EMA → gerçek km/h; ısınana dek `is_calibrated=False` |
 | `tripwire` | Sabit kamera, bilinen mesafe | İki sanal çizgi arası ByteTrack frame delta'sı × gerçek mesafe |
 | `ipm` | Kamera intrinsics + montaj verisi mevcut | Homography/IPM ile piksel → gerçek dünya dönüşümü |
 | `disabled` | Kalibrasyon verisi yok | Hız üretilmez; `relative_velocity_flag` üretilir |

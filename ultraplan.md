@@ -6,10 +6,21 @@
 > **Özelliği:** her iş kalemi bir **Codex CLI iş emri** olarak yazılmıştır — kopyala,
 > çalıştır, Codex yazar; Claude/aura inceler; testler doğrular.
 >
-> **Bağlam tarihleri (bağlayıcı):** Bugün **17.06.2026**. **FTR son teslim 28.06.2026**
-> (ertelendi; ~11 gün — BİRİNCİL KAPI). Finalistler **31.07.2026**. Final **Ağu–Eyl 2026**.
+> **Bağlam tarihleri (bağlayıcı):** Plan tarihi **17.06.2026**. **FTR son teslim 28.06.2026**
+> (ertelendi; BİRİNCİL KAPI). Finalistler **31.07.2026**. Final **Ağu–Eyl 2026**.
 > Kaynak okuma: `şartname PDF` (v1 repo), `ftr.md`, `docs/mimari.md`, `config/default.yaml`,
 > `CHANGELOG.md`, `docs/sartname_izlenebilirlik.md`, `docs/yol_haritasi.md`.
+>
+> ✅ **YÜRÜTME DURUMU (18.06.2026):** Bu planın **W1 (1. hafta) kısmı büyük ölçüde
+> UYGULANDI** (`feat/ultraplan-w1` dalı, origin'e push'lu): A1 plaka hattı (dewarp/enhance
+> ölçülüp KAPATILDI; **fast-plate-ocr getirildi → plaka 3/3 exact, CER 0**), A3 mAP harness,
+> B1/B2/B3 FTR kanıt+diyagram, B4 `ftr_rapor_taslak.md`, stabilite zırhları, **mobil temel
+> uygulama** (D1–D4 çekirdeği; commit `1bbbf8c`, tsc-temiz). **Özel-model fine-tune ŞU AN
+> KOŞUYOR** (A2/A5/A6 — license_plate ara `mAP50≈0.97` ep12/35; seatbelt/smoking sırada;
+> *nihai mAP'ler kesinleşmedi*). Aşağıdaki iş emirleri **tarihsel referans + kalan işler**
+> (CAMARA/NV gerçek entegrasyon, fine-tune'u bitir, final demo) için geçerlidir.
+> **Not (araç durumu):** Codex **ölü** (0-çıktı); Gemini **kısmi** (pro `403`, `gemini-2.5-flash`
+> çalıştı). Bu planın iş emirleri Codex içindi; fiilen çalışmalar Claude (Opus) tarafından yürütüldü.
 
 ---
 
@@ -60,10 +71,10 @@ sayıları yaz; belirsizlikte dürüstçe çekimser kal; videoya-özel sabit ekl
 | Alan | Durum | Kanıt |
 |---|---|---|
 | YZ çekirdeği (`aura/`) | ✅ Olgun, ~6000 satır; pipeline mimariyi birebir uyguluyor | `aura/pipeline/pipeline.py` (421), tüm modüller gerçek |
-| Birim testler | ✅ **Yeşil** (`pytest -m "not integration"` exit 0), 26 dosya, ~2400 satır | CHANGELOG: 183 test |
+| Birim testler | ✅ **Yeşil** (`pytest -m "not integration"`), `tests/` ~604 `def test_` (W1 sonrası); servis testleri sürüyor | ~**600 birim test** |
 | Dedektör | ✅ Varsayılan stok `yolo26l` + ByteTrack + alan-ağırlıklı sınıf-oyu + dedup; `--profile v4-finetune` | `aura/detection/`, `config/profiles/` |
 | Sürücü durumu | ✅ İki katman (pose-hibrit + `DriverStateEngine` zaman-oylaması); sigara/telefon gerçek videoda | `aura/driver_state/` |
-| Plaka | ✅ LP-dedektör + güven-ağırlıklı kalıcı oy + pozisyon-veto + zemin koşulu; ⚠️ **karanlıkta il-kodu misread** | `aura/plate/` (reader/normalize/ocr) |
+| Plaka | ✅ LP-dedektör + **fast-plate-ocr** (W1) + güven-ağırlıklı kalıcı oy + pozisyon-veto + zemin koşulu → **3/3 exact, CER 0** (eski EasyOCR il-kodu misread'i çözüldü) | `aura/plate/` (reader/normalize/ocr) |
 | Hız | ✅ Metrik oto-kalibrasyon + Kalman/EMA + swerving; ⚠️ **mutlak GT doğrulaması yok** | `aura/speed/` |
 | Sahne/tabela | ✅ SignTracker + hız-limiti ihlali | `aura/scene/` |
 | QoD | ✅ Yaklaşma+kalite+anomali tetiği + histerezis + A/B harness; ⚠️ **gerçek CAMARA bağlanmadı** (mock) | `aura/qod/`, `services/qod_mock/` |
@@ -72,8 +83,8 @@ sayıları yaz; belirsizlikte dürüstçe çekimser kal; videoya-özel sabit ekl
 | Dashboard | ✅ Vanilla JS çalışır (kamera, video-renderer, qod-panel, event-stream) | `dashboard/assets/` (~453 js) |
 | Eğitim hattı | ✅ Tam: detector/driver-state/dataset/roboflow_pull/merge | `train/` (711) |
 | Eval/metrik | ✅ FTR §4 üreteci (P/R/F1+CER+FPS, A/B) + QoD A/B; ⚠️ **3-video** (mAP değil) | `aura/eval/report.py` |
-| **Mobil** | 🔴 **İSKELET** — `App.tsx` 16 satır, 4 dosya, kamera/navigation/WS yok | `mobile/` |
-| Eksik sınıflar | 🔴 cigarette/seatbelt/fatigue/minibus/license_plate **eğitim verisi YOK** (v4'te sınıf var, veri yok) | `config/profiles/v4-finetune.yaml` |
+| **Mobil** | 🟡 **Temel uygulama HAZIR** (commit `1bbbf8c`, tsc-temiz) — NV sessiz giriş + canlı WS tespit panosu + QoD histerezis; final için cihaz testi + gerçek CAMARA kaldı | `mobile/` |
+| Eksik sınıflar | 🟡 Veri **toplandı** (license_plate 9123 / seatbelt 3104 / smoking 557 / phone 659; minibus yok) → **fine-tune SÜRÜYOR** (license_plate ara `mAP50≈0.97`); nihai mAP kesinleşmedi | `train/datasets.yaml`, `runs/detect/...` |
 | İstatistiksel metrik | 🟡 mAP/PR eğrisi yok (geniş etiketli set lazım) | `ftr.md` §4 |
 | Dokümantasyon | 🟡 Çoğu güncel; `AURA_Repo_Detayli_Anlatim.md` gövdesi eski (58 test / yolo26s) | — |
 
