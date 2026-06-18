@@ -128,9 +128,12 @@ aura M1-M16'yı yutmuş + **v2.1/2.2/2.3** evrimi:
 
 ---
 
-## 7. Gemini + Codex Tartışması
-> **Gemini:** danışılamadı — CLI **`403 PERMISSION_DENIED / SUBSCRIPTION_REQUIRED`** döndü ("You do not have a valid license of this product"; lisans/abonelik dolmuş — geçici 429 değil, kalıcı yetki sorunu). Bu oturumda Gemini araştırma için **KULLANILAMADI**. Bu yüzden §5'teki SOTA verisi tamamen **WebSearch + repo-içi gerçek ölçümlerden** gelmiştir (Gemini'ye bağımlı değil). *Not: `gemini.md`'deki "auth'lu" varsayımı artık geçersiz — lisans yenilenmeli.*
-> **Codex:** salt-okunur ikinci-görüş arka planda koşuyor; yanıt geldiğinde takeaway'leri buraya eklenecektir.
+## 7. Gemini + Codex Tartışması (GÜNCELLENDİ)
+> **Gemini — ÇALIŞIYOR (`gemini-2.5-flash`):** İlk denemedeki `403 SUBSCRIPTION_REQUIRED` YALNIZCA `gemini-3.1-pro-preview` (enterprise Code-Assist lisansı isteyen) modelindeydi; **`gemini-2.5-flash` sorunsuz.** Gemini ile **mobil-RN best-practice** (CAMARA QoD = backend-proxy deseni; RN yerleşik WebSocket + FlatList; MJPEG → `react-native-webview`; Card/Badge panosu) + **final/CAMARA stratejisi** araştırıldı. §5 SOTA = WebSearch + repo-ölçüm + Gemini.
+> **Codex:** salt-okunur danışma çağrıldı ama **0-çıktı ile takıldı** (yanıt vermedi) — bu oturumda kullanılamadı.
+
+## 8. Bu Oturumun Yeni Katkısı — Mobil Uygulama (final 3. aşama)
+> §6'daki "mobil iskelet" boşluğu KAPATILDI. `mobile/` (Expo/RN/TS) geliştirildi (commit `1bbbf8c`, **`npx tsc --noEmit` exit 0**): NV sessiz giriş (POST /verify) · canlı WS tespit panosu (/stream/annotations → araç kartları + plaka CONFIRMED/pending rozet + sürücü ikonları + risk/swerving) · /stream/events akışı · **QoD histerezis** (QOD_TRIGGER/RISK → 'quality' PATCH /config → 6sn histerezis → baseline) · MJPEG video (WebView varsa). Finalde kalan: gerçek Turkcell CAMARA + cihaz testi. Detay: `plan1.md` Faz 2 · `plan2.md` Ö5.
 
 ---
 
@@ -143,4 +146,4 @@ aura M1-M16'yı yutmuş + **v2.1/2.2/2.3** evrimi:
 - CAMARA QoD/NV: https://camaraproject.org · https://developers.opengateway.telefonica.com/docs/qod · https://developers.opengateway.telefonica.com/docs/numberverification · https://developer.vodafone.com/camara
 
 ---
-*Gözlem belgesi sonu. Projede hiçbir değişiklik yapılmadı; main `d34ed83` intact, çalışmalar `feat/ultraplan-w1`'de.*
+*main `d34ed83` intact; tüm çalışmalar `feat/ultraplan-w1`'de. Bu oturumda mobil uygulama geliştirildi (commit `1bbbf8c`, tsc-temiz; yalnız `mobile/`). Gözlem belgesi sonu.*

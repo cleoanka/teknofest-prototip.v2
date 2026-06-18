@@ -74,5 +74,6 @@
 ## 5. Onur / Kalite İlkeleri
 Ölçülen sayı (uydurma yok) · belirsizde pending · videoya-özel sabit yok · her değişiklik test+A/B · main'e yalnız yeşil+incelenmiş PR.
 
-## 6. Codex / Gemini Tartışması
-> **Gemini:** lisans `403 SUBSCRIPTION_REQUIRED` → kullanılamadı. **Codex** (salt-okunur planlama danışması) koşuyor; takeaway'leri bittiğinde buraya eklenecek. Karar (bu plan) kendi sentezimdir; Codex teyit/zenginleştirme amaçlı.
+## 6. Codex / Gemini Tartışması (güncellendi)
+> **Gemini — ÇALIŞIYOR (`gemini-2.5-flash`):** 403 yalnız `gemini-3.1-pro-preview` (enterprise lisans) modelinde; 2.5-flash ile mobil-RN + final/CAMARA stratejisi araştırıldı (Faz 2'yi besledi: backend-proxy QoD, RN WebSocket, MJPEG→WebView). **Codex** 0-çıktı ile takıldı. Karar kendi sentezimdir.
+> **GÜNCELLEME (18.06):** Faz 2 / 2.4 **BAŞLATILDI** — mobil temel uygulama HAZIR (commit `1bbbf8c`, `tsc` temiz): NV sessiz giriş + canlı WS tespit panosu + QoD histerezis. Finalde kalan: gerçek Turkcell CAMARA + cihaz testi.
