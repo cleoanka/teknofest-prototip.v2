@@ -1,63 +1,167 @@
-// AURA mobil API istemcisi — NV doğrulama + event WS + kaynak kontrolü.
-import { API_URL, NV_URL } from "../config";
+// AURA mobil API istemcisi — NV doğrulama + event/annotation WS + QoD config + status.
+// Sözleşme tipleri ./types.ts'tedir (aura/schema.py ile birebir).
+import { API_URL, NV_URL, WS_ANNOTATIONS_URL, WS_EVENTS_URL } from "../config";
+import type {
+  AnnotationFrame,
+  AuraEvent,
+  StreamStatus,
+  VerifyResponse,
+} from "./types";
 
-export interface AuraEvent {
-  event_id: string;
-  ts: number;
-  track_id: number;
-  type: string;
-  payload: Record<string, unknown>;
-  source: string;
+export type {
+  AnnotationFrame,
+  AnnotationTrack,
+  AuraEvent,
+  PlateStatus,
+  StreamStatus,
+} from "./types";
+
+// --------------------------------------------------------------------------- //
+// Number Verification — sessiz doğrulama (nv_mock :8082). SMS/OTP YOK.
+// SIM/şebeke bağı (sim_token + TR numarası) kontrol edilir; operatör NV API'sinin mock'u.
+// --------------------------------------------------------------------------- //
+export interface VerifyResult {
+  ok: boolean;
+  latencyMs?: number;
+  error?: string;
 }
 
-// Sessiz numara doğrulama (NV mock). SMS/OTP yok — SIM/şebeke bağı kontrol edilir.
-export async function verifyNumber(phoneNumber: string, simToken: string): Promise<boolean> {
+export async function verifyNumber(
+  phoneNumber: string,
+  simToken: string,
+): Promise<VerifyResult> {
   try {
     const res = await fetch(`${NV_URL}/verify`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ phone_number: phoneNumber, sim_token: simToken }),
     });
-    const data = await res.json();
-    return Boolean(data.verified);
-  } catch {
-    return false;
+    if (!res.ok) return { ok: false, error: `NV HTTP ${res.status}` };
+    const data = (await res.json()) as VerifyResponse;
+    return { ok: Boolean(data.verified), latencyMs: data.latency_ms };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message ?? "ağ hatası" };
   }
 }
 
-// Canlı event akışı (WS /stream/events).
-export function connectEvents(onEvent: (e: AuraEvent) => void, onState?: (open: boolean) => void): WebSocket {
-  const wsUrl = API_URL.replace(/^http/, "ws") + "/stream/events";
-  const ws = new WebSocket(wsUrl);
-  ws.onopen = () => onState?.(true);
-  ws.onclose = () => onState?.(false);
-  ws.onmessage = (m) => {
-    try {
-      onEvent(JSON.parse(m.data as string) as AuraEvent);
-    } catch {
-      /* yok say */
-    }
-  };
-  return ws;
+// --------------------------------------------------------------------------- //
+// WebSocket yardımcıları — otomatik yeniden bağlanma + temiz kapatma.
+// connect* fonksiyonları bir "AuraSocket" döndürür: .close() ile elle kapatılır;
+// bağlantı koparsa (manuel kapatma değilse) artan gecikmeyle yeniden dener.
+// --------------------------------------------------------------------------- //
+export interface AuraSocket {
+  close: () => void;
 }
 
-export async function getStatus(): Promise<Record<string, unknown> | null> {
+function connectJsonWs<T>(
+  url: string,
+  onMessage: (data: T) => void,
+  onState?: (open: boolean) => void,
+): AuraSocket {
+  let ws: WebSocket | null = null;
+  let closedByUser = false;
+  let retry = 0;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+
+  const open = () => {
+    ws = new WebSocket(url);
+    ws.onopen = () => {
+      retry = 0;
+      onState?.(true);
+    };
+    ws.onmessage = (m) => {
+      try {
+        onMessage(JSON.parse(m.data as string) as T);
+      } catch {
+        /* bozuk kare — yok say */
+      }
+    };
+    ws.onerror = () => {
+      /* onclose yeniden bağlanmayı yönetir */
+    };
+    ws.onclose = () => {
+      onState?.(false);
+      if (closedByUser) return;
+      retry += 1;
+      const delay = Math.min(1000 * retry, 5000); // 1s,2s,3s… max 5s
+      timer = setTimeout(open, delay);
+    };
+  };
+
+  open();
+
+  return {
+    close: () => {
+      closedByUser = true;
+      if (timer) clearTimeout(timer);
+      ws?.close();
+    },
+  };
+}
+
+// Canlı AuraEvent akışı (WS /stream/events).
+export function connectEvents(
+  onEvent: (e: AuraEvent) => void,
+  onState?: (open: boolean) => void,
+): AuraSocket {
+  return connectJsonWs<AuraEvent>(WS_EVENTS_URL, onEvent, onState);
+}
+
+// Kare-başına annotation akışı (WS /stream/annotations) — kartların canlı kaynağı.
+export function connectAnnotations(
+  onFrame: (f: AnnotationFrame) => void,
+  onState?: (open: boolean) => void,
+): AuraSocket {
+  return connectJsonWs<AnnotationFrame>(WS_ANNOTATIONS_URL, onFrame, onState);
+}
+
+// --------------------------------------------------------------------------- //
+// REST yardımcıları — status + QoD çözünürlük/kalite talebi.
+// --------------------------------------------------------------------------- //
+export async function getStatus(): Promise<StreamStatus | null> {
   try {
-    return await fetch(`${API_URL}/stream/status`).then((r) => r.json());
+    const r = await fetch(`${API_URL}/stream/status`);
+    if (!r.ok) return null;
+    return (await r.json()) as StreamStatus;
   } catch {
     return null;
   }
 }
 
-// Inference kaynağını değiştir (opsiyonel — dashboard'la aynı endpoint).
-export async function setSource(source: string): Promise<void> {
+// QoD-tetikli kalite/çözünürlük talebi.
+// Şartname §3: kritik event gelince yüksek kaliteye geç. Backend sözleşmesinde
+// "çözünürlük" doğrudan parametre değil; en yakın eşdeğer çalışma-zamanı ayarları:
+//   • PATCH /config { qod_profile, conf_threshold }  (kalıcı çalışma ayarı)
+//   • PATCH /stream/config { conf_threshold, bbox_overlay } (akış ayarı)
+// "high" → yüksek-kalite profili + düşük conf eşiği (daha çok delil yakala);
+// "baseline" → bırakma (histerezis sonrası). Mock'ta da 200 döner (no-op güvenli).
+export type QualityMode = "high" | "baseline";
+
+export async function requestQuality(mode: QualityMode): Promise<boolean> {
+  const qod_profile = mode === "high" ? "quality" : "baseline";
+  const conf_threshold = mode === "high" ? 0.25 : 0.4;
   try {
-    await fetch(`${API_URL}/stream/start`, {
+    const r = await fetch(`${API_URL}/config`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ qod_profile, conf_threshold }),
+    });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
+// Inference kaynağını başlat/değiştir (opsiyonel — dashboard'la aynı endpoint).
+export async function startStream(source?: string): Promise<boolean> {
+  try {
+    const r = await fetch(`${API_URL}/stream/start`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ source }),
+      body: JSON.stringify(source ? { source } : {}),
     });
+    return r.ok;
   } catch {
-    /* yok say */
+    return false;
   }
 }
