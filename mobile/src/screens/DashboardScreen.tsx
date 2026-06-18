@@ -1,99 +1,172 @@
-// Ana ekran — canlı tespit event'leri + QoD rozeti.
-import React, { useEffect, useRef, useState } from "react";
-import { FlatList, StyleSheet, Text, View } from "react-native";
+// AURA mobil — canlı operatör paneli.
+//  • WS /stream/annotations → araç KARTLARI (plaka/sürücü/risk/hız/QoD canlı durumu)
+//  • WS /stream/events      → aktivite AKIŞI + QoD histerezis tetiği
+//  • GET /stream/status     → bağlantı/QoD-oturum senkronu (poll)
+//  • PATCH /config          → QoD-tetikli yüksek kalite talebi (useQod içinde)
+//  • GET /stream/video      → MJPEG canlı görüntü (LiveVideo)
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
-import { AuraEvent, connectEvents, getStatus } from "../api/client";
+import {
+  connectAnnotations,
+  connectEvents,
+  getStatus,
+  type AnnotationTrack,
+  type AuraEvent,
+  type AuraSocket,
+} from "../api/client";
+import { useQod } from "../hooks/useQod";
+import { EventRow } from "../ui/EventRow";
+import LiveVideo from "../ui/LiveVideo";
+import QodIndicator from "../ui/QodIndicator";
+import { COLORS } from "../ui/theme";
+import { VehicleCard } from "../ui/VehicleCard";
 
 interface Props {
   phone: string;
 }
 
-const TYPE_COLOR: Record<string, string> = {
-  RISK_ALERT: "#ff4444",
-  PLATE_CONFIRMED: "#00ff88",
-  PLATE_REJECTED: "#ffcc00",
-  QOD_TRIGGER: "#ffcc00",
-  QOD_RELEASE: "#ffcc00",
-  DRIVER_STATE: "#2f81f7",
-};
+type Tab = "vehicles" | "feed";
 
-function describe(e: AuraEvent): string {
-  const p = e.payload as any;
-  switch (e.type) {
-    case "PLATE_CONFIRMED": return p.value ?? "";
-    case "DRIVER_STATE": return (p.flags ?? []).join(", ") || "temiz";
-    case "QOD_TRIGGER": return `${p.profile} (${p.reason})`;
-    case "RISK_ALERT": return p.rule ?? "risk";
-    case "SPEED": return p.value_kmh != null ? `${p.value_kmh} km/h` : "göreli hız";
-    default: return "";
-  }
-}
+// Bir track son STALE_FRAMES kare boyunca görünmezse listeden düşür (giden araç).
+const STALE_FRAMES = 60;
 
 export default function DashboardScreen({ phone }: Props) {
+  const [tracks, setTracks] = useState<AnnotationTrack[]>([]);
   const [events, setEvents] = useState<AuraEvent[]>([]);
-  const [connected, setConnected] = useState(false);
-  const [qodActive, setQodActive] = useState(false);
-  const wsRef = useRef<WebSocket | null>(null);
+  const [annOpen, setAnnOpen] = useState(false);
+  const [evOpen, setEvOpen] = useState(false);
+  const [tab, setTab] = useState<Tab>("vehicles");
+
+  const qod = useQod();
+  const annRef = useRef<AuraSocket | null>(null);
+  const evRef = useRef<AuraSocket | null>(null);
+  // track_id → en son görüldüğü frame_id (eskiyenleri ayıklamak için).
+  const lastSeen = useRef<Map<number, number>>(new Map());
+
+  const handleEvent = useCallback(
+    (e: AuraEvent) => {
+      setEvents((prev) => [e, ...prev].slice(0, 120));
+      qod.onEvent(e); // QoD histerezis makinesi
+    },
+    [qod],
+  );
 
   useEffect(() => {
-    wsRef.current = connectEvents(
-      (e) => {
-        setEvents((prev) => [e, ...prev].slice(0, 100));
-        if (e.type === "QOD_TRIGGER") setQodActive(true);
-        if (e.type === "QOD_RELEASE") setQodActive(false);
-      },
-      setConnected,
-    );
+    annRef.current = connectAnnotations((frame) => {
+      const seen = lastSeen.current;
+      for (const t of frame.tracks) seen.set(t.track_id, frame.frame_id);
+      // Eskiyen track_id'leri düşür, kalanları gelen kareyle güncelle.
+      const fresh = frame.tracks.filter(
+        (t) => frame.frame_id - (seen.get(t.track_id) ?? frame.frame_id) < STALE_FRAMES,
+      );
+      // Bu karede gelmeyen ama hâlâ taze track'leri koru (kısa kayıp toleransı).
+      setTracks((prev) => {
+        const byId = new Map<number, AnnotationTrack>();
+        for (const t of prev) {
+          if (frame.frame_id - (seen.get(t.track_id) ?? 0) < STALE_FRAMES) byId.set(t.track_id, t);
+        }
+        for (const t of fresh) byId.set(t.track_id, t);
+        return Array.from(byId.values()).sort((a, b) => a.track_id - b.track_id);
+      });
+    }, setAnnOpen);
+
+    evRef.current = connectEvents(handleEvent, setEvOpen);
+
     const poll = setInterval(async () => {
       const s = await getStatus();
-      if (s) setQodActive(Number(s.qod_active_sessions) > 0);
-    }, 2000);
+      if (s) qod.syncSessions(s.qod_active_sessions ?? 0);
+    }, 2500);
+
     return () => {
-      wsRef.current?.close();
+      annRef.current?.close();
+      evRef.current?.close();
       clearInterval(poll);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const connected = annOpen || evOpen;
+  const riskCount = useMemo(
+    () => tracks.filter((t) => t.risk_flags.length > 0 || t.swerving).length,
+    [tracks],
+  );
 
   return (
     <View style={styles.container}>
+      {/* Başlık + canlı/QoD rozetleri */}
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>◈ AURA</Text>
-          <Text style={styles.muted}>{phone}</Text>
+          <Text style={styles.muted}>{phone} · NV doğrulandı ✓</Text>
         </View>
         <View style={styles.badges}>
-          <Text style={[styles.badge, { color: connected ? "#00ff88" : "#8b97a6" }]}>
+          <Text style={[styles.live, { color: connected ? COLORS.green : COLORS.muted }]}>
             {connected ? "● CANLI" : "○ bağlanıyor"}
           </Text>
-          {qodActive && <Text style={[styles.badge, styles.qod]}>QoD AKTİF</Text>}
+          <Text style={styles.muted}>
+            {tracks.length} araç · {riskCount} risk
+          </Text>
         </View>
       </View>
 
-      <FlatList
-        data={events}
-        keyExtractor={(e) => e.event_id}
-        ListEmptyComponent={<Text style={styles.empty}>Tespit bekleniyor… (inference :8080 çalışıyor mu?)</Text>}
-        renderItem={({ item }) => (
-          <View style={[styles.row, { borderLeftColor: TYPE_COLOR[item.type] ?? "#8b97a6" }]}>
-            <Text style={styles.type}>{item.type}</Text>
-            <Text style={styles.meta}>ID:{item.track_id} · {describe(item)}</Text>
-          </View>
-        )}
-      />
+      {/* Canlı görüntü (MJPEG) */}
+      <LiveVideo bbox height={190} />
+
+      {/* QoD durum göstergesi (histerezis) */}
+      <QodIndicator phase={qod.phase} reason={qod.reason} activeSessions={tracks.filter((t) => t.qod_active).length} />
+
+      {/* Sekmeler */}
+      <View style={styles.tabs}>
+        <TabButton label={`Araçlar (${tracks.length})`} active={tab === "vehicles"} onPress={() => setTab("vehicles")} />
+        <TabButton label={`Akış (${events.length})`} active={tab === "feed"} onPress={() => setTab("feed")} />
+      </View>
+
+      {tab === "vehicles" ? (
+        <FlatList
+          data={tracks}
+          keyExtractor={(t) => String(t.track_id)}
+          renderItem={({ item }) => <VehicleCard track={item} />}
+          ListEmptyComponent={
+            <Text style={styles.empty}>
+              Araç tespiti bekleniyor…{"\n"}inference_api (:8080) çalışıyor ve stream başlatıldı mı?
+            </Text>
+          }
+          contentContainerStyle={styles.listPad}
+        />
+      ) : (
+        <FlatList
+          data={events}
+          keyExtractor={(e) => e.event_id}
+          renderItem={({ item }) => <EventRow event={item} />}
+          ListEmptyComponent={<Text style={styles.empty}>Event bekleniyor…</Text>}
+          contentContainerStyle={styles.listPad}
+        />
+      )}
     </View>
   );
 }
 
+function TabButton({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
+  return (
+    <TouchableOpacity style={[styles.tab, active && styles.tabActive]} onPress={onPress}>
+      <Text style={[styles.tabText, active && styles.tabTextActive]}>{label}</Text>
+    </TouchableOpacity>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0d1117", paddingTop: 50, paddingHorizontal: 14 },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
-  title: { color: "#e6edf3", fontSize: 24, fontWeight: "700" },
-  muted: { color: "#8b97a6", fontSize: 12 },
-  badges: { alignItems: "flex-end", gap: 6 },
-  badge: { fontFamily: "monospace", fontSize: 12 },
-  qod: { color: "#2a2200", backgroundColor: "#ffcc00", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, overflow: "hidden" },
-  row: { backgroundColor: "#161b22", borderLeftWidth: 3, borderRadius: 6, padding: 10, marginBottom: 6 },
-  type: { color: "#e6edf3", fontWeight: "700", fontSize: 13 },
-  meta: { color: "#8b97a6", fontSize: 12, marginTop: 2 },
-  empty: { color: "#8b97a6", textAlign: "center", marginTop: 40 },
+  container: { flex: 1, backgroundColor: COLORS.bg, paddingTop: 50, paddingHorizontal: 14 },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 },
+  title: { color: COLORS.text, fontSize: 24, fontWeight: "700" },
+  muted: { color: COLORS.muted, fontSize: 12 },
+  badges: { alignItems: "flex-end", gap: 4 },
+  live: { fontFamily: "monospace", fontSize: 13, fontWeight: "700" },
+  tabs: { flexDirection: "row", gap: 8, marginBottom: 10 },
+  tab: { flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: COLORS.card, alignItems: "center" },
+  tabActive: { backgroundColor: COLORS.cardAlt, borderColor: COLORS.green, borderWidth: 1 },
+  tabText: { color: COLORS.muted, fontSize: 13, fontWeight: "600" },
+  tabTextActive: { color: COLORS.green },
+  listPad: { paddingBottom: 30 },
+  empty: { color: COLORS.muted, textAlign: "center", marginTop: 40, lineHeight: 20 },
 });
