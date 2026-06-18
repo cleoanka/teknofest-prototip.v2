@@ -98,3 +98,45 @@ def test_prune_drops_dead_tracks(cfg):
     v.update(2, "bus", 0.9)
     v.prune({2})
     assert v.stable_class(1) is None and v.stable_class(2) == "bus"
+
+
+def test_alphabetic_tiebreak_is_deterministic(cfg):
+    # Eşit ağırlıkta (aynı conf, area yok) deterministik kazanan: max((w, ad)) →
+    # ağırlık eşitse alfabetik BÜYÜK ad kazanır ('car' > 'bus'). Mevcut davranış —
+    # önemli olan tutarlı/deterministik olması (giriş sırasından bağımsız).
+    v1 = _voter(cfg)
+    v1.update(1, "car", 0.5)
+    assert v1.update(1, "bus", 0.5) == "car"
+    # ters sırada da aynı kazanan → sıradan bağımsız determinizm
+    v2 = _voter(cfg)
+    v2.update(1, "bus", 0.5)
+    assert v2.update(1, "car", 0.5) == "car"
+
+
+def test_empty_cls_passthrough(cfg):
+    # Boş sınıf adı oylanmaz, aynen döner.
+    v = _voter(cfg)
+    assert v.update(1, "", 0.9) == ""
+    assert v.stable_class(1) is None
+
+
+def test_zero_conf_uses_floor_weight(cfg):
+    # conf<=0 → 1e-3 taban ağırlık (oy yine sayılır, sıfırlanmaz).
+    v = _voter(cfg)
+    assert v.update(1, "car", 0.0) == "car"
+    assert v.stable_class(1) == "car"
+    # taban ağırlık birikir: tek oydan sonra çoğunluk hâlâ 'car'
+    assert v.update(1, "car", -5.0) == "car"
+
+
+def test_decay_multiplies_existing_before_adding(cfg):
+    # decay<1 iken GELEN oy eklenmeden ÖNCE mevcut oylar çarpılır; yeni oy tam ağırlıkta.
+    v = _voter(cfg, decay=0.5)
+    v.update(1, "truck", 1.0)  # truck=1.0
+    # 'car' eklenirken truck 0.5'e söner, car=1.0 → tek karede car kazanır
+    assert v.update(1, "car", 1.0) == "car"
+
+
+def test_stable_class_unknown_returns_none(cfg):
+    v = _voter(cfg)
+    assert v.stable_class(999) is None

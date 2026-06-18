@@ -76,6 +76,11 @@ class PoseDriverClassifier(DriverClassifier):
         self.roi_max_upscale = float(cfg.get("models.driver_state.roi_max_upscale", 4.0))
         self.roi_enhance = bool(cfg.get("models.driver_state.roi_enhance", True))
         self.device = resolve_device(cfg.get("runtime.device", "auto"))
+        # ROI parlatma yardımcıları SABİT — kare başına yeniden kurmak boşuna alloc'tu.
+        # CLAHE nesnesi + gamma LUT tablosu ilk kullanımda bir kez kurulup saklanır
+        # (cv2/np runtime-import olduğu için __init__'te değil _ensure_enhance'te lazy).
+        self._clahe = None  # cv2.CLAHE — ilk _prep_roi_scaled'da kurulur
+        self._gamma_lut = None  # np.ndarray(256,uint8) — sabit gamma=1.6 tablosu
         # --- sürücü-içi sıkı kırpma ------------------------------------------ #
         # Modele giden alan MINIMUM olmalı (kullanıcı kararı): gelen ROI (kabin
         # fallback'inde araç kutusunun üst %55'i — ön cam + yolcu yansımaları)
@@ -163,15 +168,19 @@ class PoseDriverClassifier(DriverClassifier):
         if scale > 1.01:
             roi = cv2.resize(roi, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_CUBIC)
         if self.roi_enhance:
-            # LAB-L kanalında CLAHE + hafif gamma: cam yansıması/karanlık kabini açar
+            # LAB-L kanalında CLAHE + hafif gamma: cam yansıması/karanlık kabini açar.
+            # CLAHE nesnesi ve gamma LUT SABİT → ilk çağrıda kur, sonra yeniden kullan
+            # (davranış birebir aynı; yalnız kare başına alloc/pow zinciri elenir).
+            if self._clahe is None:
+                self._clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8))
+            if self._gamma_lut is None:
+                inv_gamma = 1.0 / 1.6
+                self._gamma_lut = ((np.arange(256) / 255.0) ** inv_gamma * 255).astype("uint8")
             lab = cv2.cvtColor(roi, cv2.COLOR_BGR2LAB)
             lab_l, lab_a, lab_b = cv2.split(lab)
-            clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8))
-            lab_l = clahe.apply(lab_l)
+            lab_l = self._clahe.apply(lab_l)
             roi = cv2.cvtColor(cv2.merge((lab_l, lab_a, lab_b)), cv2.COLOR_LAB2BGR)
-            inv_gamma = 1.0 / 1.6
-            table = ((np.arange(256) / 255.0) ** inv_gamma * 255).astype("uint8")
-            roi = cv2.LUT(roi, table)
+            roi = cv2.LUT(roi, self._gamma_lut)
         return roi, scale
 
     # --- sürücü-içi sıkı kırpma ---------------------------------------------- #
@@ -318,14 +327,19 @@ class PoseDriverClassifier(DriverClassifier):
             return ds
         self._last_person_seen = True
 
-        # ROI'deki en belirgin kişi = sürücü adayı (ROI zaten sürücü kutusundan kesik)
-        best_i = max(range(len(boxes)), key=lambda i: float(boxes[i].conf.item()))
-        person_conf = float(boxes[best_i].conf.item())
+        # ROI'deki en belirgin kişi = sürücü adayı (ROI zaten sürücü kutusundan kesik).
+        # conf'ları tek seferde listeye çek (her eleman için tekrarlı tensor.item()
+        # köprüsünden kaçın — davranış aynı, yalnız tensor erişimi azalır).
+        confs = [float(b.conf.item()) for b in boxes]
+        best_i = max(range(len(confs)), key=confs.__getitem__)
+        person_conf = confs[best_i]
         xy = kps.xy[best_i].tolist()
         kc = kps.conf[best_i].tolist() if kps.conf is not None else [1.0] * len(xy)
 
         def pt(i: int) -> tuple[float, float] | None:
-            if i < len(xy) and kc[i] >= self.kp_conf:
+            # Sınır kontrolü HEM xy HEM kc uzunluğuna bakar: bozuk/kısmi pose
+            # çıktısında kps.conf, xy'den KISA dönebilir → kc[i] IndexError olurdu.
+            if i < len(xy) and i < len(kc) and kc[i] >= self.kp_conf:
                 return (float(xy[i][0]), float(xy[i][1]))
             return None
 

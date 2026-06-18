@@ -65,7 +65,9 @@ if TYPE_CHECKING:
 log = logging.getLogger("aura.pipeline")
 
 # Kararlılık süzgecinden geçirilen 4 sürücü-durumu bayrağı (her biri ayrı izlenir).
-_DRIVER_FIELDS = ("phone", "smoking", "no_seatbelt", "fatigue")
+# frozenset: aux füzyon döngüsünde `aux.cls in _DRIVER_FIELDS` üyelik kontrolü O(1)
+# (tuple'da O(n) idi; etki küçük ama her aux nesnesi için her frame çalışıyor).
+_DRIVER_FIELDS = frozenset(("phone", "smoking", "no_seatbelt", "fatigue"))
 
 
 def record_to_annotation(rec: TrackRecord) -> dict:
@@ -190,7 +192,11 @@ class Pipeline:
         # Kare no verilmezse iç sayacı kullan (canlı kamera/akış senaryosu).
         idx = self.frame_idx if frame_idx is None else frame_idx
         # QoD'a "şu anki zaman" bilgisini ver (kare no / fps = saniye); 1e-6 ile sıfıra bölme koruması.
-        self.qod.set_now(idx / max(self.fps, 1e-6))
+        now = idx / max(self.fps, 1e-6)
+        self.qod.set_now(now)
+        # Accumulator event'leri de AYNI frame-saatini kullansın (QoD ile tutarlı ts ekseni;
+        # offline eval tekrar-üretilebilirliği — wall-clock time.time() kayması giderildi).
+        self.acc.set_now(now)
         frame = self.pre.process(frame)  # 1) ön-işleme: kareyi standart hale getir
         detections = self.detector.detect(frame)  # 2) tespit+takip: araç kutuları + track_id'ler
         # Sürücü kilidi için aynı karede tespit edilen kişiler (YOLO; mock'ta boş olabilir)
@@ -407,6 +413,9 @@ class Pipeline:
         # --- kare sonu temizlik/ilerletme (araç döngüsü dışında) --- #
         self.driver_lock.prune(idx)  # uzun süredir görülmeyen sürücü kilitlerini düşür
         self.driver.prune(idx)  # giden araçların sürücü-durum tamponlarını düşür (bellek)
+        self.speed.prune(
+            idx
+        )  # giden track'lerin hız/kalibrasyon durumunu düşür (bellek + tripwire bayat-durum)
         self.qod.tick()  # QoD zamanlayıcısını bir adım ilerlet (süresi dolan optimizasyonları kapat)
         events.extend(self.qod.drain_events())  # QoD'un kendi ürettiği event'leri (aç/kapa) topla
 

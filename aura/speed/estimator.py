@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import logging
 from collections import deque
+from itertools import islice
 from types import SimpleNamespace
 
 from aura.schema import BBox, SpeedState
@@ -31,6 +32,14 @@ class SpeedEstimator:
         self.mode = cfg.get("speed.mode", "disabled")
         self.calibration_file = cfg.get("speed.calibration_file")
         self.fps = 30.0
+        # ipm modülü bayrağını __init__'te cache'le (hot _ipm yolunda her kare cfg.get
+        # okumasını önle — diğer eşikler gibi, K-004 davranış aynı kalır).
+        self._ipm_enabled = bool(cfg.get("optional_modules.homography_ipm", False))
+        # Uzun-süreli akışta bellek sızıntısını önlemek için track son-görülme kaydı:
+        # prune() bu haritaya göre giden track'lerin tüm durumunu (hist/lat/tw/track/
+        # last_speed + metric Kalman/EMA) düşürür. (driver_lock.prune ile aynı desen.)
+        self.max_age = int(cfg.get("speed.max_age", 30))
+        self._last_seen: dict[int, int] = {}
         tw = cfg.get("speed.tripwire", {}) or {}
         self.line_a = float(tw.get("line_a_y", 0.40))
         self.line_b = float(tw.get("line_b_y", 0.70))
@@ -101,6 +110,7 @@ class SpeedEstimator:
     ) -> SpeedState:
         h = frame_shape[0] if frame_shape else 1.0
         cy_norm = bbox.center[1] / h if h else 0.0
+        self._last_seen[track_id] = frame_idx  # bellek temizliği (prune) için son-görülme
         hist = self._hist.setdefault(track_id, deque(maxlen=self.window))
         hist.append((frame_idx, cy_norm))
 
@@ -146,7 +156,9 @@ class SpeedEstimator:
             return False
         up_ext = down_ext = lat[0][0]
         direction, reversals = 0, 0
-        for x, w in list(lat)[1:]:
+        # islice(lat, 1, None): deque'in tamamını her kare list()'e kopyalamadan
+        # (track başına ~90 öğe) ilk öğeyi atlayarak gez — kare-başı tahsisi azaltır.
+        for x, w in islice(lat, 1, None):
             amp = self.swerve_amp_ratio * w  # o anki genişliğe göre eşik
             if direction >= 0:
                 up_ext = max(up_ext, x)
@@ -260,7 +272,7 @@ class SpeedEstimator:
     def _ipm(
         self, track_id: int, bbox: BBox, frame_idx: int, rel_flag: bool, frame_shape=None
     ) -> SpeedState:
-        enabled = self.cfg.get("optional_modules.homography_ipm", False)
+        enabled = self._ipm_enabled  # __init__'te cache'lendi (hot yol — her kare cfg.get yok)
         if enabled:
             try:
                 from aura.optional.homography_ipm import ipm_speed  # M12
@@ -275,3 +287,25 @@ class SpeedEstimator:
             log.warning("speed.mode=ipm ama optional_modules.homography_ipm kapalı → disabled")
             self._ipm_warned = True
         return SpeedState(mode="disabled", value_kmh=None, relative_velocity_flag=rel_flag)
+
+    # --- bellek temizliği (uzun-süreli akış) ------------------------------- #
+    def prune(self, frame_idx: int) -> None:
+        """`max_age`'den uzun süredir görünmeyen track'lerin TÜM durumunu düşür.
+
+        Uzun-süreli akışta her benzersiz track_id kalıcı olarak deque/dict/Kalman
+        biriktirir (sızıntı). Pipeline._prune'dan kare-başı çağrılır (driver_lock/
+        driver ile aynı desen). Ayrıca eski tripwire durum-makinesini temizleyerek
+        recycled track_id'nin bayat `s['a']` ile taze `line_b` geçişini eşleyip
+        absürt km/h üretmesini engeller (stale-state tehlikesi).
+        """
+        dead = [tid for tid, seen in self._last_seen.items() if frame_idx - seen > self.max_age]
+        for tid in dead:
+            self._hist.pop(tid, None)
+            self._lat_hist.pop(tid, None)
+            self._tw.pop(tid, None)
+            self._tracks.pop(tid, None)
+            self._last_speed.pop(tid, None)
+            self._last_seen.pop(tid, None)
+        if dead and self._metric is not None:
+            # metric mod: Kalman/EMA durumunu da temizle (artık aktif track'lere göre).
+            self._metric.prune(set(self._last_seen))

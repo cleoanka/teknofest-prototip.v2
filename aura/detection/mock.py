@@ -70,6 +70,7 @@ class SimpleIoUTracker:
 
 class MockDetector(Detector):
     def __init__(self, cfg):
+        super().__init__()  # last_persons/last_signs/last_aux'u örnek-seviyesinde kur
         self.conf = float(cfg.get("models.detector.conf", 0.35))
         classes = cfg.get("models.detector.vehicle_classes", ["car"])
         self.cls0 = classes[0] if classes else "car"
@@ -83,12 +84,13 @@ class MockDetector(Detector):
         self.sign_synthetic = bool(cfg.get("sign.mock_synthetic", False))
         self.sign_synth_limit = int(cfg.get("sign.mock_speed_limit", 50))
         self.last_signs: list[Sign] = []
+        # Morfoloji çekirdeği sabittir → bir kez kur (her karede yeniden allocate yok).
+        self._morph_kernel = np.ones((5, 5), np.uint8)
 
     def detect(self, frame: np.ndarray) -> list[Detection]:
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         _, mask = cv2.threshold(gray, self.bright_thr, 255, cv2.THRESH_BINARY)
-        kernel = np.ones((5, 5), np.uint8)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=1)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, self._morph_kernel, iterations=1)
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         boxes: list[tuple] = []

@@ -36,7 +36,13 @@ def mae(preds: list[float], truths: list[float]) -> float | None:
     ile komitenin gerçek hız ölçümü arasındaki ortalama mutlak sapma. Eşleşen
     örnek yoksa None (sessiz atla — sayı uydurma, K-004).
     """
-    pairs = [(float(p), float(t)) for p, t in zip(preds, truths, strict=False) if p is not None]
+    # Hem tahmin hem gerçek None olmamalı (mape ile tutarlı sözleşme; aksi halde
+    # float(t) TypeError fırlatırdı — GT'de eksik ölçüm sessizce atlanır, K-004).
+    pairs = [
+        (float(p), float(t))
+        for p, t in zip(preds, truths, strict=False)
+        if p is not None and t is not None
+    ]
     if not pairs:
         return None
     return round(sum(abs(p - t) for p, t in pairs) / len(pairs), 2)

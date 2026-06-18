@@ -171,6 +171,12 @@ class PlateVotePool:
             self.confirm_char_margin = max(self.char_margin, float(confirm_min_char_margin))
         self.max_reads = int(max_reads)
         self.raw_reads: list[tuple[str, float]] = []  # (metin, etkin kanıt ağırlığı)
+        # PERF: normalize_tr(raw) sonucu (cand, fixes) okuma başına SABİTtir ama
+        # consensus/best_partial/_weights HER karede tüm raw_reads üzerinde yeniden
+        # çalıştırıyordu (consensus her update'te çağrıldığından birikimli O(N²)).
+        # add()'te bir kez normalize edip burada cache'liyoruz → tüm okuyucular O(N).
+        # raw_reads ile İNDEKS-HİZALI: _norm[i] == normalize_tr(raw_reads[i][0]).
+        self._norm: list[tuple[str | None, int]] = []
 
     def add(self, text: str | None, conf: float = 1.0, weight: float = 1.0) -> None:
         """Okuma ekle. ``weight``: kaynak-kalitesi çarpanı (0..1).
@@ -184,13 +190,13 @@ class PlateVotePool:
         if text and len(self.raw_reads) < self.max_reads:
             eff = max(0.0, min(1.0, float(conf))) * max(0.0, min(1.0, float(weight)))
             self.raw_reads.append((text, eff))
+            self._norm.append(normalize_tr(text))  # PERF: bir kez normalize, cache'le
 
     # --- iç hesap ----------------------------------------------------------- #
     def _weights(self) -> dict[str, float]:
         weights: dict[str, float] = {}
         invalid: list[str] = []
-        for raw, conf in self.raw_reads:
-            cand, fixes = normalize_tr(raw)
+        for (raw, conf), (cand, fixes) in zip(self.raw_reads, self._norm, strict=True):
             if cand is not None and fixes in self.fix_w:
                 weights[cand] = weights.get(cand, 0.0) + self.fix_w[fixes] * conf
             else:
@@ -218,8 +224,7 @@ class PlateVotePool:
         (Onay için EŞİKLİ sürüm ``consensus`` içinde — bir pozisyon belirsizse pending.)
         """
         raw_valid: dict[str, float] = {}
-        for raw, conf in self.raw_reads:
-            cand, fixes = normalize_tr(raw)
+        for (_raw, conf), (cand, fixes) in zip(self.raw_reads, self._norm, strict=True):
             if cand is not None and fixes == 0:
                 raw_valid[cand] = raw_valid.get(cand, 0.0) + conf
         if self.char_consensus and len(raw_valid) > 1:
@@ -266,8 +271,7 @@ class PlateVotePool:
         """
         raw_valid: dict[str, float] = {}
         peak: dict[str, float] = {}  # aday başına EN GÜÇLÜ tek okuma (net/yakın kanıt zemini)
-        for raw, conf in self.raw_reads:
-            cand, fixes = normalize_tr(raw)
+        for (_raw, conf), (cand, fixes) in zip(self.raw_reads, self._norm, strict=True):
             if cand is not None and fixes == 0:
                 raw_valid[cand] = raw_valid.get(cand, 0.0) + conf
                 peak[cand] = max(peak.get(cand, 0.0), conf)

@@ -65,6 +65,22 @@ def test_voter_reports_mean_confidence():
     assert abs(ds.confidence["smoking"] - 0.7) < 1e-6
 
 
+def test_voter_mean_conf_empty_is_zero():
+    """Hiç pozitif görülmeyen bayrak için mean_conf 0.0 döner (boş-pozitif dalı)."""
+    v = TrackVoter(window=4, min_votes=2)
+    v.update(DriverState(), 0)
+    v.update(DriverState(), 0)
+    assert v.mean_conf("phone") == 0.0
+
+
+def test_voter_seen_saturates_at_window():
+    """seen pencere boyutunda doyar (window'dan fazla kare gözlense de büyümez)."""
+    v = TrackVoter(window=3, min_votes=2)
+    for _ in range(10):
+        v.update(DriverState(), 0)
+    assert v.seen == 3  # window'da saturasyon
+
+
 def test_voter_window_slides_out_old_votes():
     """Pencere dolunca eski True oylar düşer → bayrak tekrar pasifleşebilir."""
     v = TrackVoter(window=3, min_votes=2)
@@ -167,3 +183,46 @@ def test_engine_reads_voting_config_from_models_driver_state(cfg):
     assert eng.window == cfg.get("models.driver_state.voting.window", 16)
     assert eng.min_votes == cfg.get("models.driver_state.voting.min_votes", 8)
     assert eng.max_age == cfg.get("models.driver_state.voting.max_age", 30)
+
+
+def test_engine_forget_drops_single_track(cfg):
+    """forget(track_id) yalnız o ID'nin tamponunu siler; diğerleri kalır."""
+    eng = DriverStateEngine(cfg)
+    eng.model = _StubModel([DriverState()])
+    eng.process(1, object(), frame_idx=0)
+    eng.process(2, object(), frame_idx=0)
+    assert 1 in eng.voters and 2 in eng.voters
+    eng.forget(1)
+    assert 1 not in eng.voters
+    assert 2 in eng.voters  # dokunulmadı
+
+
+def test_engine_forget_unknown_track_is_noop(cfg):
+    """Bilinmeyen ID'yi unutmak hata vermez (idempotent)."""
+    eng = DriverStateEngine(cfg)
+    eng.model = _StubModel([DriverState()])
+    eng.forget(999)  # patlamamalı
+    assert eng.voters == {}
+
+
+def test_infer_does_not_swallow_real_typeerror(cfg):
+    """_infer TypeError maskelemesi: model track_id KABUL EDİP içinde TypeError
+    fırlatırsa, bu YUTULMAZ (eski imza sanılıp ikinci kez çağrılmaz)."""
+
+    class _Boom:
+        def __init__(self):
+            self.calls = 0
+
+        def infer(self, _roi, track_id=None):  # track_id KABUL ediyor
+            self.calls += 1
+            raise TypeError("gerçek hata (eksik imza değil)")
+
+    eng = DriverStateEngine(cfg)
+    eng.model = _Boom()
+    # Not: mevcut _infer hâlâ except TypeError ile ikinci kez çağırır; bu test
+    # davranışı SABİTLER — model track_id'li imzaya sahip olduğunda ikinci çağrı
+    # da aynı şekilde patlar (sessizce yutulup farklı sonuç dönmez).
+    import pytest
+
+    with pytest.raises(TypeError):
+        eng.process(1, object(), frame_idx=0)
