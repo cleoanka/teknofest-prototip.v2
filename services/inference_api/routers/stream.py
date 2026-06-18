@@ -18,6 +18,10 @@ from services.inference_api.models import StreamConfigPatch, StreamStartRequest
 router = APIRouter(tags=["stream"])
 log = logging.getLogger("aura.api.stream")
 _BOUNDARY = "auraframe"
+# MJPEG multipart başlığı kare-içeriğinden bağımsız sabit → bir kez encode et,
+# her karede (.encode() + literal birleştirme) yeniden kurma.
+_FRAME_HEAD = b"--" + _BOUNDARY.encode() + b"\r\nContent-Type: image/jpeg\r\n\r\n"
+_FRAME_TAIL = b"\r\n"
 
 
 @router.post("/stream/start")
@@ -61,10 +65,7 @@ def stream_video(request: Request, bbox: bool = Query(False)):
             jpg = sm.latest_jpeg(bbox)
             if jpg:
                 idle = 0
-                yield (
-                    b"--" + _BOUNDARY.encode() + b"\r\n"
-                    b"Content-Type: image/jpeg\r\n\r\n" + jpg + b"\r\n"
-                )
+                yield _FRAME_HEAD + jpg + _FRAME_TAIL
             else:
                 idle += 1
                 if not sm.running and idle > 20:

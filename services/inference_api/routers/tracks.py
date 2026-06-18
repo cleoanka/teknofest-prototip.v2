@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections import deque
+
 from fastapi import APIRouter, HTTPException, Request
 
 router = APIRouter(tags=["tracks"])
@@ -19,6 +21,10 @@ def list_tracks(request: Request):
 @router.get("/tracks/{track_id}")
 def get_track(track_id: int, request: Request):
     sm = request.app.state.stream
+    # Sözleşme (KASITLI): pipeline yokken tekil sorgu 404 döner (o track YOK).
+    # list_tracks/track_history ise "koleksiyon boş" semantiğiyle 200+boş döner.
+    # Aynı temel duruma iki farklı kontrat — REST'te kaynak-yok=404 / liste-boş=200
+    # ayrımıyla tutarlı; tüketici tekil-track için 404'ü bekler.
     rec = sm.pipeline.acc.get(track_id) if sm.pipeline else None
     if rec is None:
         raise HTTPException(status_code=404, detail="track not found")
@@ -30,9 +36,14 @@ def track_history(track_id: int, request: Request):
     sm = request.app.state.stream
     if not sm.pipeline:
         return {"track_id": track_id, "history": []}
-    series = []
+    # Yalnız son 200 örneği TUT (bounded deque), toplam eşleşmeyi ayrıca say:
+    # tüm seriyi bellekte biriktirip dilimlemek yerine sabit-bellek tarama.
+    # Sözleşme aynı: history = son 200, count = toplam eşleşme.
+    series: deque = deque(maxlen=200)
+    count = 0
     for a in sm.pipeline.emitter.annotations:
         for t in a.tracks:
             if t["track_id"] == track_id:
                 series.append({"frame_id": a.frame_id, "ts": a.ts, **t})
-    return {"track_id": track_id, "history": series[-200:], "count": len(series)}
+                count += 1
+    return {"track_id": track_id, "history": list(series), "count": count}

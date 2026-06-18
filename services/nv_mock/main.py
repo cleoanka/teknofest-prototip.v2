@@ -13,6 +13,10 @@ from pydantic import BaseModel
 
 app = FastAPI(title="AURA Number Verification Mock", version="2.0.0")
 
+# Türk numarası ön-ekleri; per-request yeniden kurmamak için modül sabiti.
+_TR_PREFIXES = ("+90", "90", "0")
+_VERIFY_LATENCY_MS = 40
+
 
 class VerifyRequest(BaseModel):
     phone_number: str
@@ -33,5 +37,7 @@ def health():
 @app.post("/verify", response_model=VerifyResponse)
 def verify(req: VerifyRequest):
     normalized = req.phone_number.replace(" ", "")
-    verified = bool(req.sim_token) and normalized.startswith(("+90", "90", "0"))
-    return VerifyResponse(verified=verified, latency_ms=40, phone_number=req.phone_number)
+    verified = bool(req.sim_token) and normalized.startswith(_TR_PREFIXES)
+    return VerifyResponse(
+        verified=verified, latency_ms=_VERIFY_LATENCY_MS, phone_number=req.phone_number
+    )

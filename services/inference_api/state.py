@@ -59,13 +59,36 @@ class StreamManager:
     def unsubscribe_annotations(self, q) -> None:
         self._annot_queues.discard(q)
 
+    def _emit_event(self, e) -> None:
+        # Yalnız abone varsa serialize et + fan-out yap (boşken model_dump israfı yok).
+        if self._event_queues and self.loop:
+            self._push(self._event_queues, e.model_dump())
+
+    def _emit_annotation(self, a) -> None:
+        if self._annot_queues and self.loop:
+            self._push(self._annot_queues, a.model_dump())
+
+    @staticmethod
+    def _safe_put(q: asyncio.Queue, data: dict) -> None:
+        # Event loop içinde çalışır. Dolu kuyruk (yavaş WS client'ı) put_nowait'te
+        # QueueFull fırlatır; bu callback loop'ta koştuğu için _push'taki try/except
+        # YAKALAMAZ → loop "exception in callback" log'u spam'lerdi. Burada yutarız:
+        # en yeni kareyi düşürmek, akışı/log'u bozmaktan iyidir.
+        try:
+            q.put_nowait(data)
+        except Exception:  # noqa: BLE001 - dolu/kapalı kuyruğu yok say
+            pass
+
     def _push(self, queues: set, data: dict) -> None:
-        if not self.loop:
+        loop = self.loop
+        if not loop or not queues:
             return
-        for q in list(queues):
+        # `call_soon_threadsafe` yalnız loop kapalı/zamanlama hatalarını fırlatır;
+        # gerçek put QueueFull'ı _safe_put içinde (loop thread'inde) yakalanır.
+        for q in tuple(queues):
             try:
-                self.loop.call_soon_threadsafe(q.put_nowait, data)
-            except Exception:  # noqa: BLE001 - dolu/kapalı kuyruğu yok say
+                loop.call_soon_threadsafe(self._safe_put, q, data)
+            except Exception:  # noqa: BLE001 - loop kapalı/durmuş → yok say
                 pass
 
     # --- yaşam döngüsü ----------------------------------------------------- #
@@ -106,10 +129,11 @@ class StreamManager:
         # Ağır model yüklemeleri burada (arka planda) yapılır → başlangıcı bloklamaz.
         try:
             self.pipeline = Pipeline(self.cfg)
-            self.pipeline.emitter.on_event(lambda e: self._push(self._event_queues, e.model_dump()))
-            self.pipeline.emitter.on_annotation(
-                lambda a: self._push(self._annot_queues, a.model_dump())
-            )
+            # Hot path mikro-opt: abone YOKKEN (yaygın "dashboard yalnız MJPEG" durumu)
+            # kare başına pydantic model_dump()/fan-out yapma. Abone varken davranış
+            # birebir aynı. model_dump yalnızca gerçekten gönderilecekse hesaplanır.
+            self.pipeline.emitter.on_event(self._emit_event)
+            self.pipeline.emitter.on_annotation(self._emit_annotation)
         except Exception:  # noqa: BLE001 - model/ağırlık hatası → akışı temiz durdur
             log.exception("Pipeline kurulamadı — stream durduruluyor")
             self._running = False
@@ -172,6 +196,12 @@ class StreamManager:
 
     @staticmethod
     def _draw(frame, anno):
+        signs = getattr(anno, "signs", None) or []
+        lim = (getattr(anno, "scene", None) or {}).get("active_speed_limit_kmh")
+        # Çizilecek hiçbir şey yoksa frame.copy() (kare-başı tahsis) gereksiz; ham
+        # kareyi olduğu gibi döndür. imencode kaynağı değiştirmez → davranış aynı.
+        if not anno.tracks and not signs and lim is None:
+            return frame
         img = frame.copy()
         for t in anno.tracks:
             x1, y1, x2, y2 = (int(v) for v in t["bbox"])
@@ -192,7 +222,7 @@ class StreamManager:
             )
         # Trafik tabelaları (sahne-seviyesi) — BGR ~ açık mavi (#33ccff)
         sign_color = (255, 204, 51)
-        for s in getattr(anno, "signs", None) or []:
+        for s in signs:
             sx1, sy1, sx2, sy2 = (int(v) for v in s["bbox"])
             cv2.rectangle(img, (sx1, sy1), (sx2, sy2), sign_color, 2)
             lbl = (
@@ -211,7 +241,6 @@ class StreamManager:
                 cv2.LINE_AA,
             )
         # Aktif hız limiti banner'ı (sol-üst)
-        lim = (getattr(anno, "scene", None) or {}).get("active_speed_limit_kmh")
         if lim is not None:
             cv2.putText(
                 img,

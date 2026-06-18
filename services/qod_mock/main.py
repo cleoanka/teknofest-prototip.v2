@@ -33,6 +33,11 @@ class SessionResponse(BaseModel):
     created_at: float
 
 
+class SessionListResponse(BaseModel):
+    sessions: list[SessionResponse]
+    count: int
+
+
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "qod_mock", "active_sessions": len(_sessions)}
@@ -53,19 +58,21 @@ def create_session(req: SessionRequest):
     return session
 
 
-@app.get("/sessions")
+@app.get("/sessions", response_model=SessionListResponse)
 def list_sessions():
-    return {"sessions": list(_sessions.values()), "count": len(_sessions)}
+    sessions = _sessions.values()
+    return {"sessions": list(sessions), "count": len(sessions)}
 
 
-@app.get("/sessions/{session_id}")
+@app.get("/sessions/{session_id}", response_model=SessionResponse)
 def get_session(session_id: str):
-    if session_id not in _sessions:
+    session = _sessions.get(session_id)
+    if session is None:
         raise HTTPException(status_code=404, detail="session not found")
-    return _sessions[session_id]
+    return session
 
 
-@app.delete("/sessions/{session_id}")
+@app.delete("/sessions/{session_id}", response_model=SessionResponse)
 def delete_session(session_id: str):
     if session_id not in _sessions:
         raise HTTPException(status_code=404, detail="session not found")
