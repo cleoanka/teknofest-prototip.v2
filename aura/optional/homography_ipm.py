@@ -44,7 +44,7 @@ def _load_calib(cfg) -> dict | None:
     p = Path(path)
     if not p.exists():
         return None
-    data = yaml.safe_load(p.read_text()) or {}
+    data = yaml.safe_load(p.read_text(encoding="utf-8")) or {}
     return data.get("ipm")
 
 

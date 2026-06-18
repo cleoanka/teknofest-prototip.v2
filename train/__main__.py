@@ -17,6 +17,12 @@ import argparse
 import logging
 import sys
 
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+    except (AttributeError, ValueError):
+        pass
+
 
 def _add_common_train_args(sp, default_weights: str, default_imgsz: int, default_project: str):
     sp.add_argument(

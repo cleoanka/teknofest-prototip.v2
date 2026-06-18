@@ -3,6 +3,8 @@
 # Not: '0.0.0.0' bind'i ilk çalıştırmada Windows Defender Güvenlik Duvarı onayı
 # isteyebilir (servis başına bir kez) — beklenen davranıştır, izin verin.
 $ErrorActionPreference = "Stop"
+$env:PYTHONUTF8 = "1"
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 Push-Location $PSScriptRoot
 
 $PY = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"

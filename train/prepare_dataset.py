@@ -53,7 +53,7 @@ def _read_classes(inp: Path, classes_arg: str | None) -> list[str]:
         return [c.strip() for c in classes_arg.split(",") if c.strip()]
     cf = inp / "classes.txt"
     if cf.exists():
-        return [ln.strip() for ln in cf.read_text().splitlines() if ln.strip()]
+        return [ln.strip() for ln in cf.read_text(encoding="utf-8").splitlines() if ln.strip()]
     return DEFAULT_CLASSES
 
 

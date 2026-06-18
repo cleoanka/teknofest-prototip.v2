@@ -10,10 +10,11 @@ from __future__ import annotations
 import logging
 import time
 
-from fastapi import APIRouter, Query, Request, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 
 from services.inference_api.models import StreamConfigPatch, StreamStartRequest
+from services.inference_api.security import validate_source, verify_token
 
 router = APIRouter(tags=["stream"])
 log = logging.getLogger("aura.api.stream")
@@ -25,20 +26,22 @@ _FRAME_TAIL = b"\r\n"
 
 
 @router.post("/stream/start")
-def stream_start(req: StreamStartRequest, request: Request):
+def stream_start(req: StreamStartRequest, request: Request, _=Depends(verify_token)):
     sm = request.app.state.stream
-    sm.start(source=req.source, device=req.device, bbox_overlay=req.bbox_overlay)
+    # SEC-002: kaynagi cv2.VideoCapture'a gecmeden once dogrula (SSRF guard).
+    source = validate_source(req.source)
+    sm.start(source=source, device=req.device, bbox_overlay=req.bbox_overlay)
     return {"status": "started", **sm.status()}
 
 
 @router.post("/stream/stop")
-def stream_stop(request: Request):
+def stream_stop(request: Request, _=Depends(verify_token)):
     request.app.state.stream.stop()
     return {"status": "stopped"}
 
 
 @router.patch("/stream/config")
-def stream_config(patch: StreamConfigPatch, request: Request):
+def stream_config(patch: StreamConfigPatch, request: Request, _=Depends(verify_token)):
     sm = request.app.state.stream
     if patch.bbox_overlay is not None:
         sm.bbox_overlay = patch.bbox_overlay

@@ -119,6 +119,12 @@ class PlateReader:
         self._no_lp_weight = float(pv.get("no_lp_weight", 0.5))
         self._state: dict[int, PlateState] = {}
         self._pools: dict[int, PlateVotePool] = {}
+        # Uzun-süreli akış bellek hijyeni (MEM-001/CL-003/DF-002): per-track durum
+        # sözlükleri (_state/_pools/_reads_since_eval) giden track'ler için kalıcı
+        # birikiyordu (sızıntı). _last_seen son-görülme karesini tutar; prune()
+        # max_age'den eski track'lerin TÜM durumunu düşürür (speed/driver_lock ile aynı desen).
+        self.max_age = int(cfg.get("plate.max_age", 30))
+        self._last_seen: dict[int, int] = {}
         # Son karede LP dedektörünün bulduğu plaka kutusu (FRAME koordinatında) — hız
         # oto-kalibrasyonunun en kesin ppm kaynağı (520 mm referans). Her update()
         # başında sıfırlanır; pipeline bunu hemen ardından speed.update'e geçirir.
@@ -241,8 +247,11 @@ class PlateReader:
         vehicle_bbox: BBox,
         frame_shape: tuple[int, ...],
         frame: np.ndarray | None = None,
+        frame_idx: int | None = None,
     ) -> PlateState:
         self.last_plate_bbox = None  # bu kare için sıfırla (önceki track'ten sızmasın)
+        if frame_idx is not None:
+            self._last_seen[track_id] = frame_idx  # bellek temizliği (prune) için son-görülme
         st = self._state.setdefault(track_id, PlateState())
         if st.status == "confirmed":
             return st  # erken çıkış (OCR kapalı)
@@ -383,3 +392,20 @@ class PlateReader:
 
     def get(self, track_id: int) -> PlateState | None:
         return self._state.get(track_id)
+
+    # --- bellek temizliği (uzun-süreli akış) ------------------------------- #
+    def prune(self, frame_idx: int) -> None:
+        """`max_age`'den uzun süredir görünmeyen track'lerin TÜM durumunu düşür.
+
+        Per-track sözlükler (_state/_pools/_reads_since_eval/_last_seen) giden
+        track'ler için aksi halde sınırsız birikir (MEM-001/CL-003/DF-002). Pipeline
+        ._prune'dan kare-başı çağrılır (speed/driver_lock ile aynı desen). DAVRANIŞ-
+        KORUYAN: yalnız max_age'den eski (artık görünmeyen) track durumu düşer; aktif
+        track'lerin oy havuzu/konsensüsü dokunulmadan kalır. frame_idx geçilmeden
+        update() çağrıldıysa (_last_seen boş) hiçbir şey düşmez (geriye uyum)."""
+        dead = [tid for tid, seen in self._last_seen.items() if frame_idx - seen > self.max_age]
+        for tid in dead:
+            self._state.pop(tid, None)
+            self._pools.pop(tid, None)
+            self._reads_since_eval.pop(tid, None)
+            self._last_seen.pop(tid, None)

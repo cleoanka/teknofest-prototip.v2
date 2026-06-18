@@ -6,6 +6,8 @@ ve config'ten gelen risk kurallarını uygular. Kare-merkezli değil, ID-merkezl
 
 from __future__ import annotations
 
+import threading
+
 from aura.schema import (
     BBox,
     DriverState,
@@ -21,6 +23,13 @@ class Accumulator:
     def __init__(self, cfg):
         self.cfg = cfg
         self.tracks: dict[int, TrackRecord] = {}
+        # CA-002: pipeline iş parçacığı tracks'i YAZAR (update_track ekler/mutasyon,
+        # prune siler) iken bir tüketici (dashboard/REST okuyucu) active_tracks()/get()
+        # ile OKUR. dict boyut-mutasyonu (prune sırasında del) eş-zamanlı list()/get
+        # ile "dict changed size during iteration" / yarım görüntü üretebilir. Bu
+        # re-entrant kilit yaz ile okuları serileştirir (RLock: update_track içinden
+        # ileride iç çağrı yapılsa da deadlock olmaz; davranış aynı).
+        self._lock = threading.RLock()
         self.rules = cfg.get("risk.rules", []) or []
         self.high_speed = float(cfg.get("risk.high_speed_kmh", 90))
         self.long_lived = int(cfg.get("risk.long_lived_frames", 90))
@@ -66,17 +75,19 @@ class Accumulator:
         qod_profile: str | None = None,
     ):
         events = []
-        rec = self.tracks.get(track_id)
-        is_new = rec is None
+        with self._lock:  # CA-002: lookup+insert prune/okuyucularla serileşsin
+            rec = self.tracks.get(track_id)
+            is_new = rec is None
+            if is_new:
+                rec = TrackRecord(
+                    track_id=track_id,
+                    vehicle_class=vehicle_class,
+                    first_frame=frame_idx,
+                    last_frame=frame_idx,
+                    bbox=bbox,
+                )
+                self.tracks[track_id] = rec
         if is_new:
-            rec = TrackRecord(
-                track_id=track_id,
-                vehicle_class=vehicle_class,
-                first_frame=frame_idx,
-                last_frame=frame_idx,
-                bbox=bbox,
-            )
-            self.tracks[track_id] = rec
             events.append(
                 self._event(
                     track_id,
@@ -242,12 +253,15 @@ class Accumulator:
 
     # --- yardımcılar ------------------------------------------------------- #
     def active_tracks(self) -> list[TrackRecord]:
-        return list(self.tracks.values())
+        with self._lock:  # CA-002: prune'un del'iyle eş-zamanlı tutarlı snapshot
+            return list(self.tracks.values())
 
     def get(self, track_id: int) -> TrackRecord | None:
-        return self.tracks.get(track_id)
+        with self._lock:
+            return self.tracks.get(track_id)
 
     def prune(self, frame_idx: int, max_age: int = 30) -> None:
-        dead = [tid for tid, r in self.tracks.items() if frame_idx - r.last_frame > max_age]
-        for tid in dead:
-            del self.tracks[tid]
+        with self._lock:  # CA-002: silme okuyucularla serileşsin (size-change yarışı yok)
+            dead = [tid for tid, r in self.tracks.items() if frame_idx - r.last_frame > max_age]
+            for tid in dead:
+                del self.tracks[tid]

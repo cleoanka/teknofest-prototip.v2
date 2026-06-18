@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -21,7 +22,14 @@ from fastapi.staticfiles import StaticFiles
 
 from aura import __version__
 from services.inference_api.routers import cameras, config, eval, stream, system, tracks
+from services.inference_api.security import cors_origins
 from services.inference_api.state import StreamManager
+
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+    except (AttributeError, ValueError):
+        pass
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("aura.api")
@@ -49,11 +57,14 @@ def create_app(cfg=None) -> FastAPI:
         "(araç/plaka/sürücü/hız + QoD). MJPEG + WS iki-kanal akış.",
         lifespan=lifespan,
     )
+    # CORS allowlist (SEC-001): '*' yerine env-yapilandirilir liste. Varsayilan
+    # localhost + dashboard same-origin → yerel demo bozulmaz; AURA_CORS_ORIGINS
+    # ile genisletilir. Token basligina (X-AURA-Token) izin verilir.
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_origins=cors_origins(),
+        allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Content-Type", "X-AURA-Token", "Authorization"],
     )
     app.state.stream = StreamManager(cfg)
 

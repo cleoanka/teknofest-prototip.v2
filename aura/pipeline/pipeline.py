@@ -176,6 +176,13 @@ class Pipeline:
             int(cfg.get("tracking.min_output_frames", self.min_track_frames)),
         )
         self._track_age: dict[int, int] = {}
+        # MEM-005 bellek hijyeni: pipeline'ın per-track sözlükleri (_track_age/
+        # _area_hist) için son-görülme karesi. prune() max_age'den eski (artık
+        # görünmeyen) track'leri düşürür — kısa kesinti/oklüzyonda (recycled id,
+        # max_age grace içinde) kümülatif age KORUNUR (davranış-koruyan; immediate
+        # set-fark çıktı kapısını bozardı). speed/driver_lock ile aynı grace deseni.
+        self._track_max_age = int(cfg.get("tracking.max_age", 30))
+        self._track_last_seen: dict[int, int] = {}
         # Sahne-seviyesi tabela takibi: aktif hız limitini çıkarır (ID-merkezli akışın yanında)
         self.sign_tracker = SignTracker(cfg)
         self.emitter = EventEmitter()  # event/annotation'ları downstream'e yayınlar
@@ -245,13 +252,16 @@ class Pipeline:
             # hız genişlik-önseli, accumulator, annotation, event'ler aynı kararlı sınıfı görür.
             _h, _w = frame.shape[0], frame.shape[1]
             _area_norm = (det.bbox.width * det.bbox.height) / max(1.0, float(_h * _w))
-            det.bbox.cls = self.cls_voter.update(tid, det.bbox.cls, det.bbox.conf, _area_norm)
+            det.bbox.cls = self.cls_voter.update(
+                tid, det.bbox.cls, det.bbox.conf, _area_norm, frame_idx=idx
+            )
 
             # Ağır aşama kapısı: yeni doğan track min_track_frames kare görülmeden
             # ağır aşamalara (driver_state/plaka OCR) girmez (maliyet koruması).
             # (Gerçek video_3 dersi: ByteTrack parçalanması 2-karelik hayalet 'truck'
             # track'leri doğuruyor — bunlar kanıt videosuna/dashboard'a sızmamalı.)
             age = self._track_age[tid] = self._track_age.get(tid, 0) + 1
+            self._track_last_seen[tid] = idx  # MEM-005: prune grace için son-görülme
             if age < self.min_track_frames:
                 # Hız geçmişi yine de biriksin: gerçek track ise km/h erken otursun.
                 self.speed.update(tid, det.bbox, idx, frame.shape)
@@ -322,7 +332,9 @@ class Pipeline:
             driver = self.driver.process(tid, driver_roi, idx, aux_flags=aux_flags)
 
             # Plaka OCR: ilgili ROI'den oku; track'e göre sonucu biriktirir/günceller.
-            plate = self.plate.update(tid, plate_roi, det.bbox, frame.shape, frame=frame)
+            plate = self.plate.update(
+                tid, plate_roi, det.bbox, frame.shape, frame=frame, frame_idx=idx
+            )
             # Hız tahmini: bbox'ın kareler arası hareketinden km/s ve göreli hız bayrağı.
             # LP dedektörü bu karede plakayı bulduysa (last_plate_bbox), 520 mm referanslı
             # en kesin ppm örneğini oto-kalibrasyona besle → daha hızlı/doğru km/h.
@@ -331,10 +343,14 @@ class Pipeline:
             )
             # göreli hız bayrağını da 16/8 süzgecinden geçir (eşik civarı salınımı önle)
             speed.relative_velocity_flag = bool(
-                self.stability.update(f"{tid}:speed.rel", speed.relative_velocity_flag)
+                self.stability.update(
+                    f"{tid}:speed.rel", speed.relative_velocity_flag, frame_idx=idx
+                )
             )
             # swerving bayrağı da 16/8 süzgecinden geçer (tek pencerelik zigzag FP'si elenir)
-            speed.swerving = bool(self.stability.update(f"{tid}:speed.swerve", speed.swerving))
+            speed.swerving = bool(
+                self.stability.update(f"{tid}:speed.swerve", speed.swerving, frame_idx=idx)
+            )
             if speed.swerving:
                 # Dikkatsiz sürüş kritik andır: delil kalitesi için QoD optimize iste.
                 self.qod.request_optimize(tid, "swerving")
@@ -416,6 +432,26 @@ class Pipeline:
         self.speed.prune(
             idx
         )  # giden track'lerin hız/kalibrasyon durumunu düşür (bellek + tripwire bayat-durum)
+        # Uzun-süreli akış bellek hijyeni (DF-001/MEM-001..004): kalan per-track
+        # sözlüklerini de giden track'ler için düşür. Hepsi max_age GRACE'li
+        # (_last_seen/_track_last_seen tabanlı) → kısa oklüzyon/recycled-id davranışı
+        # KORUNUR; yalnız max_age'den uzun süredir görünmeyen track durumu düşer.
+        self.plate.prune(idx)  # MEM-001/CL-003/DF-002: plaka _state/_pools/_reads
+        self.acc.prune(idx)  # DF-001/MEM-002: accumulator.tracks bayat kayıtları
+        self.stability.prune_aged(idx)  # MEM-003: 16/8 pencere/commit (track-bazlı)
+        self.cls_voter.prune_aged(idx)  # MEM-004: sınıf-oyu sözlüğü
+        # MEM-005: pipeline'ın kendi per-track sözlükleri (_area_hist yaklaşma-deque,
+        # _track_age kümülatif görünürlük) giden track'ler için kalıcı birikiyordu.
+        # max_age grace'li (speed/driver_lock deseni): yalnız max_age'den UZUN süredir
+        # görünmeyen track düşer. DAVRANIŞ-KORUYAN: kısa kesinti/oklüzyonda kümülatif
+        # age korunur → çıktı kapısı (min_output_frames) etkilenmez.
+        dead_tracks = [
+            tid for tid, seen in self._track_last_seen.items() if idx - seen > self._track_max_age
+        ]
+        for tid in dead_tracks:
+            self._track_age.pop(tid, None)
+            self._area_hist.pop(tid, None)
+            self._track_last_seen.pop(tid, None)
         self.qod.tick()  # QoD zamanlayıcısını bir adım ilerlet (süresi dolan optimizasyonları kapat)
         events.extend(self.qod.drain_events())  # QoD'un kendi ürettiği event'leri (aç/kapa) topla
 
