@@ -14,10 +14,26 @@ Reader içindeki MEVCUT CLAHE+2x varyantı (`_enhance`, ikinci-şans okuma) ile
 
 from __future__ import annotations
 
+import functools
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     import numpy as np
+
+
+@functools.lru_cache(maxsize=16)
+def _gamma_lut(gamma: float):
+    """gamma → 256-elemanlı LUT (önbellekli).
+
+    PERF: gamma config'te SABİT olduğundan LUT her enhance çağrısında 256-elemanlı
+    listcomp ile yeniden üretilmesin diye gamma anahtarıyla cache'lenir. Davranış
+    aynı (aynı gamma → bitsel aynı LUT). lru_cache sınırlı (maxsize) → bellek sabit.
+    """
+    import numpy as np
+
+    inv = 1.0 / gamma
+    lut = np.array([((i / 255.0) ** inv) * 255.0 for i in range(256)], dtype="float32")
+    return np.clip(lut, 0, 255).astype("uint8")
 
 
 def enhance_plate(img: np.ndarray | None, cfg) -> np.ndarray | None:
@@ -30,7 +46,6 @@ def enhance_plate(img: np.ndarray | None, cfg) -> np.ndarray | None:
     if img is None or getattr(img, "size", 0) == 0:
         return img
     import cv2
-    import numpy as np
 
     clip = float(cfg.get("plate.enhance.clahe_clip", 2.5))
     gamma = float(cfg.get("plate.enhance.gamma", 1.2))
@@ -49,10 +64,7 @@ def enhance_plate(img: np.ndarray | None, cfg) -> np.ndarray | None:
 
     # 2) Gamma düzeltmesi: gamma>1 karanlık tonları açar (LUT ile hızlı/deterministik).
     if abs(gamma - 1.0) > 1e-3 and gamma > 0:
-        inv = 1.0 / gamma
-        lut = np.array([((i / 255.0) ** inv) * 255.0 for i in range(256)], dtype="float32")
-        lut = np.clip(lut, 0, 255).astype("uint8")
-        out = cv2.LUT(out, lut)
+        out = cv2.LUT(out, _gamma_lut(gamma))
 
     # 3) Hafif unsharp mask: orijinal + (orijinal − blur) ile kenarları netleştir.
     blur = cv2.GaussianBlur(out, (0, 0), sigmaX=1.0)

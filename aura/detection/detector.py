@@ -66,13 +66,23 @@ class Detector(ABC):
     """
 
     #: Son karede tespit edilen kişiler (her detect() çağrısında güncellenir)
-    last_persons: list[Person] = []
+    last_persons: list[Person]
     #: Son karede tespit edilen trafik tabelaları (her detect() çağrısında güncellenir)
-    last_signs: list[Sign] = []
+    last_signs: list[Sign]
     #: Son karede tespit edilen yardımcı kanıt nesneleri (kanonik adlarıyla, ör.
     #: 'phone'/'smoking') — pipeline bunları araç kabinine düşüyorsa sürücü durumuyla
     #: füzyon eder. Üretmeyen implementasyonlar boş bırakır.
-    last_aux: list[BBox] = []
+    last_aux: list[BBox]
+
+    def __init__(self) -> None:
+        # ÖNEMLİ: bu listeler ÖRNEK-seviyesi olmalı. Sınıf-seviyesi mutable varsayılan
+        # (eski hata) tüm dedektör örneklerinin AYNI listeyi paylaşmasına yol açıyordu
+        # (klasik mutable-default tuzağı). Alt sınıflar super().__init__() çağırmasa da
+        # güvende kalmak için detect() içinde de yeniden atanır; yine de taban burada
+        # temiz bir başlangıç durumu sağlar.
+        self.last_persons = []
+        self.last_signs = []
+        self.last_aux = []
 
     @abstractmethod
     def detect(self, frame: np.ndarray) -> list[Detection]:

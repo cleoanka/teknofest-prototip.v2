@@ -27,10 +27,29 @@ class Accumulator:
         # Sahne-seviyesi aktif hız limiti (SignTracker → set_scene). risk eval'de
         # 'speed.over_limit' koşulu bunu araç hızıyla karşılaştırır. None → kural pasif.
         self.active_speed_limit: int | None = None
+        # Frame-tabanlı saat (pipeline idx/fps ile besler). Üretilen event'lerin ts'i
+        # buradan alınır → QoDController ile AYNI zaman ekseni (offline eval'de
+        # tekrar-üretilebilirlik: ts wall-clock time.time() yerine deterministik).
+        # None → make_event varsayılanına (wall-clock) düşer (geriye dönük uyum).
+        self._now: float | None = None
+        # risk kurallarını __init__'te ön-derle (token bazlı string-parse'ı her frame
+        # tekrarlama; davranış aynı, yalnız bir kez ayrıştırılır). Her kural:
+        # (name, [token,...]). Boş kural listesinde _evaluate_risk erken döner.
+        self._compiled_rules: list[tuple[str, list[str]]] = [
+            (r.get("name", "risk"), r.get("all_of", []) or []) for r in self.rules
+        ]
+
+    def set_now(self, now: float) -> None:
+        """Frame-tabanlı zaman ekseni (idx/fps). Pipeline her frame çağırır."""
+        self._now = now
 
     def set_scene(self, scene: SceneContext) -> None:
         """Kare-başı sahne bağlamını güncelle — track risk eval'inden ÖNCE çağrılır."""
         self.active_speed_limit = scene.active_speed_limit_kmh
+
+    def _event(self, track_id: int, type_: str, payload: dict):
+        """make_event sarmalayıcı — frame-saatini (varsa) ts olarak geçirir."""
+        return make_event(track_id, type_, payload, ts=self._now)
 
     # --- ana giriş noktası ------------------------------------------------- #
     def update_track(
@@ -59,7 +78,7 @@ class Accumulator:
             )
             self.tracks[track_id] = rec
             events.append(
-                make_event(
+                self._event(
                     track_id,
                     "DETECTION_UPDATE",
                     {
@@ -77,13 +96,17 @@ class Accumulator:
             rec.vehicle_class = vehicle_class
 
         if driver is not None:
-            if driver.active_flags() != rec.driver.active_flags():
+            # active_flags() bir list comprehension — değişim dalında iki kez (karşılaştırma
+            # + payload) çağrılıyordu; tek seferde hesapla ve yeniden kullan (per-frame
+            # allocation azalt; davranış aynı).
+            new_flags = driver.active_flags()
+            if new_flags != rec.driver.active_flags():
                 events.append(
-                    make_event(
+                    self._event(
                         track_id,
                         "DRIVER_STATE",
                         {
-                            "flags": driver.active_flags(),
+                            "flags": new_flags,
                             "confidence": driver.confidence,
                         },
                     )
@@ -97,7 +120,7 @@ class Accumulator:
             rec.plate = plate.model_copy(deep=True)
             if plate.status == "confirmed" and prev_status != "confirmed":
                 events.append(
-                    make_event(
+                    self._event(
                         track_id,
                         "PLATE_CONFIRMED",
                         {
@@ -108,7 +131,7 @@ class Accumulator:
                 )
             elif plate.status == "rejected" and prev_status != "rejected":
                 events.append(
-                    make_event(
+                    self._event(
                         track_id,
                         "PLATE_REJECTED",
                         {
@@ -127,7 +150,7 @@ class Accumulator:
                 or speed.swerving != prev.swerving
             ):
                 events.append(
-                    make_event(
+                    self._event(
                         track_id,
                         "SPEED",
                         {
@@ -158,7 +181,7 @@ class Accumulator:
                     else None
                 )
                 events.append(
-                    make_event(
+                    self._event(
                         track_id,
                         "SPEED_LIMIT_VIOLATION",
                         {
@@ -170,17 +193,18 @@ class Accumulator:
                     )
                 )
             else:
-                events.append(make_event(track_id, "RISK_ALERT", {"rule": rule_name}))
+                events.append(self._event(track_id, "RISK_ALERT", {"rule": rule_name}))
 
         return rec, events
 
     # --- risk kuralları ---------------------------------------------------- #
     def _evaluate_risk(self, rec: TrackRecord) -> list[str]:
+        if not self._compiled_rules:
+            return []  # kural yoksa erken çık (boş-yapılandırma ucuz yolu)
         fired = []
-        for rule in self.rules:
-            conds = rule.get("all_of", [])
+        for name, conds in self._compiled_rules:
             if conds and all(self._cond(rec, c) for c in conds):
-                fired.append(rule.get("name", "risk"))
+                fired.append(name)
         return fired
 
     def _cond(self, rec: TrackRecord, token: str) -> bool:

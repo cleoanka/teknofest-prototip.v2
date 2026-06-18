@@ -52,3 +52,73 @@ def test_independent_keys(cfg):
 def test_initial_default_false(cfg):
     st = StabilityTracker(cfg)
     assert st.update("k", True) is False  # ilk kare: kanıt yok → False
+
+
+# --- non-bool değer: _default passthrough (değer döner, False değil) -----------
+def test_non_bool_value_passthrough_before_commit():
+    # bool olmayan değer için _default değeri AYNEN döndürür (False değil).
+    class _Cfg:
+        def get(self, k, d=None):
+            return {"stability.window": 16, "stability.min_consistent": 8}.get(k, d)
+
+    st = StabilityTracker(_Cfg())
+    # tek gözlem, henüz commit yok → _default(value) = value (string passthrough)
+    assert st.update("speed", "fast") == "fast"
+
+
+def test_non_bool_value_commits_after_consensus():
+    class _Cfg:
+        def get(self, k, d=None):
+            return {"stability.window": 16, "stability.min_consistent": 8}.get(k, d)
+
+    st = StabilityTracker(_Cfg())
+    last = None
+    for _ in range(8):
+        last = st.update("speed", "fast")
+    assert last == "fast" and st.committed("speed") == "fast"
+
+
+# --- pencere yeniden-boyutlama (maxlen değişimi içeriği koruyarak deque'i kurar) ---
+def test_window_resize_rebuilds_deque_preserving_content():
+    class _Cfg:
+        def __init__(self, w, m):
+            self._d = {"stability.window": w, "stability.min_consistent": m}
+
+        def get(self, k, d=None):
+            return self._d.get(k, d)
+
+    st = StabilityTracker(_Cfg(16, 8))
+    for _ in range(4):
+        st.update("k", True)
+    assert st.support("k", True) == 4
+    # pencereyi küçült: mevcut içerik korunarak yeni maxlen'li deque kurulmalı
+    st.window = 2
+    st.update("k", True)  # resize tetiklenir; eski içerikten son 2 öğe + yeni = maxlen 2
+    w = st._windows["k"]
+    assert w.maxlen == 2 and len(w) == 2
+
+
+# --- reset(key) vs reset(None) ------------------------------------------------
+def test_reset_single_key(cfg):
+    st = StabilityTracker(cfg)
+    for _ in range(8):
+        st.update("a", True)
+        st.update("b", True)
+    st.reset("a")
+    assert st.committed("a") is None and st.support("a", True) == 0
+    assert st.committed("b") is True  # b etkilenmedi
+
+
+def test_reset_all(cfg):
+    st = StabilityTracker(cfg)
+    for _ in range(8):
+        st.update("a", True)
+        st.update("b", True)
+    st.reset()
+    assert st.committed("a") is None and st.committed("b") is None
+    assert st._windows == {}
+
+
+def test_support_unknown_key_zero(cfg):
+    st = StabilityTracker(cfg)
+    assert st.support("nope", True) == 0

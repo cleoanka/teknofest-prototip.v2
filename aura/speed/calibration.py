@@ -20,6 +20,7 @@ döndürür → çağıran metrik iddiada bulunmaz (is_calibrated=False).
 from __future__ import annotations
 
 from collections import deque
+from itertools import islice
 
 import numpy as np
 
@@ -251,18 +252,22 @@ class MetricSpeedEstimator:
 
     def _window_steps(self, track: SpeedTrack):
         """Pencere içindeki ardışık kare çiftleri için (dt, anlık_hız_mps) listesi."""
-        foots = list(track.foot_history)
-        tss = list(track.ts_history)
+        n = len(track.foot_history)
         window = max(1, getattr(self.s, "speed_window_frames", 6))
+        start = max(1, n - window)
+        # Yalnız gereken kuyruğu (start-1 .. n) islice ile al — 16-derin geçmişi her
+        # kare iki kez list()'e kopyalama; kare-başı tahsisi azaltır (K-004 davranış aynı).
+        foots = list(islice(track.foot_history, start - 1, n))
+        tss = list(islice(track.ts_history, start - 1, n))
         steps = []
-        for i in range(max(1, len(foots) - window), len(foots)):
-            t0, t1 = tss[i - 1], tss[i]
+        for j in range(1, len(foots)):
+            t0, t1 = tss[j - 1], tss[j]
             if t0 is None or t1 is None:
                 continue
             dt = t1 - t0
             if dt <= 0:
                 continue
-            meters = self._step_meters(foots[i - 1], foots[i])
+            meters = self._step_meters(foots[j - 1], foots[j])
             if meters is None:
                 continue
             steps.append((dt, meters / dt))

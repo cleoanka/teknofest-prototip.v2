@@ -13,6 +13,8 @@ import logging
 import re
 from typing import TYPE_CHECKING
 
+import cv2  # modül-düzeyi (eskiden her sıcak-yol çağrısında fonksiyon içinde import ediliyordu)
+
 from aura.optional.loader import get_optional
 from aura.plate.dewarp import dewarp_plate
 from aura.plate.enhance import enhance_plate
@@ -178,8 +180,6 @@ class PlateReader:
         if crop.size == 0:
             return plate_roi, None, None
         if crop.shape[0] < 48:  # küçük plaka: OCR öncesi 2x büyüt
-            import cv2
-
             crop = cv2.resize(crop, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
         return crop, lp_h, lp_box
 
@@ -192,8 +192,6 @@ class PlateReader:
         (güvenli kimlik — keskinlik bilinmiyorsa ağırlık kısılmaz)."""
         if img is None or getattr(img, "size", 0) == 0:
             return 1.0
-        import cv2
-
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img.ndim == 3 else img
         var = float(cv2.Laplacian(gray, cv2.CV_64F).var())
         full = max(self._sharp_var_full, 1e-6)
@@ -211,8 +209,6 @@ class PlateReader:
             return img
         if img.shape[0] >= self._cu_min_h_px:
             return img  # büyük/net kırpık — dokunma
-        import cv2
-
         up = cv2.resize(
             img, None, fx=self._cu_scale, fy=self._cu_scale, interpolation=cv2.INTER_LANCZOS4
         )
@@ -224,8 +220,6 @@ class PlateReader:
     @staticmethod
     def _enhance(img: np.ndarray) -> np.ndarray:
         """CLAHE + 2x büyütme varyantı (karanlık/küçük plaka için ikinci şans)."""
-        import cv2
-
         up = cv2.resize(img, None, fx=2.0, fy=2.0, interpolation=cv2.INTER_CUBIC)
         lab = cv2.cvtColor(up, cv2.COLOR_BGR2LAB)
         lab_l, lab_a, lab_b = cv2.split(lab)
@@ -336,7 +330,12 @@ class PlateReader:
             if self._enhance_enabled:
                 crop = enhance_plate(crop, self.cfg)
         text, conf = self.ocr.read(crop, vehicle_crop)
-        pool = self._pools.setdefault(track_id, PlateVotePool(**self._pool_kwargs))
+        # setdefault yerine 'if not in': setdefault argümanı eager değerlendirilir →
+        # track zaten varsa her karede boş yere bir PlateVotePool (+kwargs) kurulup
+        # atılırdı (per-frame çöp). Bu kalıp gereksiz allocation'ı önler.
+        pool = self._pools.get(track_id)
+        if pool is None:
+            pool = self._pools[track_id] = PlateVotePool(**self._pool_kwargs)
         pool.add(text, conf, weight=size_w)
         if (
             self._second_variant

@@ -12,6 +12,7 @@ from aura.eval.report import (
     plate_metrics,
     pred_from_summary,
     render_markdown,
+    speed_metrics,
     vehicle_class_accuracy,
 )
 
@@ -193,6 +194,97 @@ def test_build_report_links_map_report_when_present(tmp_path):
     assert "0.512" in md and "0.781" in md  # gerçek sayılar tabloya işlendi
     assert "| car |" in md  # sınıf-bazlı tablo
     assert "henüz üretilmedi" not in md.lower()
+
+
+# --- pred_from_summary: hız medyanı + araç-sınıfı fallback dalları ----------- #
+def test_pred_from_summary_speed_median_calibrated_only():
+    # Yalnız is_calibrated track'ler sayılır; medyan = 50.0 (40,50,60 → 50)
+    summary = {
+        "tracks": [
+            {"speed_is_calibrated": True, "speed_kmh": 40.0, "driver_flag_frames": {}},
+            {"speed_is_calibrated": True, "speed_kmh": 60.0, "driver_flag_frames": {}},
+            {"speed_is_calibrated": True, "speed_kmh": 50.0, "driver_flag_frames": {}},
+            # kalibre değil → atlanır (değeri medyanı bozmaz)
+            {"speed_is_calibrated": False, "speed_kmh": 999.0, "driver_flag_frames": {}},
+        ]
+    }
+    pred = pred_from_summary(summary)
+    assert pred["speed_kmh"] == 50.0
+
+
+def test_pred_from_summary_speed_none_when_no_calibrated():
+    summary = {"tracks": [{"speed_kmh": 80.0, "driver_flag_frames": {}}]}  # is_calibrated yok
+    assert pred_from_summary(summary)["speed_kmh"] is None
+
+
+def test_pred_from_summary_vehicle_class_fallback_without_plate():
+    # plaka yok ama araç sınıfı var → son track'ten cls alınır (fallback dalı)
+    summary = {"tracks": [{"vehicle_class": "truck", "driver_flag_frames": {}}]}
+    pred = pred_from_summary(summary)
+    assert pred["plate"] is None
+    assert pred["vehicle_class"] == "truck"
+
+
+# --- speed_metrics: None (GT yok) vs dolu (MAE/MAPE) ------------------------- #
+def test_speed_metrics_none_when_no_gt_speed():
+    # GT'de real_speed_kmh yok → None (komite verisi gelmeden iddia yok, K-004)
+    pairs = [({"real_speed_kmh": None}, {"speed_kmh": 50.0})]
+    assert speed_metrics(pairs) is None
+
+
+def test_speed_metrics_none_when_no_pred_speed():
+    pairs = [({"real_speed_kmh": 50.0}, {"speed_kmh": None})]
+    assert speed_metrics(pairs) is None
+
+
+def test_speed_metrics_computes_mae_mape():
+    pairs = [
+        ({"real_speed_kmh": 50.0}, {"speed_kmh": 55.0}),
+        ({"real_speed_kmh": 100.0}, {"speed_kmh": 90.0}),
+    ]
+    sp = speed_metrics(pairs)
+    assert sp is not None
+    assert sp["n"] == 2
+    assert sp["mae_kmh"] == 7.5  # (|55-50| + |90-100|)/2 = (5+10)/2
+    assert sp["mape_pct"] == 10.0  # (10% + 10%)/2
+
+
+# --- render_markdown: hız satırı ekleme/atlama ------------------------------- #
+def _report_with_detector(speed):
+    return {
+        "min_frames": 3,
+        "detectors": {
+            "yolo26l": {
+                "videos": ["v1"],
+                "mean_fps": 25.0,
+                "vehicle_class_accuracy": 100.0,
+                "plate": {
+                    "correct": 1,
+                    "total": 1,
+                    "accuracy": 100.0,
+                    "mean_cer": 0.0,
+                    "confirmed": 1,
+                    "partial": 0,
+                },
+                "behavior": behavior_metrics([]),
+                "speed": speed,
+                "per_video": [
+                    {"video": "v1", "gt": {"plate": "34TC8532"}, "pred": {"plate": "34TC8532"}}
+                ],
+            }
+        },
+    }
+
+
+def test_render_markdown_includes_speed_line_when_present():
+    md = render_markdown(_report_with_detector({"mae_kmh": 7.5, "mape_pct": 10.0, "n": 2}))
+    assert "Hız doğruluğu" in md
+    assert "MAE=7.5" in md
+
+
+def test_render_markdown_omits_speed_line_when_none():
+    md = render_markdown(_report_with_detector(None))
+    assert "Hız doğruluğu" not in md  # GT yoksa satır eklenmez (sessiz atla)
 
 
 def test_build_report_honest_note_when_map_absent(tmp_path, monkeypatch):

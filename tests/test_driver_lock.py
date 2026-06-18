@@ -187,3 +187,53 @@ def test_locked_passenger_excluded_from_other_vehicle(cfg):
     out = lock.assign_frame([(1, a), (2, b)], [_person(7, 40, 90), _person(8, 120, 30)], 3)
     assert 8 in out[0].passenger_ids  # hâlâ A'nın yolcusu
     assert out[1].driver_id != 8  # B 8'i sürücü yapamaz
+
+
+# --- DISABLED yol ------------------------------------------------------------ #
+
+
+def test_disabled_update_returns_empty_assignment(cfg):
+    """enabled=False → update boş DriverAssignment döner (atama yapılmaz)."""
+    cfg.data.setdefault("driver_lock", {})["enabled"] = False
+    lock = DriverLock(cfg)
+    v = _vehicle()
+    a = lock.update(1, v, [_person(7, 85, 85), _person(8, 20, 20)], 0)
+    assert a.vehicle_id == 1
+    assert a.driver_id is None and a.locked is False
+    assert a.passenger_ids == [] and a.locked_passenger_ids == []
+
+
+def test_disabled_assign_frame_returns_empty_per_vehicle(cfg):
+    """enabled=False → assign_frame her araç için boş atama döner (sıra korunur)."""
+    cfg.data.setdefault("driver_lock", {})["enabled"] = False
+    lock = DriverLock(cfg)
+    a = BBox(x1=0, y1=0, x2=100, y2=100, conf=0.9, cls="car")
+    b = BBox(x1=200, y1=0, x2=300, y2=100, conf=0.9, cls="car")
+    out = lock.assign_frame([(5, a), (6, b)], [_person(7, 80, 80)], 0)
+    assert [o.vehicle_id for o in out] == [5, 6]
+    assert all(o.driver_id is None for o in out)
+
+
+# --- yolcu sahipliği döngüsü (prune sonrası serbest bırakma) ----------------- #
+
+
+def test_passenger_ownership_released_after_prune(cfg):
+    """A prune edilince A'nın kilitli yolcusunun GLOBAL sahipliği serbest kalır;
+    aynı kişi başka bir araca yeniden atanabilir (sahiplik döngüsü)."""
+    lock = DriverLock(cfg)
+    a = BBox(x1=0, y1=0, x2=100, y2=100, conf=0.9, cls="car")
+    drv = _person(7, 40, 90)
+    pas = _person(8, 60, 30)
+    for i in range(3):  # 8'i A'da yolcu olarak kilitle
+        lock.assign_frame([(1, a)], [drv, pas], i)
+    assert 8 in lock.passengers_of(1)
+    assert lock._passenger_owner.get(8) == 1  # global sahiplik kuruldu
+
+    lock.prune(frame_idx=2 + lock.max_age + 1)  # A bayatladı → tüm durumu unut
+    assert 8 not in lock._passenger_owner  # sahiplik serbest bırakıldı
+    assert lock.passengers_of(1) == set()
+
+    # Şimdi 8 yeni araç B'ye serbest kişi olarak atanabilir (sürücü bile olabilir).
+    b = BBox(x1=200, y1=0, x2=300, y2=100, conf=0.9, cls="car")
+    out = lock.assign_frame([(2, b)], [_person(8, 280, 90)], 200)
+    assert out[0].driver_id == 8  # yeniden serbest → B'nin sürücüsü olabildi

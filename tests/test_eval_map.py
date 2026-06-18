@@ -145,5 +145,100 @@ def test_render_markdown_includes_map_when_present():
     assert "PR eğrisi" in md
 
 
+# --------------------------------------------------------------------------- #
+# _class_table / _find_pr_curve dal kapsamı (sürüm-kırılgan yardımcılar)
+# --------------------------------------------------------------------------- #
+from aura.eval.map_eval import _class_table, _find_pr_curve, _safe_float  # noqa: E402
+
+
+def test_safe_float_invalid_returns_none():
+    assert _safe_float("abc") is None
+    assert _safe_float(None) is None
+    assert _safe_float(0.61239) == 0.6124  # 4 hane yuvarlama
+
+
+def test_class_table_no_box_returns_empty():
+    class _M:
+        box = None
+
+    assert _class_table(_M(), {0: "car"}) == []
+
+
+def test_class_table_no_maps_returns_empty():
+    class _Box:
+        maps = None
+        ap_class_index = [0]
+
+    class _M:
+        box = _Box()
+
+    assert _class_table(_M(), {0: "car"}) == []
+
+
+def test_class_table_index_none_uses_enumerate():
+    # ap_class_index None → enumerate(maps) ile pozisyonel class_id (else-dalı)
+    class _Box:
+        maps = [0.5, 0.7]
+        ap_class_index = None
+
+    class _M:
+        box = _Box()
+
+    table = _class_table(_M(), {0: "car", 1: "plate"})
+    assert [r["class_id"] for r in table] == [0, 1]
+    assert [r["class_name"] for r in table] == ["car", "plate"]
+    assert table[0]["map50_95"] == 0.5
+
+
+def test_class_table_index_none_unknown_name_falls_back_to_str():
+    class _Box:
+        maps = [0.5]
+        ap_class_index = None
+
+    class _M:
+        box = _Box()
+
+    table = _class_table(_M(), None)  # names yok → str(ci)
+    assert table[0]["class_name"] == "0"
+
+
+def test_class_table_index_out_of_range_caught():
+    # maps[ci] IndexError → except dalı: boş tablo (raporu düşürmez)
+    class _Box:
+        maps = [0.5]  # tek eleman
+        ap_class_index = [0, 5]  # 5 sınırların dışında
+
+    class _M:
+        box = _Box()
+
+    assert _class_table(_M(), {0: "car"}) == []
+
+
+def test_find_pr_curve_none_save_dir():
+    assert _find_pr_curve(None) is None
+
+
+def test_find_pr_curve_missing_dir():
+    assert _find_pr_curve("/yok/olmayan/dizin/xyz") is None
+
+
+def test_find_pr_curve_named_file(tmp_path):
+    (tmp_path / "PR_curve.png").write_bytes(b"\x89PNG")
+    found = _find_pr_curve(tmp_path)
+    assert found is not None and found.endswith("PR_curve.png")
+
+
+def test_find_pr_curve_glob_fallback(tmp_path):
+    # standart adlar yok ama *PR_curve.png glob'u bulur
+    (tmp_path / "BoxF1PR_curve.png").write_bytes(b"\x89PNG")
+    found = _find_pr_curve(tmp_path)
+    assert found is not None and found.endswith("PR_curve.png")
+
+
+def test_find_pr_curve_no_match(tmp_path):
+    (tmp_path / "results.png").write_bytes(b"\x89PNG")
+    assert _find_pr_curve(tmp_path) is None
+
+
 if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(pytest.main([__file__, "-q"]))

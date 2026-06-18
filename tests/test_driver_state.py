@@ -42,3 +42,35 @@ def test_build_falls_back_to_mock_and_handles_none(cfg):
     clf = build_driver_classifier(cfg)
     assert isinstance(clf, MockDriverClassifier)
     assert clf.infer(None).active_flags() == []
+
+
+def test_mock_accepts_track_id_kwarg(cfg):
+    """Liskov: mock infer artık track_id kabul eder (ABC sözleşmesiyle uyumlu).
+
+    Önceden mock track_id ALMIYORDU ve engine._infer TypeError'ı yakalayıp ikinci
+    kez çağırarak maskeliyordu. Artık imza tutarlı → maskeleme gerekmez.
+    """
+    clf = MockDriverClassifier(cfg)
+    a1 = clf.infer(_cabin((90, 200, 255)), track_id=7)  # araç 1: telefon + kemer
+    assert a1.phone is True and a1.seatbelt is True
+    # track_id durumsuz mock'ta sonucu DEĞİŞTİRMEZ (yok sayılır)
+    a2 = clf.infer(_cabin((90, 200, 255)), track_id=None)
+    assert a2.phone is True and a2.seatbelt is True
+
+
+def test_mock_no_state_beyond_max_dist(cfg):
+    """Renk en yakın referanstan max_dist'ten uzaksa → durum YOK (arka plan)."""
+    clf = MockDriverClassifier(cfg)
+    clf.max_dist = 160.0
+    # araç-1 ref (90,200,255)'e uzak bir renk seç (gri-yeşil): tüm ref'lerden >160
+    far = clf.infer(_cabin((10, 10, 10)))  # neredeyse siyah
+    assert far.active_flags() == []
+    assert far.confidence == {}
+
+
+def test_mock_within_max_dist_yields_state(cfg):
+    """max_dist içindeki renk → en yakın referansın bayrakları üretilir."""
+    clf = MockDriverClassifier(cfg)
+    # araç-1 ref'ine YAKIN (hafif kaydırılmış) renk: eşik içinde kalır
+    ds = clf.infer(_cabin((95, 195, 250)))
+    assert ds.phone is True and ds.seatbelt is True

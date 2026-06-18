@@ -24,6 +24,7 @@ log = logging.getLogger("aura.detection.yolo")
 
 class YOLO26Detector(Detector):
     def __init__(self, cfg):
+        super().__init__()  # last_persons/last_signs/last_aux'u örnek-seviyesinde kur
         from ultralytics import YOLO
 
         # Yol repo köküne göre çözülür (CWD-bağımsız); yapılandırılan ağırlık yoksa
@@ -42,6 +43,8 @@ class YOLO26Detector(Detector):
         self.iou = float(cfg.get("models.detector.iou", 0.45))
         self.imgsz = int(cfg.get("models.detector.imgsz", 640))
         self.tracker = str(cfg.get("tracking.tracker", "bytetrack"))
+        # ultralytics'in beklediği yaml adını bir kez kur (her karede string kurma yok).
+        self.tracker_yaml = f"{self.tracker}.yaml"
         vc = cfg.get("models.detector.vehicle_classes", [])
         self.vehicle_classes = set(vc) if vc else set()
         # Sürücü kilidi için kişi sınıfları (aynı ByteTrack geçişinde toplanır)
@@ -81,7 +84,7 @@ class YOLO26Detector(Detector):
             conf=self.conf,
             iou=self.iou,
             imgsz=self.imgsz,
-            tracker=f"{self.tracker}.yaml",
+            tracker=self.tracker_yaml,
             device=self.device,
             verbose=False,
         )
@@ -148,13 +151,18 @@ class YOLO26Detector(Detector):
         return dets
 
     @staticmethod
-    def _iou(a: BBox, b: BBox) -> float:
+    def _iou(a: BBox, b: BBox, area_a: float | None = None, area_b: float | None = None) -> float:
         ix1, iy1 = max(a.x1, b.x1), max(a.y1, b.y1)
         ix2, iy2 = min(a.x2, b.x2), min(a.y2, b.y2)
         if ix2 <= ix1 or iy2 <= iy1:
             return 0.0
         inter = (ix2 - ix1) * (iy2 - iy1)
-        union = a.width * a.height + b.width * b.height - inter
+        # Alanlar verilmezse property'den hesapla (geriye uyum); _dedup önceden hesaplar.
+        if area_a is None:
+            area_a = a.width * a.height
+        if area_b is None:
+            area_b = b.width * b.height
+        union = area_a + area_b - inter
         return inter / union if union > 0 else 0.0
 
     def _dedup(self, dets: list[Detection]) -> list[Detection]:
@@ -168,8 +176,12 @@ class YOLO26Detector(Detector):
         if self.dedup_iou >= 1.0 or len(dets) < 2:
             return dets
         ordered = sorted(dets, key=lambda d: d.bbox.conf, reverse=True)
-        kept: list[Detection] = []
-        for d in ordered:
-            if not any(self._iou(k.bbox, d.bbox) >= self.dedup_iou for k in kept):
-                kept.append(d)
-        return kept
+        # Kutu alanlarını bir kez önceden hesapla (O(n^2) döngüde property çağrı yükü yok).
+        areas = [d.bbox.width * d.bbox.height for d in ordered]
+        kept: list[tuple[Detection, float]] = []
+        for d, area_d in zip(ordered, areas, strict=True):
+            if not any(
+                self._iou(k.bbox, d.bbox, area_k, area_d) >= self.dedup_iou for k, area_k in kept
+            ):
+                kept.append((d, area_d))
+        return [k for k, _ in kept]

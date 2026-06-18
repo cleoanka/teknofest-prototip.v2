@@ -48,13 +48,15 @@ def _run(cfg, source, scale: float = 1.0) -> dict:
             )
         anno, _ = pipe.process_frame(frame, i)
         H, W = frame.shape[:2]
-        area = max(1, W * H)
+        # Küçük-nesne eşiği: kare alanının %2'si. Çarpımı comprehension dışında bir
+        # kez hesapla (davranış aynı, per-track tekrar çarpımı önlenir).
+        small_thr = 0.02 * max(1, W * H)
         detected.append(len(anno.tracks))
         small.append(
             sum(
                 1
                 for t in anno.tracks
-                if (t["bbox"][2] - t["bbox"][0]) * (t["bbox"][3] - t["bbox"][1]) < 0.02 * area
+                if (t["bbox"][2] - t["bbox"][0]) * (t["bbox"][3] - t["bbox"][1]) < small_thr
             )
         )
         i += 1

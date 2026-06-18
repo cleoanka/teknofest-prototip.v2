@@ -43,8 +43,15 @@ class QoDController:
     # --- talepler ---------------------------------------------------------- #
     def request(self, track_id: int, kind: str, reason: str) -> None:
         """kind: 'quality' | 'optimize'. Histerezis kurallarına uyar."""
-        if track_id in self._sessions:
-            return  # zaten aktif (salınımı önle)
+        s = self._sessions.get(track_id)
+        if s is not None:
+            # Zaten aktif (salınımı önle): YENİ TRIGGER event'i üretme. Ancak tetikleyici
+            # HÂLÂ sürüyorsa (her frame request_optimize çağrılıyor) min_active sayacını
+            # tazele — yoksa tick() kritik an (swerving/yaklaşma) devam ederken oturumu
+            # min_active sonrası düşürür ve cooldown boyunca kapalı kalır (docstring'in
+            # 'LOW_LATENCY oturumu yaşamaya devam eder' niyetiyle çelişen bug).
+            s["since"] = self._now
+            return
         lr = self._last_release.get(track_id)
         if lr is not None and (self._now - lr) < self.cooldown:
             return  # cooldown içinde — yeniden tetikleme
@@ -64,6 +71,9 @@ class QoDController:
                     "kind": kind,
                     "reason": reason,
                 },
+                # frame-saatini ts olarak geçir → accumulator event'leriyle AYNI zaman
+                # ekseni (offline eval tekrar-üretilebilirlik; wall-clock kayması yok).
+                ts=self._now,
             )
         )
         log.debug("QoD TRIGGER track=%s %s (%s)", track_id, profile, reason)
@@ -76,18 +86,24 @@ class QoDController:
 
     # --- otomatik bırakma (histerezis) ------------------------------------ #
     def tick(self) -> None:
+        if not self._sessions:
+            return  # ucuz erken çıkış: çoğu frame'de oturum yok (gereksiz liste kopyası önlenir)
         for tid, s in list(self._sessions.items()):
             if self._now - s["since"] >= self.min_active:
                 del self._sessions[tid]
                 self._last_release[tid] = self._now
-                self._pending.append(make_event(tid, "QOD_RELEASE", {"profile": s["profile"]}))
+                self._pending.append(
+                    make_event(tid, "QOD_RELEASE", {"profile": s["profile"]}, ts=self._now)
+                )
                 log.debug("QoD RELEASE track=%s %s", tid, s["profile"])
 
     def release(self, track_id: int) -> None:
         s = self._sessions.pop(track_id, None)
         if s:
             self._last_release[track_id] = self._now
-            self._pending.append(make_event(track_id, "QOD_RELEASE", {"profile": s["profile"]}))
+            self._pending.append(
+                make_event(track_id, "QOD_RELEASE", {"profile": s["profile"]}, ts=self._now)
+            )
 
     def release_quality(self, track_id: int) -> None:
         """Yalnızca KALİTE oturumunu bırak (optimize oturumlarına dokunma).

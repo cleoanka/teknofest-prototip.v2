@@ -316,3 +316,31 @@ def test_confirm_min_char_margin_never_below_char_margin():
     # confirm_min < char_margin verilse bile char_margin'in altına düşmez (güvenlik).
     p = PlateVotePool(char_margin=1.8, confirm_min_char_margin=1.0)
     assert p.confirm_char_margin == 1.8
+
+
+# --- PERF: normalize_tr önbelleği (add()'te bir kez; davranış-koruyan) ---------
+def test_norm_cache_index_aligned_with_raw_reads():
+    # _norm her okuma için cache'lenir ve raw_reads ile İNDEKS-HİZALI olmalı:
+    # _norm[i] == normalize_tr(raw_reads[i][0]). (O(N²) yeniden-normalizasyonu önler.)
+    p = _pool()
+    samples = ["34TC8532", "041C8532", "8532", "INVALID", "O4TC8532"]
+    for s in samples:
+        p.add(s)
+    assert len(p._norm) == len(p.raw_reads)
+    for (raw, _), cached in zip(p.raw_reads, p._norm, strict=True):
+        assert cached == normalize_tr(raw)
+
+
+def test_norm_cache_does_not_change_consensus_result():
+    # Önbellek davranışı DEĞİŞTİRMEZ: cache'li sonuç, her seferinde yeniden normalize
+    # edilenle birebir aynı kazananı/güveni üretir (regresyon kapanı).
+    p = _pool()
+    for _ in range(6):
+        p.add("34TC8532", conf=0.85)
+    for _ in range(3):
+        p.add("041C8532", conf=0.5)  # düzeltilebilir varyant (karara katılmaz)
+    value, conf = p.consensus()
+    assert value == "34TC8532"
+    # ikinci kez çağırınca (cache yeniden kullanılır) aynı sonuç
+    assert p.consensus() == (value, conf)
+    assert p.best_partial() == "34TC8532"

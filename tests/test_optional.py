@@ -66,6 +66,78 @@ def test_super_resolution_enhances(cfg):
     assert out.shape[0] == 20 and out.shape[1] == 40
 
 
+# --------------------------------------------------------------------------- #
+# zero_waste_payload.build_payload: ROI yok / imencode başarısız / ROI var
+# --------------------------------------------------------------------------- #
+def test_build_payload_structured_only_no_roi():
+    from aura.optional.zero_waste_payload import build_payload
+
+    track = {"track_id": 7, "cls": "car", "plate": "34TC8532", "speed_kmh": 50}
+    p = build_payload(track, plate_roi=None)
+    assert p["track_id"] == 7
+    assert p["structured"]["cls"] == "car"
+    assert p["structured"]["plate"] == "34TC8532"
+    assert "plate_roi_jpeg_b64" not in p  # ROI yok → JPEG eklenmez
+
+
+def test_build_payload_empty_roi_skipped():
+    from aura.optional.zero_waste_payload import build_payload
+
+    empty = np.zeros((0, 0, 3), np.uint8)  # size==0
+    p = build_payload({"track_id": 1}, plate_roi=empty)
+    assert "plate_roi_jpeg_b64" not in p
+
+
+def test_build_payload_attaches_roi_jpeg():
+    from aura.optional.zero_waste_payload import build_payload
+
+    roi = np.full((12, 30, 3), 200, np.uint8)
+    p = build_payload({"track_id": 2}, plate_roi=roi)
+    assert "plate_roi_jpeg_b64" in p
+    assert p["roi_bytes"] > 0
+    assert isinstance(p["plate_roi_jpeg_b64"], str)
+
+
+def test_build_payload_imencode_fail_no_roi_key(monkeypatch):
+    # cv2.imencode ok=False döndürürse (kodlama başarısız) JPEG eklenmez
+    import aura.optional.zero_waste_payload as zwp
+
+    monkeypatch.setattr(zwp.cv2, "imencode", lambda *a, **k: (False, None))
+    roi = np.full((12, 30, 3), 200, np.uint8)
+    p = zwp.build_payload({"track_id": 3}, plate_roi=roi)
+    assert "plate_roi_jpeg_b64" not in p
+    assert "roi_bytes" not in p
+
+
+# --------------------------------------------------------------------------- #
+# super_resolution.enhance: None/boş erken-dönüş + _warned bir-kez
+# --------------------------------------------------------------------------- #
+def test_super_resolution_none_returns_none():
+    import aura.optional.super_resolution as sr
+
+    assert sr.enhance(None) is None
+
+
+def test_super_resolution_empty_roi_passthrough():
+    import aura.optional.super_resolution as sr
+
+    empty = np.zeros((0, 0, 3), np.uint8)
+    out = sr.enhance(empty)
+    assert out is empty  # size==0 → olduğu gibi döner
+
+
+def test_super_resolution_warns_only_once(caplog):
+    import aura.optional.super_resolution as sr
+
+    sr._warned = False  # durumu sıfırla
+    roi = np.full((5, 8, 3), 100, np.uint8)
+    with caplog.at_level("INFO", logger="aura.optional.super_resolution"):
+        sr.enhance(roi, scale=2)
+        sr.enhance(roi, scale=2)
+    infos = [r for r in caplog.records if "bicubic" in r.getMessage()]
+    assert len(infos) == 1  # uyarı yalnız bir kez loglanır
+
+
 def test_homography_ipm_speed():
     cfg = load_config()
     cfg.data["optional_modules"]["homography_ipm"] = True

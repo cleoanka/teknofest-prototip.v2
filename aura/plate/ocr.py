@@ -77,7 +77,12 @@ class RealOCR(OCREngine):
         line.sort(key=lambda t: t[0])
         text = _NON_ALNUM.sub("", "".join(t[1] for t in line).upper())
         confs = [t[2] for t in line]
-        return (text or None), float(sum(confs) / len(confs)) if confs else 0.0
+        # NOT: parantezleme ÖNEMLİ — ternary yalnız güven skalerini kapsamalı,
+        # yoksa (operatör önceliği) confs boşken fonksiyon TUPLE yerine bare 0.0
+        # döndürürdü (sözleşme ihlali). best daima line'da olduğundan confs pratikte
+        # boş olmaz; bu parantez gelecekteki line-filtre değişikliğine karşı sözleşmeyi sabitler.
+        avg_conf = float(sum(confs) / len(confs)) if confs else 0.0
+        return (text or None), avg_conf
 
     def _readtext(self, img) -> tuple[str | None, float]:
         return self._merge_line(self.reader.readtext(img))
@@ -316,7 +321,9 @@ class MockOCR(OCREngine):
     ]
 
     def __init__(self, cfg):
-        self.max_dist = 180.0
+        # max_dist config'ten okunabilir (eskiden hardcoded; cfg yok sayılıyordu).
+        # cfg None ya da anahtar yoksa MEVCUT varsayılan 180.0 korunur (davranış aynı).
+        self.max_dist = float(cfg.get("plate.mock_max_dist", 180.0)) if cfg is not None else 180.0
 
     def read(self, plate_roi, vehicle_crop=None) -> tuple[str | None, float]:
         if vehicle_crop is None or getattr(vehicle_crop, "size", 0) == 0:
