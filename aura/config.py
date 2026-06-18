@@ -6,6 +6,7 @@ Belirli env değişkenleri (AI_MODE, AURA_DEVICE, port'lar) YAML'ı override ede
 
 from __future__ import annotations
 
+import copy
 import logging
 import os
 from pathlib import Path
@@ -49,7 +50,10 @@ class Config:
         return self._data
 
     def as_dict(self) -> dict[str, Any]:
-        return self._data
+        # Derin kopya: dışarıya verilen sözlük serbestçe değiştirilse/serialize
+        # edilse bile canlı iç state'i kirletmesin (GET /config artık by-reference
+        # canlı _data'yı sızdırmaz; PATCH için kasıtlı mutasyon `.data` üzerinden).
+        return copy.deepcopy(self._data)
 
 
 def _apply_env_overrides(data: dict[str, Any]) -> dict[str, Any]:

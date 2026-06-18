@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 
 from services.inference_api.models import ConfigPatch
 
@@ -24,5 +24,15 @@ def patch_config(patch: ConfigPatch, request: Request):
         sm.bbox_overlay = patch.bbox_overlay
         data.setdefault("dashboard", {})["default_bbox"] = patch.bbox_overlay
     if patch.qod_profile is not None:
-        data.setdefault("qod", {}).setdefault("profiles", {})["quality"] = patch.qod_profile
+        # Aktif QoD profilini seç. `qod.profiles` bilinen profil adlarının haritası
+        # (ör. optimize/quality); seçim oraya değil `qod.active_profile`'a yazılır ve
+        # geçersiz ad sessizce kabul edilmez (422), aksi halde aktif profil bozulurdu.
+        qod = data.setdefault("qod", {})
+        known = set((qod.get("profiles") or {}).keys())
+        if known and patch.qod_profile not in known:
+            raise HTTPException(
+                status_code=422,
+                detail=f"bilinmeyen qod_profile: {patch.qod_profile} (geçerli: {sorted(known)})",
+            )
+        qod["active_profile"] = patch.qod_profile
     return {"status": "updated", "config": sm.cfg.as_dict()}

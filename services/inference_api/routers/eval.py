@@ -17,6 +17,9 @@ from services.inference_api.models import EvalRunRequest
 router = APIRouter(tags=["eval"])
 log = logging.getLogger("aura.api.eval")
 
+# Varsayılan ground-truth yolu (istek başına literal kurmak yerine modül-sabiti).
+_DEFAULT_GT = "data/samples/ornek_gt.json"
+
 
 @router.get("/eval/results")
 def eval_results(request: Request):
@@ -33,7 +36,7 @@ def eval_results(request: Request):
 def eval_run(req: EvalRunRequest, request: Request, background: BackgroundTasks):
     sm = request.app.state.stream
     source = req.source or sm.cfg.get("runtime.source")
-    gt = req.ground_truth or "data/samples/ornek_gt.json"
+    gt = req.ground_truth or _DEFAULT_GT
 
     def _job():
         try:
