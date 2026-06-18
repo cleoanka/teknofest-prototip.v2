@@ -66,5 +66,6 @@
 - 1.1/1.2 eğitim ← komite verisi / Roboflow erişimi (gelmezse açık-kaynak + dürüst beyan).
 - 2.2 QoD-kanıt ← 2.1 gerçek sandbox erişimi (erken talep et).
 
-## Codex / Gemini Tartışması
-> **Gemini:** `403` lisans → yok. **Codex** planlama danışması koşuyor; takeaway'leri bittiğinde eklenecek. Bu dağıtım kendi sentezimdir (plan1 + gozlem.md temelli).
+## Codex / Gemini Tartışması (güncellendi)
+> **Gemini — ÇALIŞIYOR (`gemini-2.5-flash`):** 403 yalnız `gemini-3.1-pro-preview` modelinde; 2.5-flash ile mobil + final araştırması yapıldı. **Codex** 0-çıktı ile takıldı. Dağıtım kendi sentezimdir.
+> **GÜNCELLEME (18.06):** Ö5'in mobil uygulaması **TEMEL HAZIR** (commit `1bbbf8c`, `tsc` temiz: NV sessiz giriş + canlı WS panosu + QoD histerezis). Hafta 7+ → gerçek CAMARA + cihazda canlı demo.
