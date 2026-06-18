@@ -310,6 +310,7 @@ speed:
   speed_ema_alpha: 0.25         # Kalman üstü EMA yumuşatma (küçük = daha düz; 0 = kapalı)
   speed_metric_max_kmh: 200.0   # akıl sağlığı üst sınırı
   frame_margin_px: 50           # ölü bölge: kadraj kenarı şeridi (px) — bu şeritte hız dondurulur
+  max_age: 30                   # track bu kadar kare görünmezse hız/kalibrasyon durumu düşer (bellek)
   # --- swerving (dikkatsiz sürüş / yalpalama) — yanal yörünge analizi --------
   # Pencere SANİYE cinsinden (fps-bağımsız), genlik ARAÇ GENİŞLİĞİ biriminde
   # (ölçek-bağımsız, K-004). Algoritma: ZigZag ekstremum sayacı — cx serisi mevcut
