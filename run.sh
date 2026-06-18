@@ -21,6 +21,7 @@ fi
 if [ -f "$ROOT/.env" ]; then
   while IFS='=' read -r k v; do
     case "$k" in ''|\#*) continue ;; esac
+    v="${v%$'\r'}"
     [ -z "${!k:-}" ] && export "$k=$v"
   done < "$ROOT/.env"
 fi

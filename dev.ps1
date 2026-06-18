@@ -14,6 +14,8 @@ param(
   [Parameter(ValueFromRemainingArguments = $true)]$Rest
 )
 $ErrorActionPreference = "Stop"
+$env:PYTHONUTF8 = "1"
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 Push-Location $PSScriptRoot
 $PY = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
 try {

@@ -9,10 +9,11 @@ from __future__ import annotations
 import json
 import logging
 
-from fastapi import APIRouter, BackgroundTasks, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Request
 from fastapi.responses import PlainTextResponse
 
 from services.inference_api.models import EvalRunRequest
+from services.inference_api.security import resolve_ground_truth, validate_source, verify_token
 
 router = APIRouter(tags=["eval"])
 log = logging.getLogger("aura.api.eval")
@@ -33,10 +34,18 @@ def eval_results(request: Request):
 
 
 @router.post("/eval/run")
-def eval_run(req: EvalRunRequest, request: Request, background: BackgroundTasks):
+def eval_run(
+    req: EvalRunRequest,
+    request: Request,
+    background: BackgroundTasks,
+    _=Depends(verify_token),
+):
     sm = request.app.state.stream
-    source = req.source or sm.cfg.get("runtime.source")
-    gt = req.ground_truth or _DEFAULT_GT
+    # SEC-002/003: kullanici girdisini run_eval'e gecmeden once dogrula (istek
+    # thread'inde → traversal/SSRF 400 ile caller'a doner, background'a sizmaz).
+    validated_source = validate_source(req.source)
+    source = validated_source or sm.cfg.get("runtime.source")
+    gt = resolve_ground_truth(req.ground_truth) or _DEFAULT_GT
 
     def _job():
         try:

@@ -1,6 +1,8 @@
 ﻿# AURA kurulum sarmalayıcı (Windows / PowerShell 5.1+). Tüm mantık bootstrap.py'de.
 # Geliştirici ekstraları (pytest/ruff/black) için: .\setup.ps1 --dev   (make setup eşdeğeri)
 $ErrorActionPreference = "Stop"
+$env:PYTHONUTF8 = "1"
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 Push-Location $PSScriptRoot
 try {
   # 'python' PATH'te yoksa ya da Microsoft Store stub'ıysa 'py -3' launcher'ına düş

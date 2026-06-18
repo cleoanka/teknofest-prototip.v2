@@ -15,14 +15,24 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import os
 import sys
 from pathlib import Path
+
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+    except (AttributeError, ValueError):
+        pass
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-OK, WARN, BAD = "✓", "!", "✗"
+if os.environ.get("AURA_ASCII") == "1":
+    OK, WARN, BAD = "[OK]", "[!]", "[X]"
+else:
+    OK, WARN, BAD = "✓", "!", "✗"
 
 
 def _line(mark: str, msg: str) -> None:

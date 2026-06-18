@@ -77,17 +77,44 @@ class YOLO26Detector(Detector):
             self.device,
         )
 
+    def _track(self, frame: np.ndarray):
+        """model.track sarmalayıcı: seçili cihaz (MPS/CUDA) çalışma-zamanında
+        çökerse (ör. 'no kernel image', MPS backend hatası) bir KEZ CPU'ya düş ve
+        cihazı kalıcı CPU yap — tek kare hatası tüm akışı durdurmasın (HW-002).
+        Zaten CPU'daysa hata yeniden fırlatılır (gizlenecek yedek yok)."""
+        try:
+            return self.model.track(
+                frame,
+                persist=True,
+                conf=self.conf,
+                iou=self.iou,
+                imgsz=self.imgsz,
+                tracker=self.tracker_yaml,
+                device=self.device,
+                verbose=False,
+            )
+        except Exception as e:  # noqa: BLE001 - GPU/MPS çalışma-zamanı hatası → CPU fallback
+            if self.device == "cpu":
+                raise
+            log.warning(
+                "Dedektör cihazı '%s' çalışma-zamanında başarısız (%s) → CPU'ya düşülüyor",
+                self.device,
+                e,
+            )
+            self.device = "cpu"
+            return self.model.track(
+                frame,
+                persist=True,
+                conf=self.conf,
+                iou=self.iou,
+                imgsz=self.imgsz,
+                tracker=self.tracker_yaml,
+                device=self.device,
+                verbose=False,
+            )
+
     def detect(self, frame: np.ndarray) -> list[Detection]:
-        results = self.model.track(
-            frame,
-            persist=True,
-            conf=self.conf,
-            iou=self.iou,
-            imgsz=self.imgsz,
-            tracker=self.tracker_yaml,
-            device=self.device,
-            verbose=False,
-        )
+        results = self._track(frame)
         dets: list[Detection] = []
         self.last_persons = []
         self.last_signs = []

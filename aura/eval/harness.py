@@ -78,7 +78,7 @@ def run_eval(
     cfg, source, ground_truth, qod_comparison: bool = True, output_dir: str = "eval_results"
 ) -> dict:
     gt_path = Path(ground_truth)
-    gt = json.loads(gt_path.read_text()) if gt_path.exists() else {"frames": []}
+    gt = json.loads(gt_path.read_text(encoding="utf-8")) if gt_path.exists() else {"frames": []}
 
     log.info("Eval: QoD ON (tam çözünürlük)…")
     on = _run(cfg, source, scale=1.0)

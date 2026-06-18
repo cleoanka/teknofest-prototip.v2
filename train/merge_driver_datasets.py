@@ -29,6 +29,12 @@ from pathlib import Path
 
 import yaml
 
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+    except (AttributeError, ValueError):
+        pass
+
 log = logging.getLogger("aura.train.merge")
 
 IMG_EXT = {".jpg", ".jpeg", ".png", ".bmp"}

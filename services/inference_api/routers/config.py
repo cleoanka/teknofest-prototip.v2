@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from services.inference_api.models import ConfigPatch
+from services.inference_api.security import verify_token
 
 router = APIRouter(tags=["config"])
 
@@ -15,7 +16,7 @@ def get_config(request: Request):
 
 
 @router.patch("/config")
-def patch_config(patch: ConfigPatch, request: Request):
+def patch_config(patch: ConfigPatch, request: Request, _=Depends(verify_token)):
     sm = request.app.state.stream
     data = sm.cfg.data
     if patch.conf_threshold is not None:

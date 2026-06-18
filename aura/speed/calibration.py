@@ -186,6 +186,15 @@ class MetricSpeedEstimator:
     def __init__(self, settings):
         self.s = settings
         self.scale = ScaleField(min_samples=getattr(settings, "calib_min_samples", 6))
+        # CL: maybe_fit() araç-başı/kare-başı çağrılıyor; n_samples>=min iken HER çağrıda
+        # tüm birikmiş örnekler (≤4000) üzerinde np.polyfit koşturmak kare-başı O(N)
+        # gereksiz iş demekti (aynı doğru tekrar tekrar uydurulur). Yeniden-uydurma artık
+        # yalnız EN AZ `refit_every` yeni örnek eklendiğinde yapılır; ilk min_samples
+        # eşiğini geçişte daima uydurulur (is_ready davranışı korunur). DAVRANIŞ-KORUYAN:
+        # ppm(y) ölçek-alanı düzgün biriken örneklerle yumuşak değişir → seyrek refit
+        # kalibrasyon sonucunu pratikte değiştirmez, yalnız maliyeti düşürür.
+        self._refit_every = max(1, int(getattr(settings, "calib_refit_every", 25)))
+        self._last_fit_n = 0
         self._kalman: dict = {}
         self._ema: dict = {}  # track_id -> EMA durumu (Kalman sonrası ek yumuşatma)
         # Aşama 4 — şerit homografisi (kurulursa ppm(y)'ye göre öncelikli ölçek kaynağı).
@@ -226,9 +235,19 @@ class MetricSpeedEstimator:
         )
 
     def maybe_fit(self) -> None:
-        """Yeterli ölçüm biriktiyse ppm(y)'yi (yeniden) uydur."""
-        if self.scale.n_samples >= self.scale.min_samples:
-            self.scale.fit()
+        """Yeterli ölçüm biriktiyse ppm(y)'yi (yeniden) uydur.
+
+        CL: kare-başı O(N) polyfit yerine seyrek refit. İlk kez min_samples eşiği
+        aşılınca daima uydurulur (is_ready True olur); sonrasında yalnız son
+        uydurmadan bu yana `refit_every` yeni örnek eklendiyse yeniden uydurulur.
+        """
+        n = self.scale.n_samples
+        if n < self.scale.min_samples:
+            return
+        if self.scale.is_ready and (n - self._last_fit_n) < self._refit_every:
+            return
+        if self.scale.fit():
+            self._last_fit_n = n
 
     def _step_meters(self, f0, f1) -> float | None:
         """İki yer-temas noktası arası metrik yer değiştirme (m).

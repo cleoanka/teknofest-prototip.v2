@@ -38,9 +38,20 @@ class TrackClassVoter:
         # ağırlık verilir (çok uzak araç oyu sıfırlanmasın, sadece çok zayıf kalsın).
         self.area_floor = float(cv.get("area_floor", 0.0008))
         self._votes: dict[int, dict[str, float]] = {}
+        # Bellek hijyeni (MEM-004): per-track oy sözlüğü giden track'ler için kalıcı
+        # birikiyordu. _last_seen son-görülme karesini tutar; prune(frame_idx) max_age
+        # grace'li temizler — kısa oklüzyonda (recycled id) kümülatif oy KORUNUR
+        # (davranış-koruyan; class-vote ömür-boyu birikime dayanır).
+        self.max_age = int(cv.get("max_age", 30))
+        self._last_seen: dict[int, int] = {}
 
     def update(
-        self, track_id: int | None, cls: str, conf: float = 1.0, area_norm: float | None = None
+        self,
+        track_id: int | None,
+        cls: str,
+        conf: float = 1.0,
+        area_norm: float | None = None,
+        frame_idx: int | None = None,
     ) -> str:
         """Bu karenin oyunu işle ve track'in kararlı sınıfını döndür.
 
@@ -52,6 +63,8 @@ class TrackClassVoter:
         """
         if not self.enabled or not cls or track_id is None or track_id < 0:
             return cls
+        if frame_idx is not None:
+            self._last_seen[track_id] = frame_idx  # prune grace için son-görülme
         votes = self._votes.setdefault(track_id, {})
         if self.decay < 1.0:
             for k in votes:
@@ -74,3 +87,16 @@ class TrackClassVoter:
         """Artık yaşamayan track'lerin oylarını bırak (uzun koşumda bellek hijyeni)."""
         for tid in [t for t in self._votes if t not in live_track_ids]:
             self._votes.pop(tid, None)
+            self._last_seen.pop(tid, None)
+
+    def prune_aged(self, frame_idx: int) -> None:
+        """max_age grace'li bellek hijyeni (MEM-004) — pipeline kare-başı çağırır.
+
+        Yalnız ``max_age``'den UZUN süredir görünmeyen track'in oy sözlüğü düşer; kısa
+        oklüzyon/recycled-id grace içinde kümülatif oyu KORUR (davranış-koruyan).
+        update(..., frame_idx=...) ile beslenen _last_seen'e dayanır; frame_idx hiç
+        geçilmemişse (boş _last_seen) hiçbir şey düşmez (geriye uyum)."""
+        dead = [tid for tid, seen in self._last_seen.items() if frame_idx - seen > self.max_age]
+        for tid in dead:
+            self._votes.pop(tid, None)
+            self._last_seen.pop(tid, None)

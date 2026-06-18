@@ -7,6 +7,7 @@ bu callback'lere abone olur (iki-kanal tasarımı: events ayrı, annotations ayr
 
 from __future__ import annotations
 
+import threading
 from collections import deque
 from collections.abc import Callable
 
@@ -19,6 +20,13 @@ class EventEmitter:
         self.annotations: deque[AnnotationFrame] = deque(maxlen=maxlen)
         self._event_cbs: list[Callable[[AuraEvent], None]] = []
         self._annot_cbs: list[Callable[[AnnotationFrame], None]] = []
+        # CA-001: pipeline iş parçacığı deque'lere YAZARKEN WS/SSE okuyucu iş
+        # parçacığı recent_events()/latest_annotation() ile OKUYOR. deque.append
+        # atomik olsa da snapshot (list(deque)) eş-zamanlı append ile "deque mutated
+        # during iteration" / yarı-tutarlı görüntü üretebilir. Bu kilit yaz (append)
+        # ile oku (snapshot) işlemlerini serileştirir. Callback'ler kilit DIŞINDA
+        # çağrılır (uzun/bloklayan abone tüm yayını kilitlemesin; deadlock önlenir).
+        self._lock = threading.Lock()
 
     # --- abonelik ---------------------------------------------------------- #
     def on_event(self, cb: Callable[[AuraEvent], None]) -> None:
@@ -37,15 +45,17 @@ class EventEmitter:
 
     # --- yayın ------------------------------------------------------------- #
     def emit_event(self, event: AuraEvent) -> None:
-        self.events.append(event)
-        for cb in list(self._event_cbs):
+        with self._lock:  # CA-001: yazma okuyucu snapshot'larıyla serileşsin
+            self.events.append(event)
+        for cb in list(self._event_cbs):  # callback'ler kilit DIŞINDA (bloklamayı izole et)
             try:
                 cb(event)
             except Exception:  # noqa: BLE001 - bir abone diğerlerini engellemesin
                 pass
 
     def emit_annotation(self, anno: AnnotationFrame) -> None:
-        self.annotations.append(anno)
+        with self._lock:
+            self.annotations.append(anno)
         for cb in list(self._annot_cbs):
             try:
                 cb(anno)
@@ -54,7 +64,9 @@ class EventEmitter:
 
     # --- okuma ------------------------------------------------------------- #
     def recent_events(self, n: int = 50) -> list[AuraEvent]:
-        return list(self.events)[-n:]
+        with self._lock:  # CA-001: tutarlı snapshot (eş-zamanlı append ile yarış yok)
+            return list(self.events)[-n:]
 
     def latest_annotation(self) -> AnnotationFrame | None:
-        return self.annotations[-1] if self.annotations else None
+        with self._lock:
+            return self.annotations[-1] if self.annotations else None

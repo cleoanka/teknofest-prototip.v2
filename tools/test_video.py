@@ -27,6 +27,12 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from statistics import median
 
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+    except (AttributeError, ValueError):
+        pass
+
 # Repo kökünden de, tools/ içinden de çalışsın
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:

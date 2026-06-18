@@ -11,6 +11,12 @@ import sys
 
 from aura.config import load_config
 
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+    except (AttributeError, ValueError):
+        pass
+
 
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(

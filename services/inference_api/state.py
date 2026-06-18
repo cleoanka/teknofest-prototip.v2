@@ -38,6 +38,16 @@ class StreamManager:
         self._event_queues: set[asyncio.Queue] = set()
         self._annot_queues: set[asyncio.Queue] = set()
         self.started_at = 0.0
+        # HW-001 canlı-kamera dayanıklılığı (yalnız non-file kaynak; demo dosyası
+        # etkilenmez). Ardışık okuma hatasında cap yeniden açılır; üstel backoff
+        # ile en çok _max_reconnect deneme. Config'ten ayarlanabilir.
+        self._max_reconnect = int(self.cfg.get("stream.max_reconnect", 5))
+        self._reconnect_backoff = float(self.cfg.get("stream.reconnect_backoff_s", 0.5))
+        self._reconnect_backoff_max = float(self.cfg.get("stream.reconnect_backoff_max_s", 5.0))
+        # Açık-kalış/okuma timeout (ms): canlı kamera takılırsa cap.read() sonsuz
+        # bloklamasın. 0/None → ayarlama (geriye uyum; bazı backend desteklemez).
+        self._open_timeout_ms = int(self.cfg.get("stream.open_timeout_ms", 5000))
+        self._read_timeout_ms = int(self.cfg.get("stream.read_timeout_ms", 5000))
 
     def attach_loop(self, loop: asyncio.AbstractEventLoop) -> None:
         self.loop = loop
@@ -124,6 +134,73 @@ class StreamManager:
         self.pipeline = None
         self.frame_count = 0
 
+    # --- kaynak açma / yeniden bağlanma (HW-001) --------------------------- #
+    def _open_capture(self, src):
+        """VideoCapture aç + canlı kamera için açık/okuma timeout uygula.
+
+        Timeout property'leri (CAP_PROP_OPEN/READ_TIMEOUT_MSEC) tüm backend'lerde
+        yoktur; set() sessizce yok sayılabilir → güvenli. Dosya kaynağında timeout
+        anlamsız; yalnız non-file (canlı) kaynağa uygulanır. Hata/None'da None döner
+        (çağıran isOpened() kontrolüyle ele alır)."""
+        try:
+            cap = cv2.VideoCapture(src)
+        except Exception:  # noqa: BLE001 - backend init hatası → açılamadı say
+            log.exception("VideoCapture açılırken hata: %s", src)
+            return None
+        if cap is None:
+            return None
+        if not isinstance(src, str):  # canlı kamera (indeks) → timeout sertleştir
+            for prop, val in (
+                (getattr(cv2, "CAP_PROP_OPEN_TIMEOUT_MSEC", None), self._open_timeout_ms),
+                (getattr(cv2, "CAP_PROP_READ_TIMEOUT_MSEC", None), self._read_timeout_ms),
+            ):
+                if prop is not None and val and val > 0:
+                    try:
+                        cap.set(prop, float(val))
+                    except Exception:  # noqa: BLE001 - backend desteklemez → yok say
+                        pass
+        return cap
+
+    def _reconnect(self, cap, src, attempt: int):
+        """Canlı kamera koptuğunda cap'i kapatıp yeniden açmayı dener.
+
+        Üstel backoff (reconnect_backoff·2^(attempt-1), max ile sınırlı) bekler.
+        Başarılıysa yeni (açık) cap döndürür; aksi halde None (çağıran sayaca göre
+        ya yeniden dener ya durur). Backoff sırasında _running düşerse erken çıkar.
+        """
+        try:
+            cap.release()
+        except Exception:  # noqa: BLE001 - zaten bozuk cap → yok say
+            pass
+        wait = min(
+            self._reconnect_backoff * (2 ** (attempt - 1)),
+            self._reconnect_backoff_max,
+        )
+        log.warning(
+            "Kamera okuma hatası (deneme %d/%d) — %.1fs sonra yeniden bağlanılıyor",
+            attempt,
+            self._max_reconnect,
+            wait,
+        )
+        # Backoff'u parça parça bekle ki stop() çağrısına hızlı tepki verelim.
+        slept = 0.0
+        while slept < wait and self._running:
+            step = min(0.1, wait - slept)
+            time.sleep(step)
+            slept += step
+        if not self._running:
+            return None
+        new_cap = self._open_capture(src)
+        if new_cap is not None and new_cap.isOpened():
+            log.info("Kamera yeniden bağlandı: %s", self.source)
+            return new_cap
+        if new_cap is not None:
+            try:
+                new_cap.release()
+            except Exception:  # noqa: BLE001
+                pass
+        return None
+
     # --- arka plan worker -------------------------------------------------- #
     def _worker(self) -> None:
         # Ağır model yüklemeleri burada (arka planda) yapılır → başlangıcı bloklamaz.
@@ -141,8 +218,8 @@ class StreamManager:
 
         src = self.source
         src = int(src) if isinstance(src, str) and src.isdigit() else src
-        cap = cv2.VideoCapture(src)
-        if not cap.isOpened():
+        cap = self._open_capture(src)
+        if cap is None or not cap.isOpened():
             log.error("Kaynak açılamadı: %s", self.source)
             self._running = False
             return
@@ -151,6 +228,10 @@ class StreamManager:
         self.pipeline.speed.fps = fps
         is_file = isinstance(src, str)
         delay = 1.0 / fps if fps > 0 else 0.033
+        # HW-001: canlı kamera (dosya değil) kopabilir/timeout verebilir; ardışık
+        # başarısız okumada cap'i kapatıp yeniden açarız (üstel backoff). Dosya
+        # kaynağında (demo) DAVRANIŞ DEĞİŞMEZ: bitince başa sarılır, reconnect yok.
+        read_fail = 0
         i, t0, errors = 0, time.time(), 0
         try:
             while self._running:
@@ -160,7 +241,21 @@ class StreamManager:
                         cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                         i = 0
                         continue
-                    break
+                    # Canlı kamera: kopma/timeout → yeniden bağlanmayı dene.
+                    read_fail += 1
+                    new_cap = self._reconnect(cap, src, read_fail)
+                    if new_cap is not None:
+                        cap = new_cap
+                        read_fail = 0
+                        continue
+                    if read_fail >= self._max_reconnect:
+                        log.error(
+                            "Kamera %d denemede yeniden bağlanamadı — stream durduruluyor",
+                            read_fail,
+                        )
+                        break
+                    continue
+                read_fail = 0
                 # Ham kareyi HEMEN yayınla: video akışı, (yavaş olabilen) tespitten
                 # bağımsız akıcı kalsın. Annotated kanal tespit bitince güncellenir.
                 ok_raw, raw = cv2.imencode(".jpg", frame)
