@@ -1,7 +1,7 @@
 # PLAN-1 — Yapılabilecekler (AURA Teknik Yol Haritası)
 
 > 18.06.2026 · Salt-planlama (projeye dokunulmadı). Kaynak: `gozlem.md` (4-repo + SOTA analizi) + repo-içi ölçümler.
-> Tartışma: kendi sentezim + Codex ikinci-görüş (planlama-Codex koşuyor; geldiğinde §6'ya eklenecek). **Gemini lisans-403 nedeniyle kullanılamadı.**
+> Tartışma: kendi sentezim. **Codex ölü** (0-çıktı ile takıldı). **Gemini kısmi:** pro modeller `403`, ama `gemini-2.5-flash` çalıştı (mobil/CAMARA araştırması). Detay §6.
 > Eş-belge: **plan2.md** (5 öğrenciye görev dağılımı).
 
 ## 0. Öncelik İlkesi & Takvim
@@ -12,8 +12,8 @@
 - **K-004 (değişmez):** ölçülen sayı; uydurma yok; belirsizde dürüst `pending`; videoya-özel sabit yok.
 
 ## 1. Mevcut Durum (W1 sonrası — neyin HAZIR / EKSİK olduğu)
-**Hazır (ölçülü):** plaka **3/3 exact** (fast-plate-ocr), davranış **makro-F1 1.0**, araç %100, held-out yolo26l mAP50-95 0.537, QoD A/B +33/+51/+25pp (sentetik), 259 test, FTR rapor taslağı (`ftr_rapor_taslak.md`) + Mermaid diyagramlar + metrik harness, mock CAMARA (QoD/NV), stabilite zırhları.
-**Eksik / Riskli:** ① özel-model EĞİTİMİ ertelendi → zorunlu sınıf (plaka/sigara) held-out mAP yok; ② QoD A/B yalnız sentetik sette (gerçek 3 videoda kare-düzeyi GT yok); ③ mobil İSKELET; ④ gerçek CAMARA sandbox test edilmedi; ⑤ küçük held-out (3 video).
+**Hazır (ölçülü):** plaka **3/3 exact** (fast-plate-ocr), davranış **makro-F1 1.0**, araç %100, held-out yolo26l mAP50-95 0.537, QoD A/B +33/+51/+25pp (sentetik), **~600 birim test** (servis testleri sürüyor), FTR rapor taslağı (`ftr_rapor_taslak.md`) + Mermaid diyagramlar + metrik harness, mock CAMARA (QoD/NV), stabilite zırhları, **mobil temel uygulama** (commit `1bbbf8c`, tsc-temiz).
+**Süren / Eksik / Riskli:** ① özel-model EĞİTİMİ **şu an koşuyor** (license_plate ara `mAP50≈0.97` ep12/35, seatbelt/smoking sırada) → **nihai** held-out mAP'ler henüz kesinleşmedi; ② QoD A/B yalnız sentetik sette (gerçek 3 videoda kare-düzeyi GT yok); ③ gerçek CAMARA sandbox test edilmedi; ④ küçük gerçek-video held-out (3 video).
 
 ---
 
@@ -22,10 +22,10 @@
 |---|---|---|---|
 | 0.1 | `ftr_rapor_taslak.md` → **DOCX** (Arial 12, başlık Arial Black 14, 1.15, 3–10 sayfa, kapak+içindekiler ayrı) | Şablona uyumlu .docx; KYS'ye yüklenebilir | taslak hazır → biçimlendir |
 | 0.2 | §4 Sınama tabloları (P/R/F1, plaka 3/3 CER0, held-out mAP 0.537, QoD A/B, FPS) + **PR-curve görseli** | Gerçek sayılar + grafik | metrikler hazır |
-| 0.3 | §2 Veri Seti: toplanan setler (seatbelt 3104/smoking 36/phone 659) + manifest + dengeleme + açık-kaynak lisansları | `dataset --report` tablosu + kaynakça | hazır |
+| 0.3 | §2 Veri Seti: toplanan setler (license_plate 9123 / seatbelt 3104 / smoking 557 / phone 659; minibus yok) + manifest + dengeleme + CC BY 4.0 lisansları | `dataset --report` tablosu + kaynakça | veri toplandı; `docs/veri_seti.md` yeni sayılarla güncellenmeli |
 | 0.4 | §3 Mimari diyagramları göm (docs/diagrams Mermaid → PNG) | Kuşbakışı + topoloji + plaka-karar | hazır |
 | 0.5 | **Dürüst sınır beyanı:** zorunlu-sınıf mAP'i komite verisine bağlı; QoD sentetik-sette ölçülü | §4.1/§4.2'de açık | hazır |
-| 0.6 | Son kontrol: 259 test + ruff/black + CI yeşil; `feat/ultraplan-w1` → **PR → main** (yeşil+incelenmiş) | PR açık, gözden geçirilmiş | branch push'lu |
+| 0.6 | Son kontrol: ~600 birim test + ruff/black + CI yeşil (servis testleri sürüyor); `feat/ultraplan-w1` → **PR → main** (yeşil+incelenmiş) | PR açık, gözden geçirilmiş | branch push'lu |
 
 **Çıktı:** Şablona uygun FTR + tüm kanıtlar; 28.06 17:00'dan önce KYS.
 
@@ -34,8 +34,8 @@
 ## FAZ 1 — YZ Derinleştirme (28.06 → 31.07) · %40 YZ puanını yükseltir
 | # | İş | Kabul kriteri |
 |---|---|---|
-| 1.1 | **YOLO26 detector fine-tune** (komite TOGG verisi / Roboflow araç+plaka setleri → `custom_detector.pt`, taban=yolo26 s+l) | held-out mAP raporu (`model.val`); v4-baseline'ı geçer |
-| 1.2 | **Driver-state fine-tune** (seatbelt 3104 + smoking/phone setleri → `custom_driver.pt`, backend=yolo) | zorunlu sınıf (phone/smoking/seatbelt) held-out mAP; pose-hibrit ile A/B |
+| 1.1 | **Plaka/detector fine-tune (BAŞLADI, sürüyor)** — license_plate 9123 → YOLO26s (`runs/.../license_plate_s`, ara `mAP50≈0.97` ep12/35); tamamla + `model.val` held-out | nihai held-out mAP raporu; stok yolo26l + lp_yolo11n baseline'ı ile A/B |
+| 1.2 | **Driver-state fine-tune (sırada/erken)** — seatbelt 3104 + smoking 557 + phone 659 → `custom_driver.pt`; seatbelt erken epoch, smoking sırada | zorunlu sınıf (phone/smoking/seatbelt) **nihai** held-out mAP; pose-hibrit ile A/B (baseline geçmiyorsa profilde kalır) |
 | 1.3 | **Plaka:** fast-plate-ocr kalıcı; komite footage'ında dewarp+SR yeniden A/B (bu footage'da KIRMIZI çıktı — overfit etme) | CER düşüşü ölçülü VEYA dürüst "gerekmedi" |
 | 1.4 | **İstatistiksel mAP/PR** (geniş etiketli set → `aura.eval --map`) | mAP50/50-95 + PR-eğrisi; §4 güçlenir |
 | 1.5 | **Hız doğrulama** (komite gerçek-hız GT gelince MAE/MAPE; harness hazır) | hız MAE/MAPE tablosu |

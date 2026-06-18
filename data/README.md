@@ -10,6 +10,11 @@ Yeniden üret:
 python -m aura.synthetic --out data/samples --frames 90
 ```
 
+Ek olarak `samples/` gerçek test videolarının **video-düzeyi** ground-truth'unu da tutar:
+- `video_{1,2,3}_gt.json` — gerçek test videosu GT'si (12 Haz 2026). Kare-kare bbox
+  etiketi yoktur; **plaka ve davranış video-düzeyinde** verilir (GT plaka `34TC8532`).
+  Videoların kendisi (`video_1.mp4` …) repo kökündedir.
+
 GT yapısı (`ornek_gt.json`):
 ```json
 { "video": "ornek.mp4", "fps": 30, "width": 640, "height": 360,
@@ -23,3 +28,8 @@ Gerçek TOGG veri seti geldiğinde `data/samples/` üzerine yazılır; `data/raw
 
 ## `raw/`
 Ham/etiketlenmemiş eğitim verisi (git'e dahil edilmez). Eğitim akışı: `docs/veri_seti.md`.
+
+## `processed/`
+İşlenmiş/etiketli eğitim setleri (sınıf-başına klasör: `license_plate/`, `phone/`,
+`smoking/`, `seatbelt/`). `train fetch` ile toplanır, `train dataset` ile YOLO formatına
+hazırlanır. `.gitignore`'ludur (büyük). Kaynak/lisans manifesti: `train/datasets.yaml`.

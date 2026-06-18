@@ -22,8 +22,14 @@ ama doğruyu üretemez). **Kalıcı çözüm — önerilen hat (Gemini):**
 > adaptörü eklenebilir (mevcut EasyOCR yolu korunarak). Bu, A/B'deki tek zayıf metriği kapatır.
 
 ## 2. Eksik sınıflar için açık veri setleri (FTR §2 — veri seti)
-`cigarette`/`seatbelt`/`minibus` için eğitim verisi yoktu; YOLO-format açık setler (Gemini;
-kullanım önce lisans + içerik teyidi):
+> **GÜNCEL (18 Haz 2026):** `license_plate` (8823), `seatbelt` (3104), `smoking` (557) ve
+> `phone` (659) için **gerçek açık veri toplandı** (hepsi CC BY 4.0, PIL-doğrulanmış) ve YOLO26s
+> fine-tune'u **ŞU AN SÜRÜYOR** (`license_plate` ara mAP50 ≈ 0.977 @epoch 12/35 — final kesin
+> değil). Detay: `docs/veri_seti.md`. **Kalan boşluk:** `minibus` (no-auth açık set yok) ve
+> `fatigue` (teyitli açık set yok) → komite verisi / Roboflow-Kaggle erişimi bekliyor.
+
+Aşağıdaki tablo, daha **büyük** setler ve `minibus` için araştırılan açık kaynakları listeler
+(Gemini; kullanım önce lisans + içerik teyidi):
 
 | Sınıf | Set | Kaynak | ~Görüntü | Lisans |
 |---|---|---|---|---|

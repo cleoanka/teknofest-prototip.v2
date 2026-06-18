@@ -155,6 +155,30 @@ Kullanıcı geri bildirimi (gerçek video kanıtlarına dayalı 5 madde) kökler
 
 ## [Unreleased]
 
+### W1 — FTR ön-hazırlık (`feat/ultraplan-w1`)
+
+#### Eklendi
+- **Plaka OCR varsayılanı `fast-plate-ocr`** (`aura/plate/ocr.py`, `ocr_engine: fastplate`): plakaya-özel
+  hafif ONNX modeli (`global-plates-mobile-vit-v2`, ~5MB; ilk koşuda otomatik iner). Çıktısı EasyOCR
+  `readtext` sözleşmesine normalize edilir → `_merge_line` + TR-normalizasyon + küçük-ROI ikinci-şans
+  hattı motor-bağımsız çalışır. **Ölçüldü (18 Haz 2026, 3 gerçek video, GT=34TC8532):**
+  EasyOCR baseline 2/3 exact (video_3 `pending`, partial `24IC8532`, CER 0.25 — uzak karelerde
+  sistematik 3→2 il-kodu + T→I misread); **fast-plate-ocr 3/3 exact, CER 0.0** (video_3'ü kurtarır,
+  v1/v2 exact'ini korur). Kurulu değilse loglu EasyOCR fallback. K-004: config-driven, oran-bazlı,
+  videoya-özel sabit/kara-liste YOK — yalnız motor seçimi.
+- **mAP harness ölçüldü** (`aura/eval/map_eval.py`, `python -m aura.eval --map`): stok `yolo26l`
+  COCO-val2017 held-out (5000 görsel) **mAP50-95 0.537 / mAP50 0.709** (P 0.740, R 0.641);
+  coco128 mAP50-95 0.619 / mAP50 0.790 (`eval_results/map_yolo26l.json`).
+- **Açık veri toplama (CC BY 4.0, PIL-doğrulanmış):** license_plate 9123 (keremberke/HF),
+  seatbelt 3104 (Roboflow/HF), phone 659, smoking 557 (CigDet/Mendeley). minibüs: auth-gerektirmeyen
+  kaynak bulunamadığından toplanamadı (dürüst not).
+- **`tools/bench.py`** — video + profil → ortalama FPS + p50/p95 kare-süresi profilleme
+  (`eval_results/bench_<device>.md`).
+
+#### Süren (henüz kesinleşmedi — dürüst ayrım)
+- **YOLO26s domain fine-tune** açık veri üzerinde **sürüyor**: license_plate mAP50 ≈ 0.97
+  (epoch ~12/35); smoking + seatbelt eğitimi sırada. Domain-spesifik final mAP'ler henüz kesin değil.
+
 ### Eklenenler
 - **Trafik tabelası + hız-limiti çapraz kontrolü (sahne katmanı)** — ID-merkezli accumulator'ın yanına ince bir sahne katmanı: `aura/scene/sign_tracker.py` (`SignTracker`). Dedektör tabelaları araç/kişi DIŞI ayrı toplar (`Sign` tipi, `detector.last_signs`; `yolo.py` + `mock.py` sentetik demo). `SignTracker` en güvenilir hız-limiti tabelasını `sign.value_map` ile km/h'ye çözer ve araç tabelayı geçtikten sonra da `persistence_frames` boyunca **aktif limiti** tutar (değişince `SPEED_LIMIT_DETECTED`, `track_id=-1`). `Accumulator.set_scene()` her kare aktif limiti alır; yeni `speed.over_limit` risk koşulu + `speed_limit_violation` kuralı → zengin payload'lı **`SPEED_LIMIT_VIOLATION`** event (hız/limit/aşım/plaka). Aktif limit yoksa kural pasif (yanlış ihlal yok). `AnnotationFrame`'e `signs` + `scene` alanları; dashboard tabela kutuları + "LİMİT" banner (`video-renderer.js` + server-side `state.py`). Config `sign:` bloğu (`default.yaml` + `.template`). `tests/test_sign.py` (11 test). **Not:** dedektör `speed_limit_*` sınıflarını üretene dek (custom dataset merge + retrain) feature sessizce pasif; `sign.mock_synthetic: true` ile ağırlıksız demo edilebilir.
 - **Metrik hız (`speed.mode: metric`) — kalibrasyonsuz oto-kalibrasyon** (`aura/speed/calibration.py`, eski prototip `ai/calibration.py` portu): araç-genişliği (varsa plaka 520 mm) → `ppm(y)` ölçek-alanı (aykırı-dayanıklı regresyon) → yer düzlemi metrik yer değiştirme → pencere-medyan + ivme aykırı reddi + **Kalman + EMA** → gerçek km/h. Isınma bitene dek `is_calibrated=False` (km/h iddia edilmez). Mevcut yenilikler korundu: QoD tetiği, stability 16/8, accumulator risk + `SPEED` event'leri, annotation stream artık km/h ile beslenir.

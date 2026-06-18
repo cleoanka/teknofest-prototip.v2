@@ -60,7 +60,7 @@ aura M1-M16'yı yutmuş + **v2.1/2.2/2.3** evrimi:
 ```
 - **Cascade + 2 katman**; **ID-merkezli** birikim; **16/8 kararlılık**; **kalibrasyon-bağımlı hız** (yoksa flag); **landmark kütüphanesi YOK** (saf YOLO26-pose); **sahne katmanı** (hız-limiti tabelası).
 - **Gerçek/Mock sınırı:** YZ çekirdeği (preprocessing/detection/tracking/driver/plate/speed/eval/train) GERÇEK; telekom (qod_mock CAMARA, nv_mock NV, 5G, TOGG beslemesi) MOCK → finalde yalnız endpoint/credential değişir.
-- ~6000 satır `aura/` + servisler (inference_api 18 uç, qod_mock, nv_mock) + dashboard (vanilla JS) + mobil (Expo iskelet) + train (YOLO26 fine-tune hattı).
+- ~6000 satır `aura/` + servisler (inference_api 18 uç, qod_mock, nv_mock) + dashboard (vanilla JS) + mobil (Expo/RN temel uygulama, tsc-temiz) + train (YOLO26 fine-tune hattı).
 
 ---
 
@@ -74,7 +74,7 @@ aura M1-M16'yı yutmuş + **v2.1/2.2/2.3** evrimi:
 | Held-out dedektör mAP | yolo26l COCO val2017: **mAP50-95 0.537 / mAP50 0.709** | 5000 görsel, gerçek held-out |
 | QoD A/B | plaka **+33.3pp**, küçük-nesne **+51.4pp**, tespit **+25.5pp** | sentetik kontrollü set (kare-düzeyi GT); `qod_comparison=true` |
 | FPS (MPS, M4 Pro) | ~5-6 | CUDA sunucuda daha yüksek |
-| Kalite | **259 test** + ruff + black + CI | |
+| Kalite | **~600 birim test** + ruff + black + CI | `tests/` ~604 `def test_`; servis testleri sürüyor | |
 
 **Stabilite/doğruluk zırhları (W1, gerçek-videoda doğrulandı):** ilk-harf-0 yok, track_id=-1/phantom/orphan-sürücü yok, bbox/swerving-FP yok, devasa-ROI sınırı. Belirsizde sahte-onay yerine **dürüst pending**.
 
@@ -92,7 +92,7 @@ aura M1-M16'yı yutmuş + **v2.1/2.2/2.3** evrimi:
 
 ### 5.3 Sürücü davranışı (sigara/telefon/kemer/yorgunluk)
 - **SOTA:** distraction veri setlerinde fine-tune YOLO (ME-YOLOv8 3660 görsel; **YOLOv12-LAD** 2025; YOLOv5 mAP@50 ~%93.6). Sınıflar phone/smoking/seatbelt/fatigue çoklu-etiket.
-- **AURA:** **pose-hibrit** (eğitim gerektirmez; bilek↔ağız/kulak geometrisi + nesne füzyonu) → 3 videoda **makro-F1 1.0**. **Veri toplandı** (seatbelt 3104 CC BY 4.0, smoking 36, phone 659) ama **eğitim ertelendi**. → **Boşluk:** zorunlu sınıflar için fine-tune domain modeli (pose-geometriden daha sağlam, geniş sette istatistiksel mAP üretir) en yüksek-etkili sonraki adım. SOTA buraya işaret ediyor.
+- **AURA:** **pose-hibrit** (eğitim gerektirmez; bilek↔ağız/kulak geometrisi + nesne füzyonu) → 3 videoda **makro-F1 1.0**. **Yeni veri toplandı** (CC BY 4.0, PIL-doğrulanmış): license_plate 9123, seatbelt 3104, smoking 557, phone 659; minibus toplanamadı (auth'suz kaynak yok). **Fine-tune (YOLO26s) ŞU AN SÜRÜYOR — final mAP'ler henüz kesinleşmedi:** license_plate ~epoch 12/35'te `mAP50≈0.97` (`runs/detect/.../license_plate_s`), seatbelt erken epoch (sırada), smoking sırada. → Bu, "zorunlu sınıf held-out mAP" boşluğunu kapatan en yüksek-etkili adımdır; eğitim bitince §4'e gerçek mAP girer. *Dürüstlük: bunlar SÜREN eğitimin ara değerleridir, nihai değil.*
 
 ### 5.4 Hız tahmini (monoküler CCTV)
 - **SOTA:** tek kameradan ölçek/homografi/plaka-genişliği (PPM) + Kalman; kalibrasyon-bağımlı.
@@ -107,20 +107,20 @@ aura M1-M16'yı yutmuş + **v2.1/2.2/2.3** evrimi:
 ## 6. Güçlü Yanlar / Zayıf Yanlar / Öneriler (gözlem)
 
 **Güçlü:**
-- Mimari **SOTA-uyumlu** (YOLO26 + fast-plate-ocr + CAMARA-sözleşmesi) ve **mühendislik-disiplinli** (259 test, ruff/black, CI, tek-config, profiller, cross-platform).
+- Mimari **SOTA-uyumlu** (YOLO26 + fast-plate-ocr + CAMARA-sözleşmesi) ve **mühendislik-disiplinli** (~600 birim test, ruff/black, CI, tek-config, profiller, cross-platform).
 - **Gerçek/Mock sınırı:** gerçek 5G olmadan uçtan-uca demo; finalde sadece endpoint değişir.
 - **Dürüstlük (K-004):** belirsizde pending, sahte-onay yok; ölçülen sayılar (uydurma yok); izlenebilirlik (şartname↔modül).
 - **W1 kanıtlı kazanımlar:** plaka 2/3+pending → **3/3 exact**; stabilite gediği (orphan/phantom/ilk-harf-0) kapatıldı; FTR rapor taslağı + diyagramlar hazır.
 
 **Zayıf / Risk:**
-- **Özel-model eğitimi ERTELENDİ** → zorunlu sınıflar (license_plate, smoking/cigarette) için held-out mAP YOK; §4 ağırlıklı olarak stok COCO + 3-video davranış + boru-hattı doğrulaması.
+- **Özel-model eğitimi SÜRÜYOR (henüz bitmedi)** → zorunlu sınıfların (license_plate, smoking, seatbelt) **nihai** held-out mAP'leri kesinleşmedi; şu an ara değer (license_plate `mAP50≈0.97` ep12/35) var ama §4'e nihai sayı eğitim bitince girer. Bugünkü §4 hâlâ ağırlıklı stok COCO + 3-video davranış + boru-hattı doğrulamasına dayanıyor.
 - **QoD A/B** yalnız sentetik kontrollü sette (gerçek 3 videoda kare-düzeyi GT yok) — %40 ağırlıklı kriter; gerçek CAMARA ile teyit edilmeli.
-- **Mobil** iskelet hâlinde — final (canlı kamera + NV-login + QoD-tetikli çözünürlük) için tam uygulama gerek.
+- **Mobil** temel uygulama hazır (NV giriş + canlı WS panosu + QoD histerezis; §8) — final için gerçek cihaz testi + gerçek Turkcell CAMARA bağlama kaldı.
 - Held-out set küçük (3 video) — istatistiksel mAP değil; geniş etiketli set lazım.
 - fast-plate-ocr **CPU** (onnxruntime MPS sağlamaz) — etki düşük ama not.
 
 **Öneriler (yarışma için, etki sırasına göre):**
-1. **Komite verisi / Roboflow gelince YOLO26 + driver-state fine-tune** (en yüksek etki; veri + manifest + boru-hattı zaten hazır, tek komut).
+1. **Süren fine-tune'u tamamla + held-out ölç** (license_plate / seatbelt / smoking; veri + manifest + boru-hattı hazır, eğitim koşuyor) → nihai mAP'leri §4'e işle; baseline'ı (pose-hibrit / stok) geçenleri varsayılan/profil yap.
 2. **Gerçek CAMARA sandbox** (Vodafone/Telefónica/Orange) ile QoD+NV testi → §40 QoD kanıtını gerçek ağda göster.
 3. **Mobil tam uygulama** (final 3. aşama): NV sessiz giriş + canlı kamera → QoD-tetikli yüksek çözünürlük + tespit gösterimi.
 4. Plaka için **fastplate kalıcı** + (opsiyonel) dewarp/SR'yi komite footage'ında A/B (bu footage'da KIRMIZI çıktılar — overfit etme).
@@ -137,7 +137,7 @@ aura M1-M16'yı yutmuş + **v2.1/2.2/2.3** evrimi:
 
 ---
 
-## 8. Kaynakça (WebSearch)
+## 9. Kaynakça (WebSearch)
 - fast-plate-ocr: https://github.com/ankandrew/fast-plate-ocr
 - PaddleOCR PP-OCRv5: https://huggingface.co/PaddlePaddle/PP-OCRv5_server_det · https://www.tenorshare.com/ocr/paddleocr.html
 - YOLO+PaddleOCR plaka pipeline: https://medium.com/@ggulsumkayhann/license-plate-detection-and-recognition-with-yolo-and-paddleocr-9c39baecce87

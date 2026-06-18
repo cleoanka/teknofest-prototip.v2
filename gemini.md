@@ -1,5 +1,13 @@
 # Gemini CLI — AURA Geliştirme & Araştırma Rehberi
 
+> 🟡 **GÜNCEL DURUM (18.06.2026) — DÜRÜST NOT:** Gemini CLI **kısmen** çalışıyor.
+> Aşağıda ⭐ önerilen `gemini-3.1-pro-preview` (ve diğer 3.x pro modelleri) bu hesapta
+> **`403 SUBSCRIPTION_REQUIRED`** veriyor (enterprise Code-Assist lisansı istiyor).
+> **Çalışan model: `gemini-2.5-flash`** — mobil-RN ve final/CAMARA araştırması bununla yapıldı
+> (bkz. `gozlem.md` §7, `plan1.md` §6). Yani: araştırma için Gemini'yi **`-m gemini-2.5-flash`
+> ile** çağır; pro modelleri lisans gelene dek kullanma. Aşağıdaki model listesi kurulu
+> sürümün sunduğu adları gösterir (hepsine erişim YOK — erişilebilirlik ≠ listede görünmek).
+>
 > **Bu belge ne?** Bu repoda **Gemini CLI**'yi (özellikle web-araştırması + ikinci-görüş
 > için) sonuna kadar nasıl kullanacağımızın rehberi. Gemini CLI **v0.46.0** kurulu ve
 > auth'lu (`which gemini` → `~/.npm-global/bin/gemini`). Cheat-sheet'in bir kısmı bizzat

@@ -21,6 +21,8 @@ Dedektör/cihaz/eşikler **config profilleriyle** seçilir (`--profile server|la
 | `driver_state/` | Katman A model (pose-hibrit/YOLO26l) + Katman B `DriverStateEngine` ID-oylaması (no-landmark) | M4 |
 | `plate/` | Sweet spot + voting buffer + OCR + Türk plaka regex | M5 |
 | `speed/` | tripwire / ipm / disabled (relative_velocity_flag) | M6 |
+| `identity/` | `DriverLock` — sürücü kimlik kilidi (track ↔ sürücü ataması) | M4+ |
+| `scene/` | `SignTracker` — sahne-seviyesi tabela takibi → aktif hız limiti | M6+ |
 | `accumulator/` | ID-merkezli TrackRecord + risk kuralları | M3+ |
 | `qod/` | CAMARA QoD istemcisi + histerezis | M5+ |
 | `events/` | AuraEvent / AnnotationFrame emitter | M7 |
@@ -32,6 +34,8 @@ Dedektör/cihaz/eşikler **config profilleriyle** seçilir (`--profile server|la
 | Modül | Açıklama |
 |---|---|
 | `config.py` | `load_config()` — `config/default.yaml` yükleyici (noktalı erişim) |
+| `device.py` | Merkezi cihaz çözümleyici — `cuda`/`auto` istense de GPU gerçekten çalışabiliyor mu probe eder, yoksa sessizce CPU'ya düşer |
+| `taxonomy.py` | Model-uzayı ↔ AURA kanonik sınıf-adı eşlemesi (ör. `cell phone`→`phone`) — model değişince sözleşme değişmesin |
 | `schema.py` | Pydantic v2 sözleşmeleri (TrackRecord, AuraEvent, …) |
 | `synthetic.py` | `python -m aura.synthetic` — sentetik örnek video + GT |
 | `smoke.py` | `python -m aura.smoke` — adaptif kurulum/pipeline smoke testi |

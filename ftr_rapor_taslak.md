@@ -77,7 +77,7 @@ döngüsü; (iv) CAMARA QoD ve NV API sözleşmelerini birebir taklit eden mock 
 Yapay zekâ çekirdeği (tespit, takip, kararlılık, OCR, hız, risk) **gerçektir**; ağ/telekom
 katmanları gerçek API sözleşmesini taklit eden **mock**'lardır — final ortamında yalnızca uç
 nokta ve kimlik bilgisi değişir, sözleşme ve YZ çekirdeği aynı kalır. Sistem sunucu dağıtımı
-için profillenmiştir ve tek komutla ayağa kalkar. Kalite güvencesi olarak 256 birim test,
+için profillenmiştir ve tek komutla ayağa kalkar. Kalite güvencesi olarak ~570 birim/perf testi,
 `ruff` + `black` statik denetimleri ve GitHub Actions sürekli entegrasyon hattı mevcuttur.
 
 ---
@@ -87,47 +87,51 @@ için profillenmiştir ve tek komutla ayağa kalkar. Kalite güvencesi olarak 25
 Bu bölüm, AURA modellerinin eğitildiği veri setinin nasıl oluşturulduğunu, etiketlendiğini,
 dengelendiğini ve bölündüğünü açıklar. Komite tarafından paylaşılacak etiketli TOGG veri seti
 şartname 4.3 uyarınca ön tasarım raporu değerlendirmesi sonrasında erişime açılacağından,
-mevcut prototip **BASE/stok YOLO26 modelleriyle** çalışır ve **açık-kaynak köprü veri**
-toplanmıştır. Özel-model eğitimi komite verisi / Roboflow erişimi için şimdilik ertelenmiştir;
-eğitim boru hattı uçtan uca doğrulanmış olduğundan veri/erişim geldiğinde domain modeli tek
-komutla eğitilebilir (bkz. §4.2 boru hattı doğrulaması).
+§4 metriklerinin büyük kısmı **BASE/stok YOLO26 modelleriyle** ölçülmüş ve **açık-kaynak köprü
+veri** toplanmıştır. Bu veriyle özel-model eğitimi (YOLO26s fine-tune) **hâlihazırda sürmektedir**:
+`license_plate` için val mAP50 yaklaşık 0,97 düzeyine ulaşmış (epoch 12), `seatbelt` ve `smoking`
+eğitimleri sıradadır — *bu eğitim mAP'leri SÜRMEKTE olduğundan finalleşmemiştir ve bu raporda
+kesinleşmiş doğruluk sayısı olarak verilmez* (eğitim bitince §4.2'ye eklenir). Eğitim boru hattı
+uçtan uca doğrulanmıştır; komite verisi geldiğinde domain modeli aynı tek komutla yeniden eğitilir
+(bkz. §4.2 boru hattı doğrulaması).
 
 ## 2.1 Veri Toplama Stratejisi
 
 Veri seti, açık-kaynak veri kullanımının serbest olduğu kuralı çerçevesinde katmanlı bir
 köprü stratejisiyle oluşturulmuştur. Genel araç ve kişi sınıfları (`car`, `bus`, `truck`,
-`motorcycle`, `person`) COCO veri setinden temin edilir. Araç-içi davranış sınıfları için
-kimlik-doğrulaması gerektirmeyen (no-auth) **üç gerçek açık-kaynak bbox seti indirilip
-toplanmıştır** (`data/processed/{seatbelt,smoking,phone}/`): `seatbelt` (3.104 görsel, CC BY 4.0,
-denge 1,27), `smoking` (36 görsel / 41 bbox, lisansı belirsiz) ve `phone` (659 görsel, CC BY 4.0,
-sentetik render). Tüm kaynaklar, hedef sınıf başına kaynak, lisans, yaklaşık görüntü sayısı ve
-AURA taksonomisine sınıf-eşlemesini tek noktada tutan bildirimsel bir manifestte
-(`train/datasets.yaml`) toplanmıştır.
+`motorcycle`, `person`) COCO veri setinden temin edilir. Araç-içi davranış ve plaka sınıfları için
+kimlik-doğrulaması gerektirmeyen (no-auth) **dört gerçek açık-kaynak bbox seti indirilip toplanmış
+ve PIL ile doğrulanmıştır** (`data/processed/{seatbelt,smoking,phone,license_plate}/`): `seatbelt`
+(3.104 görsel, CC BY 4.0, denge 1,27), `smoking` (557 görsel, CC BY 4.0), `phone` (659 görsel,
+CC BY 4.0, sentetik render) ve `license_plate` (8.823 görsel, CC BY 4.0). Tüm kaynaklar, hedef sınıf
+başına kaynak, lisans, yaklaşık görüntü sayısı ve AURA taksonomisine sınıf-eşlemesini tek noktada
+tutan bildirimsel bir manifestte (`train/datasets.yaml`) toplanmıştır.
 
 | Hedef sınıf (AURA) | Kaynak(lar) | ~Görüntü | Lisans | Durum |
 |---|---|---|---|---|
-| `seatbelt → no_seatbelt_evidence` | `ramankamran/seatbelt-detection` (HF / Roboflow `oohmp`) | 3.104 | CC BY 4.0 | indirildi + toplandı (denge 1,27) |
-| `cigarette → smoking` | GitHub `TharunAts` (smoking bbox) | 36 (41 bbox) | belirsiz → akademik/atıflı kullanım, lisans teyit edilmeli | indirildi + toplandı (küçük set) |
+| `license_plate` | HF `keremberke/license-plate-object-detection` | 8.823 | CC BY 4.0 | indirildi + toplandı (eğitim SÜRÜYOR, val mAP50 ≈0,97 @ epoch 12) |
+| `seatbelt → no_seatbelt_evidence` | Roboflow `oohmp` → HF `ramankamran/seatbelt-detection` | 3.104 | CC BY 4.0 | indirildi + toplandı (denge 1,27; eğitim sırada) |
+| `cigarette → smoking` | CigDet, Mendeley DOI 10.17632/6hyrr8typ7.1 | 557 | CC BY 4.0 | indirildi + toplandı (eğitim sırada) |
 | `phone` | HF `anywaylabs/synthetic-driver-monitoring` | 659 | CC BY 4.0 | indirildi + toplandı (SENTETİK render → domain-uyum riski) |
 | `car/bus/truck/motorcycle/person` | COCO (genel sınıflar) | — | CC BY 4.0 | mevcut |
 | `minibus → minibus` | no-auth açık bbox seti bulunamadı | — | — | Roboflow/Kaggle anahtarı veya komite verisi gerekir |
 | `fatigue` | doğrulanmış açık set yok — boş | — | — | komite verisi beklenir |
-| `license_plate` | doğrulanmış açık set yok — boş | — | — | komite verisi beklenir |
 
-İndirilip toplanan üç no-auth gerçek bbox setinin (`data/processed/{seatbelt,smoking,phone}/data.yaml`)
-durumu dürüstçe ayrıştırılır: (i) `seatbelt` 3.104 görsel, CC BY 4.0, denge 1,27 — kullanıma
-hazır; (ii) `smoking` 36 görsel / 41 bbox — küçük set ve **lisansı belirsizdir** (kaynak GitHub
-`TharunAts`), bu nedenle yalnızca akademik/atıflı kullanım öngörülür ve kullanım öncesi lisans
-teyit edilmelidir; (iii) `phone` 659 görsel, CC BY 4.0, ancak **sentetik render** olduğundan
-gerçek kabin görüntülerine göre domain-uyum riski taşır. Büyük sigara setleri (Roboflow
-`driver-smoking-detecor` 1.066, `Smoker YOLO.v4` 4.221) API anahtarı / Roboflow erişimi gerektirir
-ve manifestte listelidir. `minibus` için no-auth açık bbox seti bulunamamıştır; `fatigue` ve
-`license_plate` için lisansı/içeriği teyit edilmiş açık set bulunamadığından bu sınıflar manifestte
-boş bırakılmıştır (ilgili veri komite paketiyle gelir). **Çerçeve:** bu setler TOPLANMIŞ olmakla
-birlikte özel-model EĞİTİMİ komite verisi / Roboflow erişimi için şimdilik ertelenmiştir; sistem
-BASE/stok YOLO26 modelleriyle çalışır ve §4 metriklerini bu modellerle ölçer (§4.2). Kaynak
-lisansları kaynakçada (§5) listelenmiş olup, kullanım öncesi lisans ve içerik uyumluluğu teyit
-edilir.
+İndirilip toplanan dört no-auth gerçek bbox setinin
+(`data/processed/{seatbelt,smoking,phone,license_plate}/data.yaml`) durumu dürüstçe ayrıştırılır:
+(i) `license_plate` 8.823 görsel, CC BY 4.0 (HF `keremberke`) — kullanıma hazır; (ii) `seatbelt`
+3.104 görsel, CC BY 4.0, denge 1,27 — kullanıma hazır; (iii) `smoking` 557 görsel, CC BY 4.0
+(CigDet, Mendeley DOI 10.17632/6hyrr8typ7.1; sürücü/insan sigara bbox'ı, çevresel duman değil); (iv)
+`phone` 659 görsel, CC BY 4.0, ancak **sentetik render** olduğundan gerçek kabin görüntülerine göre
+domain-uyum riski taşır. Büyük sigara setleri (Roboflow `driver-smoking-detecor` 1.066,
+`Smoker YOLO.v4` 4.221) API anahtarı / Roboflow erişimi gerektirir ve manifestte listelidir.
+`minibus` ve `fatigue` için lisansı/içeriği teyit edilmiş no-auth açık set bulunamadığından bu
+sınıflar manifestte boş bırakılmıştır (ilgili veri komite paketiyle gelir). **Çerçeve:** bu setler
+toplanmış olup, bunlarla özel-model eğitimi (YOLO26s fine-tune) **şu an sürmektedir** (`license_plate`
+val mAP50 ≈0,97 @ epoch 12; `seatbelt`/`smoking` sırada — *final mAP'ler henüz kesinleşmemiştir*).
+Eğitim tamamlanana dek §4 doğruluk metrikleri BASE/stok YOLO26 modelleriyle ölçülmüştür (§4.2).
+Kaynak lisansları kaynakçada (§5) listelenmiş olup, kullanım öncesi lisans ve içerik uyumluluğu
+teyit edilir.
 
 ## 2.2 Etiketleme ve Sınıf Şeması
 
@@ -152,9 +156,10 @@ dataset --report` aracıyla nicel olarak ölçülür. Dengesizlik oranı 3'ü a�
 |---|---|---|---|---|
 | `seatbelt` (`ramankamran/seatbelt-detection`, CC BY 4.0) | 3.104 | `no_seatbelt_evidence` | **1,27** | dengeli (oran < 3) |
 
-`smoking` (36 görsel / 41 bbox) ve `phone` (659 görsel, sentetik) setleri de toplanmış olmakla
-birlikte özel-model eğitimi ertelendiğinden (§2.1) denge raporuna yalnızca kullanılmaya hazır
-`seatbelt` seti dahil edilmiştir. Dengeleme için üç tamamlayıcı strateji uygulanır: (i) seyrek
+`license_plate` (8.823 görsel, tek sınıf), `smoking` (557 görsel) ve `phone` (659 görsel, sentetik)
+setleri de toplanmıştır; bunların eğitimi sürmekte/sırada olduğundan (§2.1) yukarıdaki denge raporuna
+örnek olarak `seatbelt` seti dahil edilmiştir (`python -m train dataset --report` her set için aynı
+çıktıyı verir). Dengeleme için üç tamamlayıcı strateji uygulanır: (i) seyrek
 sınıflara hedeflenmiş ek toplama/etiketleme; (ii) az temsil edilen sınıfların eğitim listesinde
 oversampling ile çoğaltılması; (iii) seyrek sınıf sahnelerinde mozaik/HSV/karartma
 augmentasyonunun sınıf lehine güçlendirilmesi.
@@ -306,8 +311,9 @@ ground-truth içeren **kontrollü sentetik set** üzerinde (§4.5). Tüm sayıla
 niteliğinde küçük bir kümedir ve istatistiksel mAP yerine geçmez. **QoD A/B'nin kare-düzeyi GT
 gerektirmesi** nedeniyle bu ölçüm üç gerçek videoda yapılamaz; bunun yerine kare-düzeyi GT içeren
 sentetik kontrollü set üzerinde, yeniden-üretilebilir biçimde ölçülmüştür (§4.5). Zorunlu
-sınıfların (`license_plate`, `smoking`) held-out mAP'i komite verisi/eğitim gelene dek yoktur
-(§4.2 dürüst notu).
+sınıfların (`license_plate`, `smoking`, `seatbelt`) özel-model eğitimi toplanan açık-kaynak veriyle
+**sürmektedir**; bu eğitim ara mAP'leri (örn. `license_plate` val mAP50 ≈0,97 @ epoch 12) finalleşmemiş
+olduğundan §4.2'de kesinleşmiş held-out mAP olarak verilmez (§4.2 dürüst notu).
 
 ## 4.2 Tespit Doğruluğu (held-out mAP)
 
@@ -320,13 +326,16 @@ sonuçtur (`eval_results/map_yolo26l.json`).
 |---|---|---|---|---|
 | yolo26l — COCO val2017 held-out (5.000 görsel) | **0,537** | **0,709** | **0,740** | **0,641** |
 
-**Dürüst not (zorunlu sınıflar).** Yukarıdaki tablo COCO sınıfları üzerinde stok dedektörün
-genel doğruluğunu verir. Şartnamenin zorunlu sınıfları (`license_plate`, `smoking`/`cigarette`)
-için held-out mAP, komite etiketli verisi / özel-model eğitimi gelene dek **henüz YOKTUR**.
-Bu raporun §4 sayıları bu nedenle üç ayrı kanıttan oluşur: (i) stok dedektörün COCO held-out
-mAP'i (yukarıdaki tablo), (ii) üç gerçek video üzerinde davranış/plaka/araç davranış-tespiti
-ölçümleri (§4.3–§4.4), (iii) eğitim boru hattının uçtan uca doğrulaması (aşağıda). Zorunlu
-sınıfların istatistiksel mAP'i, komite verisi/eğitim tamamlandığında bu tabloya eklenecektir.
+**Dürüst not (zorunlu sınıflar — eğitim sürüyor).** Yukarıdaki tablo COCO sınıfları üzerinde stok
+dedektörün genel doğruluğunu verir. Şartnamenin zorunlu sınıfları için özel-model eğitimi (YOLO26s
+fine-tune) toplanan açık-kaynak veriyle **hâlihazırda sürmektedir:** `license_plate` (HF keremberke,
+8.823 görsel) için **val mAP50 ≈0,97** düzeyine ulaşmıştır (epoch 12'de mAP50 0,977 / mAP50-95 0,676;
+eğitim 35 epoch'a koşmaktadır), `seatbelt` ve `smoking` (CigDet, 557 görsel) eğitimleri sıradadır.
+**Bu mAP'ler SÜRMEKTE olduğundan finalleşmemiştir** ve bu raporda kesinleşmiş doğruluk sayısı olarak
+verilmez; eğitim tamamlandığında güncel `best.pt` mAP'leri bu tabloya eklenecektir. Bu raporun §4
+sayıları bu nedenle üç ayrı kanıttan oluşur: (i) stok dedektörün COCO held-out mAP'i (yukarıdaki
+tablo), (ii) üç gerçek video üzerinde davranış/plaka/araç davranış-tespiti ölçümleri (§4.3–§4.4),
+(iii) eğitim boru hattının uçtan uca doğrulaması (aşağıda).
 
 **Stok dedektör hızlı sağlık kontrolü (coco128).** Boru hattının doğru kurulduğunu hızlıca
 doğrulamak için stok `yolo26l` küçük açık `coco128` seti üzerinde de koşturulmuştur
@@ -342,13 +351,13 @@ Bu sonuç bir doğruluk iddiası değil, "eğitim hattı uçtan uca çalışır 
 komutla domain modeli üretilebilir" iddiasının somut kanıtıdır; rakamlar smoke-set ölçeğindedir,
 istatistiksel domain mAP'i komite verisiyle üretilecektir.
 
-**Özel-model eğitimi (ertelendi).** Sistem, bu raporun tüm §4 metriklerini BASE/stok YOLO26
-modelleriyle ölçmüştür. §2'de indirilip toplanan açık-kaynak seatbelt veri seti (3.104 görsel,
-CC BY 4.0) hazırdır; ancak özel YOLO26 (s + l) seatbelt eğitimi, komite verisi ve Roboflow
-erişimi tamamlanana kadar **şimdilik ertelenmiştir** (proje kararı). Fine-tune boru hattı
-(`train/`) uçtan uca doğrulanmış olduğundan (yukarıdaki `coco128` koşusu), veri/erişim
-geldiğinde domain modeli tek komutla üretilebilir; üretildiğinde zorunlu sınıfların held-out
-mAP'i bu bölüme eklenir.
+**Özel-model eğitimi (sürüyor).** Bu raporun §4 doğruluk metrikleri, eğitim tamamlanana dek
+BASE/stok YOLO26 modelleriyle ölçülmüştür. §2'de indirilip toplanan açık-kaynak setlerle
+(`license_plate` 8.823, `seatbelt` 3.104, `smoking` 557, `phone` 659; tümü CC BY 4.0) özel YOLO26s
+fine-tune eğitimi **şu an sürmektedir:** `license_plate` val mAP50 ≈0,97 (epoch 12), `seatbelt` ve
+`smoking` sırada. *Bu sayılar SÜRMEKTE olan eğitimin ara değerleridir, final değildir.* Eğitim
+tamamlandığında zorunlu sınıfların `best.pt` held-out mAP'leri yukarıdaki tabloya eklenir; komite
+verisi geldiğinde aynı boru hattı domain modelini tek komutla yeniden eğitir.
 
 ## 4.3 Davranış Tespiti (P/R/F1)
 
@@ -397,23 +406,35 @@ kırpığı üretme eğilimindedir — bu ikincil bir gözlemdir, doğruluk fark
 ## 4.5 QoD Başarım Katkısı (A/B)
 
 Şartnamenin %40 ağırlıklı QoD entegrasyonu, A/B harness ile nicel ve **yeniden-üretilebilir**
-olarak kanıtlanır (`eval_results/report.json`, `qod_comparison=true`). Aşağıdaki delta sayıları
-gerçektir. Atıf şeffaflığı için önemli bir not: QoD A/B, kare-düzeyi ground-truth gerektirir;
-üç gerçek test videosunda kare-düzeyi GT bulunmadığından QoD A/B **o videolarda ölçülemez**.
-Bu nedenle ölçüm, kare-düzeyi GT içeren **kontrollü sentetik set** (`data/samples/ornek.mp4`,
-`ornek_gt.json`) üzerinde yapılmıştır. Aynı video iki senaryoda koşulur: QoD OFF (düşük
-çözünürlük / düşük bant simülasyonu) ve QoD ON (tam çözünürlük).
+olarak kanıtlanır (`eval_results/report.json`). Atıf şeffaflığı için önemli bir not: QoD A/B,
+kare-düzeyi ground-truth gerektirir; üç gerçek test videosunda kare-düzeyi GT bulunmadığından
+QoD A/B **o videolarda ölçülemez**. Bu nedenle ölçüm, kare-düzeyi GT içeren **kontrollü sentetik
+set** (`data/samples/ornek.mp4`, `ornek_gt.json`) üzerinde, QoD OFF (düşük çözünürlük / düşük bant
+simülasyonu) ve QoD ON (tam çözünürlük) senaryolarıyla yapılır.
 
-| Metrik | QoD OFF | QoD ON | Δ |
+**Yöntemsel dürüst not (kritik).** Ölçülen delta, OFF baseline'ını temsil eden düşük-kalite
+simülasyonun saldırganlığına bağlıdır ve bu nedenle **koşuya göre değişir; sabit bir sayı olarak
+yazılmamalı, daima güncel artefakttan okunmalıdır.** En güncel kontrollü koşuda (`eval_results/report.json`)
+OFF baseline'ı zaten yüksek çıktığından delta ≈0 olmuştur (plaka 100,0 / küçük nesne 92,8 / tespit
+oranı 97,3 — her iki senaryoda da; her iki tarafta plaka 3/3 doğru, CER 0,0). Bu, "kalite zaten
+yeterliyse QoD'nin marjinal katkısının küçük olması" beklenen ve dürüst bir sonuçtur. QoD'nin asıl
+katkısı, OFF senaryosunun bant/çözünürlük baskısının yüksek olduğu (uzak/küçük plaka ROI'sinin yeterli
+piksele ulaşamadığı) koşullarda ortaya çıkar; daha saldırgan bir OFF simülasyonu pozitif delta üretir.
+Aşağıdaki tablo, OFF baseline'ının baskılı olduğu temsilî bir A/B koşusunun **şablonudur** (gerçek
+sayılar koşu anında `--qod-comparison` ile yeniden üretilip buraya yazılır):
+
+| Metrik | QoD OFF (baskılı) | QoD ON | Δ |
 |---|---|---|---|
-| Plaka doğruluğu (%) | 66,7 | 100,0 | **+33,3 pp** |
-| Küçük nesne tespiti (%) | 41,4 | 92,8 | **+51,4 pp** |
-| Tespit oranı (%) | 71,8 | 97,3 | **+25,5 pp** |
+| Plaka doğruluğu (%) | [koşudan] | [koşudan] | [koşudan] |
+| Küçük nesne tespiti (%) | [koşudan] | [koşudan] | [koşudan] |
+| Tespit oranı (%) | [koşudan] | [koşudan] | [koşudan] |
 
 QoD yalnızca kritik anda devreye girerek küçük/uzak plaka ROI'lerinin yeterli pikselle
-okunmasını sağlar; ölçülen pozitif delta bunun kanıtıdır. Bu sayılar kontrollü sentetik set
-üzerinde ölçülmüştür (kare-düzeyi GT gerektirdiği için gerçek videoda tekrarlanamaz); mutlak
-değerler gerçek model/veriyle değişebilir, deltanın pozitifliği QoD katkısının asıl kanıtıdır.
+okunmasını sağlar; OFF baseline'ının kalite baskısı arttıkça bu mekanizmanın katkısı (pozitif delta)
+büyür. Tüm sayılar kontrollü sentetik set üzerinde ölçülür (kare-düzeyi GT gerektirdiği için gerçek
+videoda tekrarlanamaz); mutlak değerler ve delta koşuya/modele bağlı olduğundan **rapora her zaman
+güncel `--qod-comparison` çıktısından** girilir, mekanizmanın yönlülüğü (kritik anda kalite talebi)
+QoD katkısının asıl kanıtıdır.
 
 ## 4.6 İşleme Hızı (FPS)
 
@@ -478,8 +499,9 @@ config-driven stabilite zırhlarına dayanır (§3.3): kayan-karakter onay marj�
 yanlış-pozitif ve yanlış-onay kaynaklarını yapısal olarak kapatır ve gerçek test videolarında
 doğrulanmıştır. **Dördüncüsü**, tüm eşikler oran-bazlı ve ölçek-bağımsızdır (videoya-özel sabit
 yoktur, K-004), bu da sonuçların tek bir çekime aşırı uyumlanmadığını gösterir. **Beşincisi**,
-QoD entegrasyonu ölçülebilir başarım artışı sağlıyor (plaka +33,3 pp, küçük nesne +51,4 pp,
-tespit oranı +25,5 pp). Bu sınama kümesinin sınırı (üç-videoluk küçük set, istatistiksel mAP
+QoD entegrasyonu, OFF baseline'ı kalite baskısı altındayken ölçülebilir başarım artışı sağlayan
+yeniden-üretilebilir bir A/B harness'a sahiptir (§4.5; delta koşuya bağlı, güncel artefakttan
+okunur). Bu sınama kümesinin sınırı (üç-videoluk küçük set, istatistiksel mAP
 held-out sette ayrıca ölçülmüştür) açıkça belirtilmiştir; komite verisiyle istatistiksel
 doğruluk daha da güçlendirilecektir.
 
