@@ -5,10 +5,17 @@
 > ⚠️ **her iddia çalışan ortama / resmi kaynağa karşı doğrulanmalı** (Gemini bilgisi güncel
 > olmayabilir — bkz. `gemini.md`).
 
-## 1. Plaka il-kodu misread'i (en kritik açık nokta)
-**Sorun:** Karanlık/açılı otopark footage'ında EasyOCR il-kodunu tutarlı yanlış okuyor
-(3→0/2); oy-mantığı bunu kurtaramıyor (dürüstlük zırhları yanlış onayı `pending`e çevirir
-ama doğruyu üretemez). **Kalıcı çözüm — önerilen hat (Gemini):**
+## 1. Plaka il-kodu misread'i (büyük ölçüde KAPATILDI — 18–19 Haz 2026)
+> **DURUM:** İki adımla giderildi. (a) **OCR motoru `fast-plate-ocr`** varsayılan oldu
+> (plakaya-özel hafif ONNX); 3 gerçek videoda EasyOCR'ın video_3 il-kodu misread'ini
+> (3→2, T→I) kurtardı → **3/3 exact-match, CER 0.0** (bkz. `docs/degerlendirme.md`).
+> (b) **`custom_license_plate`** (YOLO26s, held-out mAP50 0.983) sıkı LP-kırpık varsayılan
+> dedektör oldu (A/B 3/3 korundu). Aşağıdaki Gemini-önerili hat (dewarp/PaddleOCR) artık
+> opsiyonel iyileştirmedir; OCR motoru `aura/plate/ocr.py:build_ocr` arkasında soyut kalır.
+
+**Özgün sorun (arşiv):** Karanlık/açılı otopark footage'ında EasyOCR il-kodunu tutarlı yanlış
+okuyordu (3→0/2); oy-mantığı bunu kurtaramıyordu (dürüstlük zırhları yanlış onayı `pending`e
+çevirir ama doğruyu üretemez). **Önerilen hat (Gemini, opsiyonel):**
 1. **Düşük-ışık iyileştirme:** Zero-DCE++ (`Li-Chongyi/Zero-DCE_extension`, ~gerçek-zamanlı)
    veya mevcut CLAHE (zaten `pose.roi_enhance` + plaka ön-işlemede var).
 2. **Perspektif düzeltme (dewarp):** plakanın 4 köşesini çıkar → `cv2.getPerspectiveTransform`:
@@ -22,11 +29,13 @@ ama doğruyu üretemez). **Kalıcı çözüm — önerilen hat (Gemini):**
 > adaptörü eklenebilir (mevcut EasyOCR yolu korunarak). Bu, A/B'deki tek zayıf metriği kapatır.
 
 ## 2. Eksik sınıflar için açık veri setleri (FTR §2 — veri seti)
-> **GÜNCEL (18 Haz 2026):** `license_plate` (8823), `seatbelt` (3104), `smoking` (557) ve
+> **GÜNCEL (19 Haz 2026):** `license_plate` (8823), `seatbelt` (3104), `smoking` (557) ve
 > `phone` (659) için **gerçek açık veri toplandı** (hepsi CC BY 4.0, PIL-doğrulanmış) ve YOLO26s
-> fine-tune'u **ŞU AN SÜRÜYOR** (`license_plate` ara mAP50 ≈ 0.977 @epoch 12/35 — final kesin
-> değil). Detay: `docs/veri_seti.md`. **Kalan boşluk:** `minibus` (no-auth açık set yok) ve
-> `fatigue` (teyitli açık set yok) → komite verisi / Roboflow-Kaggle erişimi bekliyor.
+> fine-tune'lar **TAMAMLANDI**: held-out mAP50/mAP50-95 = `license_plate` **0.983/0.707**,
+> `smoking` **0.856/0.457**, `seatbelt` **0.895/0.546** (`weights/custom_*.metrics.json`).
+> `custom_license_plate` → varsayılan LP dedektör; `custom_smoking` → `pose.py` ikinci-model;
+> `seatbelt` opsiyonel. Detay: `docs/veri_seti.md`. **Kalan boşluk:** `minibus` (no-auth açık
+> set yok) ve `fatigue` (teyitli açık set yok) → komite verisi / Roboflow-Kaggle erişimi bekliyor.
 
 Aşağıdaki tablo, daha **büyük** setler ve `minibus` için araştırılan açık kaynakları listeler
 (Gemini; kullanım önce lisans + içerik teyidi):

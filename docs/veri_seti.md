@@ -21,10 +21,10 @@ Hepsi **CC BY 4.0** (FTR §5 kaynakçaya yazılır). Sayılar `data/processed/*/
 
 > Dürüstlük: `smoking` (557) yakın/kontrollü kabin-içi sigara setidir; `phone` (659)
 > **sentetik render** olduğundan gerçek trafik domain'ine uyum riski taşır (FTR'de belirtilir).
-> Bu setler stok modeli **fine-tune** etmek içindir; eğitim **sürüyor** (bkz. `docs/egitim.md` §0
-> ve aşağıdaki "Eğitim durumu").
+> Bu setler stok modeli **fine-tune** etmek içindir; eğitim **TAMAMLANDI (19 Haz 2026)**
+> (bkz. `docs/egitim.md` §0 ve aşağıdaki "Eğitim durumu").
 
-### Eğitim durumu (SÜRÜYOR — 18 Haz 2026) ⏳
+### Eğitim durumu (TAMAMLANDI — 19 Haz 2026) ✅
 YOLO26s tabanlı fine-tune **TAMAMLANDI (19 Haz 2026)** (`weights/yolo26s.pt` taban,
 `imgsz 640`, MPS). Gerçek held-out mAP (`weights/custom_*.metrics.json`, Ultralytics `model.val`):
 
@@ -106,9 +106,9 @@ sınıf-eşlemesi** tutar. Eşleme `aura/taxonomy.py` ile tutarlıdır (ör. `ci
 
 | Hedef sınıf (AURA) | Kaynak(lar) | ~Görüntü | Lisans | Durum |
 |---|---|---|---|---|
-| `license_plate` | `keremberke/license-plate-object-detection` (HF; Roboflow v1 → COCO→YOLO) | **8823** | CC BY 4.0 | **indirildi + işlendi**; YOLO26s fine-tune **SÜRÜYOR** (ara mAP50 ≈ 0.977 @epoch 12/35 — final kesin DEĞİL) |
-| `seatbelt → no_seatbelt_evidence` | Roboflow `oohmp/seatbelt-detection` v2 (HF `ramankamran`) | **3104** | CC BY 4.0 | **indirildi + işlendi**; fine-tune **SÜRÜYOR** (erken, ~epoch 1) |
-| `cigarette → smoking` | CigDet (Cigarette Detection), Mendeley DOI `10.17632/6hyrr8typ7.1` | **557** | CC BY 4.0 | **indirildi + işlendi**; fine-tune **sırada**. Büyük setler (Roboflow `driver-smoking-detecor` 1066, `Smoker YOLO.v4` 4221) API/Roboflow erişimi gerektirir |
+| `license_plate` | `keremberke/license-plate-object-detection` (HF; Roboflow v1 → COCO→YOLO) | **8823** | CC BY 4.0 | **indirildi + işlendi**; YOLO26s fine-tune **TAMAMLANDI** (held-out mAP50 **0.983** / mAP50-95 **0.707**); `custom_license_plate` → **varsayılan LP dedektör** |
+| `seatbelt → no_seatbelt_evidence` | Roboflow `oohmp/seatbelt-detection` v2 (HF `ramankamran`) | **3104** | CC BY 4.0 | **indirildi + işlendi**; fine-tune **TAMAMLANDI** (held-out mAP50 **0.895** / mAP50-95 **0.546**); opsiyonel (dış-kamera görüş açısı) |
+| `cigarette → smoking` | CigDet (Cigarette Detection), Mendeley DOI `10.17632/6hyrr8typ7.1` | **557** | CC BY 4.0 | **indirildi + işlendi**; fine-tune **TAMAMLANDI** (held-out mAP50 **0.856** / mAP50-95 **0.457**); `pose.py` ikinci-model (phone-kanıtını korur). Büyük setler (Roboflow `driver-smoking-detecor` 1066, `Smoker YOLO.v4` 4221) API/Roboflow erişimi gerektirir |
 | `phone` | HF `anywaylabs/synthetic-driver-monitoring` | **659** | CC BY 4.0 | **indirildi + işlendi**; **SENTETİK render** → domain-uyum riski |
 | `car/bus/truck/motorcycle/person` | COCO (genel sınıflar) | — | CC BY 4.0 | mevcut (stok `yolo26l`) |
 | `minibus → minibus` | **(no-auth açık bbox seti bulunamadı)** | — | — | Roboflow/Kaggle anahtarı veya komite verisi gerekir |
@@ -119,18 +119,22 @@ sınıf-eşlemesi** tutar. Eşleme `aura/taxonomy.py` ile tutarlıdır (ör. `ci
 > tümü PIL-doğrulanmış, CC BY 4.0): `license_plate` 8823 görsel (keremberke/HF), `seatbelt`
 > 3104 görsel (Roboflow `oohmp`/HF `ramankamran`), `smoking` 557 görsel (CigDet/Mendeley DOI
 > `10.17632/6hyrr8typ7.1`) ve `phone` 659 görsel (HF synthetic, **sentetik render** →
-> domain-uyum riski). Bu veriyle YOLO26s fine-tune'u **ŞU AN SÜRÜYOR** (`license_plate` ~epoch
-> 12/35 ara mAP50 ≈ 0.977; `seatbelt` erken; `smoking` sırada). **Final mAP'ler henüz
-> kesinleşmedi** — bunlar ara koşu değerleridir, doğruluk iddiası değildir; eğitim bitince final
-> `*.metrics.json` FTR §4'e girer. Fine-tune boru hattı (`train/`) ayrıca uçtan uca doğrulanmıştır
+> domain-uyum riski). Bu veriyle YOLO26s fine-tune'lar **TAMAMLANDI (19 Haz 2026)**; gerçek
+> held-out mAP (`weights/custom_*.metrics.json`, Ultralytics `model.val` ayrılmış test bölmesi):
+> `license_plate` mAP50 **0.983** / mAP50-95 **0.707**, `smoking` **0.856** / **0.457**,
+> `seatbelt` **0.895** / **0.546**. `custom_license_plate` 3-video A/B'de regresyon göstermedi →
+> **varsayılan LP dedektör**; `custom_smoking` `pose.py`'da ikinci-model (phone-kanıtını korur);
+> `seatbelt` opsiyonel (dış-kamera görüş açısı). Bunlar küçük domain held-out'larıdır
+> (özellikle `smoking` 557 yakın/kontrollü set, `phone` sentetik) → doğruluk göstergesidir,
+> sahanın tamamını temsil etmez. Fine-tune boru hattı (`train/`) ayrıca uçtan uca doğrulanmıştır
 > (açık `coco128`, `yolo26s`, 5 epoch → gerçek `best.pt` mAP50 0.7645). Büyük sigara setleri
 > (Roboflow `driver-smoking-detecor` 1066, `Smoker YOLO.v4` 4221) ek API/Roboflow erişimi
 > gerektirir (manifestte listeli). `minibus` için no-auth açık bbox seti bulunamamıştır; `fatigue`
 > için doğrulanmış açık set yoktur (manifestte `sources: []` boş bırakılır — uydurma kaynak
 > eklenmez); bu sınıflar komite verisiyle gelir. ASIL **yayınlanmış** dedektör doğruluk göstergesi
 > stok `yolo26l`'in COCO val2017 held-out (5000 görsel) sonucudur (mAP50 0.709 / mAP50-95 0.537);
-> fine-tune'lu zorunlu-sınıf (`license_plate`, `smoking`) **final** held-out mAP eğitim bitene dek
-> KESİNLEŞMEMİŞTİR. Plaka için ayrıca **sıkı LP-kırpık + pipeline dürüstlük zırhları** kullanılır;
+> fine-tune'lu zorunlu-sınıf (`license_plate`, `smoking`, `seatbelt`) **final** held-out
+> mAP'leri yukarıda (`weights/custom_*.metrics.json`) KESİNLEŞMİŞTİR. Plaka için ayrıca **sıkı LP-kırpık + pipeline dürüstlük zırhları** kullanılır;
 > bu zırhlar sayesinde **her iki dedektör de** plakada 2/3 exact-match, 0 yanlış-onay verir ve
 > belirsizde dürüstçe `pending` der; sistem asla yanlış plaka onaylamaz (bkz.
 > `docs/degerlendirme.md` ölçülen sonuçlar + `ftr.md` §4).

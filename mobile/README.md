@@ -28,6 +28,10 @@ EXPO_PUBLIC_API_URL=http://192.168.1.20:8080 \
 EXPO_PUBLIC_NV_URL=http://192.168.1.20:8082 \
 npx expo start
 ```
+PowerShell (Windows):
+```powershell
+$env:EXPO_PUBLIC_API_URL="http://192.168.1.20:8080"; $env:EXPO_PUBLIC_NV_URL="http://192.168.1.20:8082"; npx expo start
+```
 | Env | Varsayılan | Açıklama |
 |---|---|---|
 | `EXPO_PUBLIC_API_URL` | `http://localhost:8080` | inference_api (events/status/source) |

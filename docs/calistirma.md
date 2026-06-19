@@ -74,6 +74,16 @@ curl -X POST localhost:8080/stream/start -H 'content-type: application/json' \
   -d '{"source":"rtsp://192.168.1.10:8554/stream"}'
 ```
 
+> **Canlı / telefon kamera ile plaka okuma (19 Haz fix):** webcam/iPhone gibi **elde tutulan**
+> kaynaklarda plaka OCR'ı, aracın kadrajdaki konumuna bakan `plate.sweet_spot` bölgesiyle
+> kapılanır. Bu bölge eskiden test-videolarının "araç alttan yaklaşır" geometrisine ayarlı
+> dardı (0.18–0.85 / 0.40–0.90) → telefonu çevirince araç bölgeye girmeyince OCR **hiç**
+> tetiklenmiyordu. Varsayılan artık neredeyse tam-kadraj (**0.03–0.97 / 0.06–0.98**); kaliteyi
+> frame-bölgesi değil **piksel-boyut kapısı** (`plate.lp_vote_min_px` / `plate.min_pixel_height`)
+> + oy havuzu + dürüstlük zırhları sınırlar. Onaylanmamış plaka dashboard'da "plaka?" (partial
+> kanıt izi) olarak görünür. Çok dar/uzak kadrajda plaka okunmuyorsa aracı kadraja yaklaştırın
+> (piksel-yüksekliği `lp_qod_below_px` altındaysa `plate_too_small` QoD kalite tetiği düşer).
+
 ## Sorun Giderme
 | Belirti | Çözüm |
 |---|---|
@@ -81,3 +91,4 @@ curl -X POST localhost:8080/stream/start -H 'content-type: application/json' \
 | Event akmıyor | WS bağlantısı (tarayıcı konsolu); inference :8080 çalışıyor mu? |
 | Mobil bağlanmıyor | `localhost` yerine LAN IP; emülatörde `10.0.2.2` |
 | Eval "no_results" | Önce **Eval Çalıştır** / `POST /eval/run` |
+| Canlı kamerada plaka okunmuyor | Aracı kadraja yaklaştır (plaka piksel-yüksekliği `lp_vote_min_px` üstü olmalı); `plate.sweet_spot` zaten neredeyse tam-kadraj (19 Haz fix). Onaysız okuma "plaka?" partial olarak görünür |

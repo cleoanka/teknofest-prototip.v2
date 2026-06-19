@@ -15,7 +15,9 @@ sözleşmesini birebir taklit eden **mock**'lardır — final ortamında yalnız
 - **YOLO26 omurga, konfigüre edilebilir:** varsayılan Stage-1 dedektör **stok `yolo26l`**
   (sunucu, doğruluk-önce); **config profilleri** (`--profile server|laptop|v4-finetune`)
   `default.yaml` üzerine derin-merge edilir. Sürücü davranışı **YOLO26-pose** geometrisi +
-  hibrit nesne kanıtı; plaka **YOLO11n LP dedektörü + format-öncelikli güven-ağırlıklı oylama**.
+  hibrit nesne kanıtı; plaka artık **eğitilmiş özel LP dedektörü** (`custom_license_plate`,
+  YOLO26s, held-out **mAP50 0.983 / mAP50-95 0.707**) + format-öncelikli güven-ağırlıklı
+  oylama (3-video A/B'de plaka 3/3 korundu → varsayılan; ağırlık yoksa loglu stok LP'ye düşer).
 - **Plaka OCR varsayılanı `fast-plate-ocr`:** plakaya-özel hafif ONNX modeli
   (`global-plates-mobile-vit-v2`, ~5MB; ilk koşuda otomatik iner). 3 gerçek videoda
   **3/3 exact-match (CER 0.0)** ölçüldü — EasyOCR'ın video_3'te kalan il-kodu misread'ini
@@ -28,21 +30,25 @@ sözleşmesini birebir taklit eden **mock**'lardır — final ortamında yalnız
   doğrulama setinde **mAP**; hız mutlak-GT **MAE/MAPE** (kalibre kareler). `eval_results/`.
   Ölçülen (held-out): davranış makro-F1 **1.0** (3 video), araç sınıfı **%100**,
   stok `yolo26l` COCO-val2017 **mAP50-95 0.537 / mAP50 0.709** (5000 görsel).
-- **W1 plaka & hız sağlamlaştırma:** LP kırpığına OCR-öncesi **dewarp + enhance** (açılı/karanlık
-  otopark); opsiyonel **PaddleOCR** motoru (`ocr_engine: paddleocr`, kuruluysa); hız varsayılanı
-  **`metric` oto-kalibrasyon** (Kalman+EMA) + **swerving**; `tools/bench.py` ile FPS profilleme.
-- **Eğitim boru hattı (YOLO26 fine-tune):** `python -m train` eğit→doğrula→metrik→best;
-  `dataset --report` veri-dengeleme dağılımı (FTR §2). Açık veri (CC BY 4.0, PIL-doğrulanmış)
-  toplandı: license_plate 9123, seatbelt 3104, phone 659, smoking 557. **Eğitim sürüyor**
-  (YOLO26s fine-tune): license_plate mAP50 ≈ 0.97 (epoch ~12/35), smoking + seatbelt sırada —
-  *final mAP'ler henüz kesinleşmedi*.
+- **W1 plaka & hız sağlamlaştırma:** küçük/karanlık LP kırpığına OCR-öncesi **CLAHE+2x
+  iyileştirme** (`ocr_enhance_below_px`; deneysel dewarp modülü kaldırıldı — gerçek-video
+  kazanımı motor seçiminden geldi); opsiyonel **PaddleOCR** motoru (`ocr_engine: paddleocr`,
+  kuruluysa); hız varsayılanı **`metric` oto-kalibrasyon** (Kalman+EMA) + **swerving**;
+  `tools/bench.py` ile FPS profilleme.
+- **Eğitim boru hattı (YOLO26 fine-tune) — TAMAMLANDI (19 Haz 2026):** `python -m train`
+  eğit→doğrula→metrik→best; `dataset --report` veri-dengeleme dağılımı (FTR §2). Açık veri
+  (CC BY 4.0, PIL-doğrulanmış) toplandı: license_plate 9123 (8823 işlendi), seatbelt 3104,
+  phone 659, smoking 557. YOLO26s fine-tune'lar bitti, **gerçek held-out mAP** (`weights/custom_*.metrics.json`):
+  license_plate **0.983/0.707**, smoking **0.856/0.457**, seatbelt **0.895/0.546** (mAP50/mAP50-95).
+  `custom_license_plate` A/B regresyonsuz → **varsayılan LP dedektör**; `custom_smoking`
+  `pose.py`'da **ikinci-model** (phone kanıtını korur); `seatbelt` opsiyonel (dış-kamera görüş açısı).
 - **Ağırlıksız da çalışır:** ağırlık yoksa pipeline deterministik *mock* modda tüm hattı
   (tespit→plaka→sürücü→hız→QoD→event) uçtan uca koşturur; demo ve testler model olmadan geçer.
 - **QoD kanıtı:** A/B harness ölçülebilir delta üretir; **yaklaşma tetiği** (`vehicle_approach`)
   şartnamenin "TOGG yaklaşınca QoD" senaryosunu birebir karşılar — %40 QoD puanı için kanıt.
 - **Denetim izi + sağlık:** `tools/test_video.py` annotated mp4 + JSON kanıt; `--save-events`
   JSONL iz (şartname 4.5); `python tools/doctor.py` tek-bakış ortam/hazırlık kontrolü.
-- **Kalite:** 600+ unit test (mock modda; `services/` testleri genişletiliyor), `ruff` + `black`
+- **Kalite:** 780+ unit test (mock modda; `tests/` + `services/`), `ruff` + `black`
   temiz (sürüm-pinli), GitHub Actions CI.
 - **FTR rehberi:** [`ftr.md`](ftr.md) — Final Tasarım Raporu'nu bu kanıtlarla doldurma kılavuzu.
 
@@ -62,7 +68,10 @@ biten ile süren net ayrılır; rakamlar repo ölçümleriyle (`eval_results/`, 
 | QoD A/B kanıtı | ✅ | plaka +33pp · küçük nesne +51pp · tespit +25pp (sentetik kontrollü set) |
 | YZ çekirdeği (CV/track/state/OCR/speed) | ✅ | gerçek kod; ağırlıksız mock modda da uçtan uca koşar |
 | Telekom katmanı (QoD/NV/5G) | ⏳ mock | CAMARA sözleşmesini birebir taklit eder; final'de yalnız endpoint/credential değişir |
-| Domain fine-tune (license_plate/seatbelt/phone/smoking) | ⏳ sürüyor | YOLO26s; license_plate mAP50 ≈ 0.97 (epoch ~12/35); final mAP'ler henüz kesin değil |
+| Domain fine-tune (license_plate / smoking / seatbelt) | ✅ | YOLO26s held-out: lp **0.983/0.707**, smoking **0.856/0.457**, seatbelt **0.895/0.546** (`weights/custom_*.metrics.json`) |
+| Özel LP dedektörü varsayılan | ✅ | `custom_license_plate` (A/B 3/3 plaka korundu) → `config/default.yaml` `plate.lp_detector.path` |
+| Özel smoking ikinci-model | ✅ | `pose.py`'da roi_objects yanında; phone-kanıtı korunur (drop-in regresyonu A/B ile elendi) |
+| Canlı/telefon kamera plaka okuma (19 Haz fix) | ✅ | sweet_spot neredeyse tam-kadraj (0.03–0.97 / 0.06–0.98); kaliteyi piksel-boyut kapısı sınırlar |
 | Mobil (Expo/RN) | ✅ iskelet | NV sessiz giriş + canlı WS tespit panosu + QoD histerezis; tsc-temiz |
 
 ---
@@ -105,6 +114,12 @@ Ardından tarayıcıda:
 `setup` idempotenttir; ikinci çalıştırma tamamlanmış adımları atlar. Donanım backend'i
 otomatik seçilir (Apple Silicon→MPS, NVIDIA→CUDA, diğer→CPU).
 
+> **Canlı / telefon kamera plaka okuma (19 Haz fix):** plaka OCR'ı tetikleyen `sweet_spot`
+> bölgesi eskiden test-videolarının "araç alttan yaklaşır" geometrisine dardı (0.18–0.85 /
+> 0.40–0.90) → telefonu elde tutunca araç bölgeye girmediği için OCR hiç çalışmıyordu. Artık
+> neredeyse tam-kadraj (0.03–0.97 / 0.06–0.98); kaliteyi frame-bölgesi değil **piksel-boyut
+> kapısı** (`lp_vote_min_px` / `min_pixel_height`) + oy havuzu + dürüstlük zırhları sınırlar.
+
 ---
 
 ## Mimari Özeti
@@ -112,7 +127,7 @@ otomatik seçilir (Apple Silicon→MPS, NVIDIA→CUDA, diğer→CPU).
 ```
 [Kamera] → [Ön-İşleme] → [YOLO26 + ByteTrack] ─┬─→ [Sürücü ROI] → Katman A: YOLO26-pose geometri+hibrit nesne
                               ↑                 │                  Katman B: per-ID 16/8 zaman-oylaması (engine)
-                       [Sınıf oyu]             └─→ [Plaka ROI] → [YOLO11n LP + Güven-Ağırlıklı Oylama + fast-plate-ocr]
+                       [Sınıf oyu]             └─→ [Plaka ROI] → [custom_license_plate LP + Güven-Ağırlıklı Oylama + fast-plate-ocr]
                                                                           ↓
                                                           [QoD Tetik (yaklaşma/kalite/anomali)]
                               [ID-Merkezli Accumulator] ← [Hız + Swerving (yanal yörünge)]
@@ -204,7 +219,7 @@ Her dizin kendi `README.md`'sini taşır.
 ## Test & Kalite
 
 ```bash
-pytest -m "not integration"        # 600+ unit test (mock modda, ağırlık gerektirmez)
+pytest -m "not integration"        # 780+ unit test (mock modda, ağırlık gerektirmez)
 ruff check . && black --check .    # lint + format
 ```
 Model gerektiren testler `@pytest.mark.integration` ile işaretli (CI'da skip edilir).
