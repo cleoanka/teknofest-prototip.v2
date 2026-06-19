@@ -25,19 +25,19 @@ Hepsi **CC BY 4.0** (FTR §5 kaynakçaya yazılır). Sayılar `data/processed/*/
 > ve aşağıdaki "Eğitim durumu").
 
 ### Eğitim durumu (SÜRÜYOR — 18 Haz 2026) ⏳
-YOLO26s tabanlı fine-tune **devam ediyor** (`weights/yolo26s.pt` taban, `imgsz 640`,
-35 epoch, `--patience 12`, MPS). **Final mAP'ler henüz kesinleşmedi** — aşağıdaki sayılar
-**ara koşu değerleridir** (`runs/train/<sınıf>_s/results.csv`):
+YOLO26s tabanlı fine-tune **TAMAMLANDI (19 Haz 2026)** (`weights/yolo26s.pt` taban,
+`imgsz 640`, MPS). Gerçek held-out mAP (`weights/custom_*.metrics.json`, Ultralytics `model.val`):
 
-| Sınıf | Durum | Ara metrik (kesin DEĞİL) |
-|---|---|---|
-| `license_plate` | ⏳ ~epoch 12/35 | mAP50 ≈ **0.977**, mAP50-95 ≈ 0.676 (P 0.971 / R 0.941) |
-| `seatbelt` | ⏳ erken (epoch ~1) | mAP50 ≈ 0.603 — henüz yakınsamadı |
-| `smoking` | ⏳ sırada | henüz metrik yok |
+| Sınıf | mAP50 | mAP50-95 | Veri |
+|---|---|---|---|
+| `license_plate` | **0.983** | **0.707** | 9123 görsel (keremberke/HF) |
+| `smoking` | **0.856** | **0.457** | 557 görsel (CigDet/Mendeley) |
+| `seatbelt` | **0.895** | **0.546** | 3104 görsel (Roboflow/HF) |
 
-> Bu değerler **doğruluk iddiası değildir**; eğitim bitince final `*.metrics.json`
-> (`model.val` mAP/P/R/F1) FTR §4'e girer. ASIL yayınlanmış doğruluk göstergesi hâlâ stok
-> `yolo26l`'in COCO val2017 held-out sonucudur (bkz. `docs/degerlendirme.md`).
+> `custom_license_plate` 3-video A/B'de regresyon göstermedi → **varsayılan LP dedektör**
+> (`config/default.yaml`). `custom_smoking` (held-out 0.856) drop-in regresyon nedeniyle
+> varsayılana alınmadı; doğru entegrasyon takip işi. `seatbelt` opsiyonel (dış-kamera görüş
+> açısı). ASIL araç-tespiti doğruluğu hâlâ stok `yolo26l` COCO val2017 held-out (mAP50-95 0.537).
 
 ## Veri toplama zorluğu
 - **Araç tespiti:** COCO/araç veri setleri bol; Türk trafiği için yerel kamera kaydı ekleyin.
