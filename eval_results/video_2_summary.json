@@ -1,0 +1,689 @@
+{
+  "source": "video_2.mp4",
+  "profile": null,
+  "detector_path": "weights/yolo26l.pt",
+  "detector_conf": 0.1,
+  "device": "mps",
+  "frames_processed": 457,
+  "processing_fps": 7.87,
+  "video_fps": 50.0,
+  "event_counts": {
+    "DETECTION_UPDATE": 2,
+    "DRIVER_LOCKED": 1,
+    "SPEED": 25,
+    "PLATE_CONFIRMED": 1,
+    "DRIVER_STATE": 12,
+    "PLATE_REJECTED": 3,
+    "QOD_TRIGGER": 1
+  },
+  "qod_trigger_reasons": {
+    "consensus_fail": 1
+  },
+  "tracks": [],
+  "annotated_video": "eval_results/video_2_annotated.mp4",
+  "events": [
+    {
+      "event_id": "39567215a64c40d38d82586c42cde882",
+      "ts": 0.04,
+      "track_id": 1,
+      "type": "DETECTION_UPDATE",
+      "payload": {
+        "bbox": [
+          1703.179443359375,
+          569.67626953125,
+          2771.15869140625,
+          1408.36376953125
+        ],
+        "cls": "car",
+        "conf": 0.9292842745780945,
+        "new": true
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "ea3f6d20a1c84a5bae2311b92b49bb6e",
+      "ts": 1781838777.082943,
+      "track_id": 1,
+      "type": "DRIVER_LOCKED",
+      "payload": {
+        "driver_id": 2,
+        "confirm_frames": 3
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "41a52ce6ed754409990ac4b9b4859507",
+      "ts": 0.06,
+      "track_id": 1,
+      "type": "SPEED",
+      "payload": {
+        "value_kmh": 0.3,
+        "mode": "metric",
+        "relative_velocity_flag": false,
+        "swerving": false,
+        "calibrated": true
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "d9ce232e0e6c48d891d49342eec4db9d",
+      "ts": 0.08,
+      "track_id": 1,
+      "type": "PLATE_CONFIRMED",
+      "payload": {
+        "value": "34TC8532",
+        "confidence": 1.0
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "c3002bb4fdf34dc68c2c7de99f2c6fdc",
+      "ts": 0.22,
+      "track_id": 1,
+      "type": "SPEED",
+      "payload": {
+        "value_kmh": 0.4,
+        "mode": "metric",
+        "relative_velocity_flag": false,
+        "swerving": false,
+        "calibrated": true
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "d405c430fbbc46428685b03eb9627d8a",
+      "ts": 0.74,
+      "track_id": 1,
+      "type": "SPEED",
+      "payload": {
+        "value_kmh": 0.5,
+        "mode": "metric",
+        "relative_velocity_flag": false,
+        "swerving": false,
+        "calibrated": true
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "ebd1724db8a1415ba1df8679661cbdcf",
+      "ts": 0.88,
+      "track_id": 1,
+      "type": "DRIVER_STATE",
+      "payload": {
+        "flags": [
+          "phone"
+        ],
+        "confidence": {
+          "phone": 0.435
+        }
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "28c2f5b9069e4087b7e56a08bc4be596",
+      "ts": 0.94,
+      "track_id": 1,
+      "type": "SPEED",
+      "payload": {
+        "value_kmh": 0.6,
+        "mode": "metric",
+        "relative_velocity_flag": false,
+        "swerving": false,
+        "calibrated": true
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "3a7559e0084b411388b67d1dc32920ea",
+      "ts": 1.1,
+      "track_id": 1,
+      "type": "SPEED",
+      "payload": {
+        "value_kmh": 0.7,
+        "mode": "metric",
+        "relative_velocity_flag": false,
+        "swerving": false,
+        "calibrated": true
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "a46c56bbc3b548d1bfb264b034d0c95f",
+      "ts": 1.18,
+      "track_id": 1,
+      "type": "DRIVER_STATE",
+      "payload": {
+        "flags": [],
+        "confidence": {}
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "441fa20f08d24322bf89e13dc99e1caf",
+      "ts": 1.18,
+      "track_id": 1,
+      "type": "SPEED",
+      "payload": {
+        "value_kmh": 0.8,
+        "mode": "metric",
+        "relative_velocity_flag": false,
+        "swerving": false,
+        "calibrated": true
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "d1786e4d605440109751bb20bded3702",
+      "ts": 1.32,
+      "track_id": 1,
+      "type": "SPEED",
+      "payload": {
+        "value_kmh": 0.9,
+        "mode": "metric",
+        "relative_velocity_flag": false,
+        "swerving": false,
+        "calibrated": true
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "a4c56409d44242578bfe684d8079c7c7",
+      "ts": 1.4,
+      "track_id": 1,
+      "type": "SPEED",
+      "payload": {
+        "value_kmh": 1.0,
+        "mode": "metric",
+        "relative_velocity_flag": false,
+        "swerving": false,
+        "calibrated": true
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "a6fa59df30014fa99e06e7a3776d3a65",
+      "ts": 1.56,
+      "track_id": 1,
+      "type": "SPEED",
+      "payload": {
+        "value_kmh": 1.1,
+        "mode": "metric",
+        "relative_velocity_flag": false,
+        "swerving": false,
+        "calibrated": true
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "508713aa1d7f487e9d3dd8a09b3f0121",
+      "ts": 1.68,
+      "track_id": 1,
+      "type": "SPEED",
+      "payload": {
+        "value_kmh": 1.2,
+        "mode": "metric",
+        "relative_velocity_flag": false,
+        "swerving": false,
+        "calibrated": true
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "87205c9f032c4e31b519d856c499de44",
+      "ts": 1.82,
+      "track_id": 1,
+      "type": "SPEED",
+      "payload": {
+        "value_kmh": 1.3,
+        "mode": "metric",
+        "relative_velocity_flag": false,
+        "swerving": false,
+        "calibrated": true
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "0c21c3259d13444eafcfadac1efaf9c7",
+      "ts": 1.96,
+      "track_id": 1,
+      "type": "DRIVER_STATE",
+      "payload": {
+        "flags": [
+          "phone"
+        ],
+        "confidence": {
+          "phone": 0.338
+        }
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "37326a6323574c4fb8825161dfd48028",
+      "ts": 1.98,
+      "track_id": 1,
+      "type": "SPEED",
+      "payload": {
+        "value_kmh": 1.4,
+        "mode": "metric",
+        "relative_velocity_flag": false,
+        "swerving": false,
+        "calibrated": true
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "856731ed35d3464d84a142aa64666132",
+      "ts": 2.1,
+      "track_id": 1,
+      "type": "DRIVER_STATE",
+      "payload": {
+        "flags": [],
+        "confidence": {}
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "8e51d7a1eda54599a169178be22d7cd7",
+      "ts": 2.14,
+      "track_id": 1,
+      "type": "SPEED",
+      "payload": {
+        "value_kmh": 1.5,
+        "mode": "metric",
+        "relative_velocity_flag": false,
+        "swerving": false,
+        "calibrated": true
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "68249cc8b1794891815ddc3864099bb8",
+      "ts": 2.18,
+      "track_id": 1,
+      "type": "DRIVER_STATE",
+      "payload": {
+        "flags": [
+          "phone"
+        ],
+        "confidence": {
+          "phone": 0.387
+        }
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "65bcb5d2a4b546b180a8744069739453",
+      "ts": 2.26,
+      "track_id": 1,
+      "type": "SPEED",
+      "payload": {
+        "value_kmh": 1.6,
+        "mode": "metric",
+        "relative_velocity_flag": false,
+        "swerving": false,
+        "calibrated": true
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "d2849949cb164a7b96e42285c24c6414",
+      "ts": 2.42,
+      "track_id": 1,
+      "type": "SPEED",
+      "payload": {
+        "value_kmh": 1.7,
+        "mode": "metric",
+        "relative_velocity_flag": false,
+        "swerving": false,
+        "calibrated": true
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "e1a013a048314f8084f73c72c4d6fb6b",
+      "ts": 2.54,
+      "track_id": 1,
+      "type": "SPEED",
+      "payload": {
+        "value_kmh": 1.8,
+        "mode": "metric",
+        "relative_velocity_flag": false,
+        "swerving": false,
+        "calibrated": true
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "49dd2e0a175e424db39d55ddf6f3b849",
+      "ts": 2.58,
+      "track_id": 1,
+      "type": "DRIVER_STATE",
+      "payload": {
+        "flags": [],
+        "confidence": {}
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "726fa9d868454a34a4bf93d7f1a78ffb",
+      "ts": 2.68,
+      "track_id": 1,
+      "type": "DRIVER_STATE",
+      "payload": {
+        "flags": [
+          "phone"
+        ],
+        "confidence": {
+          "phone": 0.454
+        }
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "198237b228884cb5bd5b3ed995c76daf",
+      "ts": 2.7,
+      "track_id": 1,
+      "type": "DRIVER_STATE",
+      "payload": {
+        "flags": [],
+        "confidence": {}
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "e1b75ca2ea3c4f14b05667e943455238",
+      "ts": 2.7,
+      "track_id": 1,
+      "type": "SPEED",
+      "payload": {
+        "value_kmh": 1.9,
+        "mode": "metric",
+        "relative_velocity_flag": false,
+        "swerving": false,
+        "calibrated": true
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "8cd48494e53d429cb99dd99b33c8a630",
+      "ts": 2.76,
+      "track_id": 1,
+      "type": "DRIVER_STATE",
+      "payload": {
+        "flags": [
+          "phone"
+        ],
+        "confidence": {
+          "phone": 0.448
+        }
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "12f74cd4e0d542dd99059e8516ebc53d",
+      "ts": 2.8,
+      "track_id": 1,
+      "type": "SPEED",
+      "payload": {
+        "value_kmh": 2.0,
+        "mode": "metric",
+        "relative_velocity_flag": false,
+        "swerving": false,
+        "calibrated": true
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "7539661349114ead977f4054757b39a8",
+      "ts": 2.88,
+      "track_id": 1,
+      "type": "SPEED",
+      "payload": {
+        "value_kmh": 2.1,
+        "mode": "metric",
+        "relative_velocity_flag": false,
+        "swerving": false,
+        "calibrated": true
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "b13e68545c70417ebbeca511dd08ff69",
+      "ts": 2.98,
+      "track_id": 1,
+      "type": "SPEED",
+      "payload": {
+        "value_kmh": 2.2,
+        "mode": "metric",
+        "relative_velocity_flag": false,
+        "swerving": false,
+        "calibrated": true
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "0cac431f6e724db480a4bfba65b3cd11",
+      "ts": 3.08,
+      "track_id": 1,
+      "type": "SPEED",
+      "payload": {
+        "value_kmh": 2.3,
+        "mode": "metric",
+        "relative_velocity_flag": false,
+        "swerving": false,
+        "calibrated": true
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "0cdd482b18234631a55f5fe99013b206",
+      "ts": 3.28,
+      "track_id": 1,
+      "type": "SPEED",
+      "payload": {
+        "value_kmh": 2.4,
+        "mode": "metric",
+        "relative_velocity_flag": false,
+        "swerving": false,
+        "calibrated": true
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "e4093a68ce39499198efcca65a5c84d8",
+      "ts": 3.34,
+      "track_id": 1,
+      "type": "SPEED",
+      "payload": {
+        "value_kmh": 2.5,
+        "mode": "metric",
+        "relative_velocity_flag": false,
+        "swerving": false,
+        "calibrated": true
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "4eb26ec52b6c49348241e1995c402d6f",
+      "ts": 4.28,
+      "track_id": 1,
+      "type": "DRIVER_STATE",
+      "payload": {
+        "flags": [],
+        "confidence": {}
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "34174e554ded46cc9ebc55251626fb33",
+      "ts": 4.52,
+      "track_id": 1,
+      "type": "DRIVER_STATE",
+      "payload": {
+        "flags": [
+          "phone"
+        ],
+        "confidence": {
+          "phone": 0.606
+        }
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "7d9c76d32c8a4581a98c0492fb9cdd56",
+      "ts": 4.7,
+      "track_id": 1,
+      "type": "DRIVER_STATE",
+      "payload": {
+        "flags": [],
+        "confidence": {}
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "721c61bce4b34258bb5e53def9194776",
+      "ts": 6.02,
+      "track_id": 76,
+      "type": "DETECTION_UPDATE",
+      "payload": {
+        "bbox": [
+          1898.38623046875,
+          625.4750366210938,
+          2351.560791015625,
+          877.1132202148438
+        ],
+        "cls": "motorcycle",
+        "conf": 0.28448358178138733,
+        "new": true
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "72dee9f2b5374bfc946844f74c0d94b2",
+      "ts": 6.02,
+      "track_id": 76,
+      "type": "SPEED",
+      "payload": {
+        "value_kmh": 0.2,
+        "mode": "metric",
+        "relative_velocity_flag": false,
+        "swerving": false,
+        "calibrated": true
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "c66021024e4e4cdaae881e2da2635320",
+      "ts": 6.18,
+      "track_id": 76,
+      "type": "PLATE_REJECTED",
+      "payload": {
+        "reason": "consensus_fail",
+        "votes": {
+          "BFR766": 3,
+          "369921": 1,
+          "BFR926": 2,
+          "96942": 1,
+          "969921": 1,
+          "GFR726": 1,
+          "K69529": 1,
+          "369928": 1,
+          "369922": 1,
+          "BFR726": 1,
+          "36992D": 1
+        }
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "78063295617e433b9dde0e20e2f79c92",
+      "ts": 6.18,
+      "track_id": 76,
+      "type": "QOD_TRIGGER",
+      "payload": {
+        "profile": "HIGH_THROUGHPUT",
+        "kind": "quality",
+        "reason": "consensus_fail"
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "5f98588b399849129ccad4a7ff19fd03",
+      "ts": 6.62,
+      "track_id": 76,
+      "type": "PLATE_REJECTED",
+      "payload": {
+        "reason": "consensus_fail",
+        "votes": {
+          "BFR766": 3,
+          "369921": 1,
+          "BFR926": 2,
+          "96942": 1,
+          "969921": 1,
+          "GFR726": 2,
+          "K69529": 1,
+          "369928": 1,
+          "369922": 2,
+          "BFR726": 6,
+          "36992D": 1,
+          "369522": 1,
+          "BGR926": 1,
+          "389529": 1,
+          "369529": 1,
+          "364527": 1,
+          "369521": 1,
+          "N69521": 1
+        }
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "1d0f3eed03c6438194fbcff65ec90b7d",
+      "ts": 7.4,
+      "track_id": 76,
+      "type": "SPEED",
+      "payload": {
+        "value_kmh": 0.1,
+        "mode": "metric",
+        "relative_velocity_flag": false,
+        "swerving": false,
+        "calibrated": true
+      },
+      "source": "aura-inference"
+    },
+    {
+      "event_id": "0ca827e7003b4922bdf598f681ee542e",
+      "ts": 7.44,
+      "track_id": 76,
+      "type": "PLATE_REJECTED",
+      "payload": {
+        "reason": "consensus_fail",
+        "votes": {
+          "BFR766": 4,
+          "369921": 1,
+          "BFR926": 2,
+          "96942": 1,
+          "969921": 1,
+          "GFR726": 4,
+          "K69529": 1,
+          "369928": 1,
+          "369922": 3,
+          "BFR726": 6,
+          "36992D": 4,
+          "369522": 2,
+          "BGR926": 1,
+          "389529": 1,
+          "369529": 1,
+          "364527": 1,
+          "369521": 1,
+          "N69521": 3,
+          "BFRR66": 1,
+          "2FR926": 1,
+          "2FR766": 1,
+          "GFR766": 1
+        }
+      },
+      "source": "aura-inference"
+    }
+  ]
+}
