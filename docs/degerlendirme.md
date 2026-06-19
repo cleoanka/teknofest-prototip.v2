@@ -31,13 +31,23 @@ python -m aura.eval --metrics-report --summaries eval_results/ab   # → eval_re
 - **(YALNIZ HIZLI SAĞLIK) Stok `yolo26l` — coco128** (küçük, train-örtüşmeli): mAP50 **0.790**,
   mAP50-95 **0.619**. DİKKAT: fine-tune DEĞİLDİR ve doğruluk iddiası olarak kullanılmaz; yalnız
   boru hattının kurulduğunu gösteren sağlık kontrolüdür ("fine-tune 0.790" atfı YANLIŞTIR).
-- **DÜRÜST NOT (zorunlu sınıflar — eğitim SÜRÜYOR):** `license_plate`, `seatbelt`, `smoking`
-  için YOLO26s fine-tune **18 Haz 2026 itibarıyla devam ediyor** (gerçek CC BY 4.0 veri;
-  bkz. `docs/veri_seti.md`). **Final held-out mAP henüz KESİNLEŞMEDİ**; mevcut ARA değerler:
-  `license_plate` mAP50 ≈ **0.977** (~epoch 12/35), `seatbelt` ≈ 0.603 (erken), `smoking` sırada.
-  Bunlar **doğruluk iddiası değil, ara koşu** sayılarıdır; eğitim bitince final `*.metrics.json`
-  buraya işlenir. **Yayınlanmış** doğruluk göstergesi hâlâ stok COCO held-out + 3-video davranış +
-  boru-hattı doğrulamasıdır.
+- **ZORUNLU SINIFLAR — YOLO26s fine-tune TAMAMLANDI (19 Haz 2026), gerçek held-out mAP**
+  (Ultralytics `model.val`, ayrılmış test bölmesi; `weights/custom_*.metrics.json`):
+
+  | Sınıf | mAP50 | mAP50-95 | Veri (CC BY 4.0) |
+  |---|---|---|---|
+  | `license_plate` | **0.983** | **0.707** | 9123 görsel (keremberke/HF) |
+  | `smoking` | **0.856** | **0.457** | 557 görsel (CigDet/Mendeley) |
+  | `seatbelt` | **0.895** | **0.546** | 3104 görsel (Roboflow/HF) |
+
+  **Custom model A/B (3 gerçek video, stok-vs-custom — `eval_results/video_*_{stok,custom}_*`):**
+  `custom_license_plate` plaka 3/3 `PLATE_CONFIRMED`'i KORUDU (regresyon yok) →
+  `config/default.yaml`'da **VARSAYILAN LP dedektör** yapıldı. `custom_smoking` roi_objects'e
+  drop-in konunca telefon-kanıtı/bastırma kaybı nedeniyle video_2'de regresyon gösterdi →
+  varsayılana **ALINMADI** (held-out 0.856 kanıt olarak durur; doğru entegrasyon = pose.py
+  ikinci-model, takip işi). `seatbelt` dış-kamera görüş açısı nedeniyle opsiyonel/kapalı
+  (K-004: ölçülmeyen senaryoda varsayılan açmıyoruz). ASIL araç-tespiti doğruluğu hâlâ stok
+  `yolo26l` COCO val2017 held-out (mAP50-95 0.537) + 3-video davranış + boru-hattı doğrulaması.
 - **Davranış (3 gerçek video, video-düzeyi):** **her iki dedektör de** (yolo26l ve v4-finetune)
   makro-F1 **1.0**; phone/smoking/swerving P=R=F1=1.0. (Stabilite fixleri öncesi yolo26l
   video_2'de 1 `swerving` yanlış-pozitifiyle 0.933 veriyordu; `track_id=-1`/phantom çıktı kapısı

@@ -1,0 +1,57 @@
+# =============================================================================
+# PROFİL: custom — AURA ÖZEL EĞİTİMLİ domain modelleri (YOLO26s fine-tune)
+# Kullanım:  python -m aura --profile custom   |   AURA_PROFILE=custom ...
+#            python tools/test_video.py --source v1.mp4 --profile custom --device mps
+# default.yaml ÜZERİNE derin-merge edilir; yalnız farklılıklar burada.
+#
+# EĞİTİM BİTTİ (19 Haz 2026). Bu profil, stok dedektörlerin domain-dışı kaldığı
+# iki AURA-kritik görevi özel eğitilmiş modellerle güçlendirir. GERÇEK held-out mAP
+# (Ultralytics val, ayrılmış test bölmesi — bkz. docs/veri_seti.md, ftr.md §4):
+#
+#   weights/custom_license_plate.pt  mAP50 0.983 / mAP50-95 0.707  (9123 görsel, keremberke/HF)
+#   weights/custom_smoking.pt        mAP50 0.856 / mAP50-95 0.457  (557 görsel, CigDet/Mendeley)
+#   weights/custom_seatbelt.pt       mAP50 0.895 / mAP50-95 0.546  (3104 görsel)
+#
+# K-004 DÜRÜSTLÜK: bu profil, 3 gerçek videoda stok-vs-custom A/B ile DOĞRULANDI
+# (bkz. docs/degerlendirme.md "Custom model A/B"). Plaka regresyon GÖSTERMEZSE
+# custom_license_plate config/default.yaml'da VARSAYILAN LP dedektör yapılır;
+# regresyon varsa profil-only kalır + neden dürüstçe belgelenir.
+# =============================================================================
+
+plate:
+  # SIKI PLAKA KIRPMA — özel eğitimli LP dedektör (YOLO26s, license_plate tek sınıf).
+  # Stok lp_yolo11n.pt'nin yerine plakayı araç-altı geniş crop içinde bulup SIKI
+  # kırpar → OCR karakter doğruluğu artar. Tek sınıf olduğundan OCR sözleşmesi (sıkı
+  # ROI → fastplate/easyocr) değişmez; yalnız kırpma kalitesi farklıdır.
+  lp_detector:
+    enabled: true
+    path: weights/custom_license_plate.pt
+    conf: 0.30
+    imgsz: 640
+    pad_ratio: 0.08
+
+models:
+  driver_state:
+    # Backend pose kalır (auto → pose). roi_objects STOK dedektörde bırakıldı.
+    # K-004 A/B BULGUSU (19 Haz, 3 gerçek video): custom_smoking'i roi_objects'e DROP-IN
+    # koymak REGRESYON yarattı — stok yolo26l'in sağladığı 'phone' nesne-kanıtı + sigara-
+    # bastırma latch'i kayboldu → telefon videosunda (video_2) telefon KAÇTI + sigara FP arttı.
+    # Bu yüzden custom_smoking VARSAYILANA/ profile-default'a ALINMADI. Held-out mAP50 0.856
+    # (FTR §4'te kanıt olarak raporlanır). DOĞRU entegrasyon = aura/driver_state/pose.py'de
+    # roi_objects'in YANINDA opsiyonel ikinci 'smoking_model' kanıtı (phone korunur + sigara
+    # güçlenir) — KOD değişikliği, takip işi. Şimdilik sigara kanıtı pose-hibritten gelir
+    # (3 videoda makro-F1 1.0). Denemek isteyen elle açabilir (path: weights/custom_smoking.pt).
+    backend: auto
+    # --- OPSİYONEL / DÜŞÜK ÖNCELİK: emniyet kemeri (no_seatbelt) -------------------
+    # weights/custom_seatbelt.pt (mAP50 0.895/0.546; sınıflar: no_seatbelt_evidence,
+    # seatbelt_ok). VARSAYILAN KAPALI bırakıldı (default.yaml ile aynı): kemer ŞERİDİ
+    # cam-ardı/loş/uzak footage'da güvenilir görünmez → FP riski (default.yaml notu).
+    # Net kemer görünümü olan kamerada açmak için:
+    #   1) backend: yolo  + models.driver_state.path: weights/custom_seatbelt.pt
+    #      (YOLO26lDriverClassifier no_seatbelt_evidence→seatbelt eşlemesi gerekebilir),
+    #   VEYA roi_objects ile ek nesne kanıtı,
+    #   2) no_seatbelt.enabled: true.
+    # A/B ölçülene ve net-kemer footage'ı gelene dek opsiyonel — K-004: ölçülmeyen
+    # sınıfı varsayılan açmıyoruz.
+    no_seatbelt:
+      enabled: false

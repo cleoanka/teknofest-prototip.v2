@@ -224,12 +224,14 @@ plate:
     enabled: false              # VARSAYILAN KAPALI (ölçülen plaka regresyonu); opsiyonel — CLAHE (LAB L) + gamma + hafif unsharp
     clahe_clip: 2.5             # CLAHE kontrast sınırı (büyük = daha agresif yerel kontrast)
     gamma: 1.2                  # >1 karanlık tonları aydınlatır (1.0 = etkisiz)
-  # Sıkı plaka kırpma: özel LP dedektörü (YOLOv11n plaka fine-tune, ~5MB) plakayı
-  # araç-altı geniş crop içinde bulup SIKI kırpar → OCR karakter doğruluğu artar.
-  # Ağırlık bootstrap ile iner; yoksa loglu olarak geniş-crop davranışına düşülür.
+  # Sıkı plaka kırpma: ÖZEL EĞİTİMLİ LP dedektörü (custom_license_plate, YOLO26s, tek
+  # sınıf 'license_plate'; held-out mAP50 0.983 / mAP50-95 0.707 — 9123 görsel keremberke/HF).
+  # 19 Haz 2026 stok-vs-custom 3-video A/B: plaka 3/3 PLATE_CONFIRMED KORUNDU (regresyon yok)
+  # → custom VARSAYILAN'a terfi (bkz. docs/degerlendirme.md "Custom model A/B").
+  # Ağırlık yoksa bootstrap iner; o da yoksa loglu olarak stok lp_yolo11n.pt/geniş-crop'a düşülür.
   lp_detector:
     enabled: true
-    path: weights/lp_yolo11n.pt
+    path: weights/custom_license_plate.pt   # önceki stok: weights/lp_yolo11n.pt
     conf: 0.30
     imgsz: 640
     pad_ratio: 0.08             # sıkı kutu etrafına bırakılan pay
