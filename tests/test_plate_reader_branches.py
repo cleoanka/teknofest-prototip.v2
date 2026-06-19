@@ -169,10 +169,16 @@ def test_lp_below_vote_min_px_writes_no_vote():
 
 
 def test_lp_below_qod_below_px_triggers_plate_too_small():
-    # lp_h < lp_qod_below_px (26) → 'plate_too_small' ERKEN tetik (consensus beklemeden)
+    # lp_h < lp_qod_below_px → 'plate_too_small' ERKEN tetik (consensus beklemeden).
+    # Eşikler config'ten BAĞIMSIZ açıkça verilir (test mekanizmayı doğrular, config'in
+    # canlı/3-video için seçilmiş gerçek değerini değil): vote_min=13 < lp_h=20 < qod_below=26.
     q = FakeQoD()
     r = PlateReader_with_ocr(qod=q)
-    fake = FakeLP(box_xyxy=(0, 0, 40, 20))  # yükseklik 20: <26 ama >=13 (oy yazılır)
+    r.lp_vote_min_px = 13
+    r.lp_qod_below_px = 26
+    fake = FakeLP(
+        box_xyxy=(0, 0, 40, 20)
+    )  # yükseklik 20: <qod_below(26) ama >=vote_min(13) → oy yazılır
     _enable_lp(r, fake)
     r.update(1, np.full((60, 120, 3), 90, np.uint8), _center_bbox(), FRAME_SHAPE)
     assert any(reason == "plate_too_small" for _, reason in q.calls)
@@ -182,18 +188,20 @@ def test_lp_below_qod_below_px_triggers_plate_too_small():
 
 def test_size_w_clamped_between_floor_and_one():
     # size_w = clamp(lp_h / size_full_px, size_floor, 1.0). size_full_px=40, floor=0.15.
-    # lp_h=20 → 0.5; conf=1.0 → eff ağırlık 0.5
+    # lp_h=20 → 0.5; conf=1.0 → eff ağırlık 0.5. vote_min config'ten BAĞIMSIZ (mekanizma testi).
     r = PlateReader_with_ocr(ocr_value=("34TC8532", 1.0))
+    r.lp_vote_min_px = 13  # lp_h=20 oylanabilsin (size_w hesabı doğrulanacak)
     fake = FakeLP(box_xyxy=(0, 0, 50, 20))
     reads = _vote_weight_for(r, np.full((70, 120, 3), 90, np.uint8), fake)
-    assert reads, "oy yazılmalı (20>=13)"
+    assert reads, "oy yazılmalı (20>=vote_min)"
     _, eff = reads[-1]
     assert abs(eff - 0.5) < 1e-6  # 20/40 = 0.5
 
 
 def test_size_w_floor_clamp_for_small_plate():
-    # lp_h çok küçük (ama >= vote_min): floor=0.15 ile alttan kırpılır.
+    # lp_h küçük (ama >= vote_min): size_w lineer (floor üstü). vote_min config'ten BAĞIMSIZ.
     r = PlateReader_with_ocr(ocr_value=("34TC8532", 1.0))
+    r.lp_vote_min_px = 13  # lp_h=14 oylanabilsin
     fake = FakeLP(box_xyxy=(0, 0, 50, 14))  # 14/40=0.35 — floor üstünde, clamp etmez
     reads = _vote_weight_for(r, np.full((70, 120, 3), 90, np.uint8), fake)
     _, eff = reads[-1]
@@ -292,6 +300,7 @@ def test_sharpness_applied_to_vote_weight():
     r._sharp_enabled = True
     r._sharp_var_full = 120.0
     r._sharp_floor = 0.25
+    r.lp_vote_min_px = 13  # lp_h=40 oylanabilsin (vote_min config'ten bağımsız; sharpness testi)
     fake = FakeLP(box_xyxy=(0, 0, 50, 40))  # lp_h=40 → base size_w=1.0
     _enable_lp(r, fake)
     # düz crop → keskinlik floor 0.25 → eff = conf(1.0)*1.0*0.25

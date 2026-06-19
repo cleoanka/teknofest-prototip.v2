@@ -197,7 +197,12 @@ plate:
   # Sweet spot: araç MERKEZİ bu normalize bölgedeyken OCR aktif. Yanal yaklaşan
   # araçlar (kadraj kenarından girip çapraz geçenler) için x aralığı geniş tutulur
   # (eski 0.30-0.70, sağdan yaklaşan aracı hiç okuyamıyordu — gerçek video_3 dersi).
-  sweet_spot: {x1: 0.18, y1: 0.40, x2: 0.85, y2: 0.90}
+  # CANLI/telefon kamera düzeltmesi (19 Haz): eski dar bölge (0.18-0.85 / 0.40-0.90)
+  # test-video geometrisine (araç alttan yaklaşır) ayarlıydı → telefonu elde çevirince
+  # araç bu bölgeye girmeyince plaka HİÇ okunmuyordu (OCR tetiklenmiyordu). Artık
+  # neredeyse tam-kadraj; kaliteyi frame-BÖLGESİ değil PİKSEL-BOYUT kapısı
+  # (lp_vote_min_px / min_pixel_height) + oy havuzu + dürüstlük zırhları sınırlar.
+  sweet_spot: {x1: 0.03, y1: 0.06, x2: 0.97, y2: 0.98}
   voting_buffer_size: 7         # bu kadar okumada bir konsensüs değerlendirilir (rejected event kadansı)
   consensus_ratio: 0.6          # tek-varyant ayrı-aday kararı için kazananın toplam pay eşiği
   ocr_lang: [tr]
@@ -238,8 +243,22 @@ plate:
   # Boyut-farkında kanıt politikası (gerçek video dersi: uzak karelerin sistematik
   # misread'leri — '041C8532', T→I ile formatça GEÇERLİ '34IC8532' — sayıca üstünlük
   # kurup konsensüsü kilitliyordu; QoD da ilk consensus_fail'e kadar uyuyordu):
-  lp_vote_min_px: 13            # sıkı LP kırpığı bundan ALÇAKSA okuma oylamaya girmez
-  lp_qod_below_px: 26           # bundan alçak LP görüldüğü AN 'plate_too_small' kalite tetiği
+  # BÖLGE ≠ KALİTE ayrımı (19 Haz 2026 ölçümü; AURA_LP_MEASURE tanı log'u, 3 gerçek
+  # video, fastplate + custom_license_plate LP, MPS). sweet_spot artık GENİŞ (canlı/
+  # telefon kadrajında bölge kısıtı pratikte yok) → kaliteyi YALNIZ LP-kırpık piksel
+  # YÜKSEKLİĞİ kapısı korur. Ölçülen lp_h ayrımı (asıl araç track'i):
+  #   YAKIN/NET (oylanan, GT'ye eşit 34TC8532, conf~0.97):
+  #     video_1 lp_h 81-83 | video_2 lp_h 74-76 | video_3 lp_h 67-74  → MIN doğru = 67
+  #   UZAK/MİSREAD (wide sweet_spot'ta erken oylanıp YANLIŞ onaya — 14TC857/34TC8577,
+  #     conf yüksek ama 3→1 il-kodu + 2→7 son-hane hatası): lp_h 24-28 → MAX yanlış = 28
+  # → AYIRMA PENCERESİ [28, 67] geniş; eşik 45 ortaya yakın (yanlışa +17px, doğruya
+  #   -22px tampon). 13 (eski) video_3'te HİÇBİR çöp okumayı kesmiyordu (GATED=0) →
+  #   wide sweet_spot ile 14TC857 yanlış-onaylanıyordu; 45 uzak misread'i oya sokmaz,
+  #   yakın net okuma (lp_h>=67) onayı korur. K-004: ölçülen sayı, videoya-özel sabit/
+  #   blacklist YOK — saf piksel-boyut kapısı. Telefonda plaka büyüyünce (yaklaşınca)
+  #   lp_h>=45 olur olmaz okur; bölge neresi olursa olsun (canlı düzeltmesi).
+  lp_vote_min_px: 45            # sıkı LP kırpığı bundan ALÇAKSA okuma oylamaya girmez (ölçüm: yanlış≤28, doğru≥67)
+  lp_qod_below_px: 45           # bundan alçak LP görüldüğü AN 'plate_too_small' kalite tetiği (oylanamayan = kalite iste)
   ocr_second_variant: true      # okuma güveni düşükse CLAHE+2x varyantıyla ikinci deneme
   ocr_second_variant_below: 0.5 # bu güvenin altındaki okumalarda varyant devreye girer
   # Format-öncelikli KALICI oy havuzu (aura/plate/normalize.py):
@@ -249,7 +268,11 @@ plate:
   # koruması). İkameli düzeltmeler (fix1/fix2_weight) ve kesik okumalar
   # (substring_weight) yalnız 'partial' kanıt alanına katkı yapar.
   voting:
-    min_weight: 2.0             # kazanan için min toplam güven-ağırlığı (~2-3 sağlam okuma)
+    min_weight: 2.0             # kazanan için min toplam güven-ağırlığı (~2-3 sağlam okuma).
+    # NOT (19 Haz A/B — K-004): 1.5'e düşürmek ERKEN onay sağlıyor AMA video_3'te YANLIŞ
+    # onaya yol açtı (14TC857 — uzak plaka erken karelerde güvenilir okunmuyor). Erken-onay
+    # accuracy'yi bozuyor → 2.0'da KALIR (correctness > latency). Uzak plakayı daha erken
+    # DOĞRU okumak için yol = daha iyi erken-kare crop (LP-dedektör/SR), eşik düşürmek DEĞİL.
     margin_weight: 1.5          # kazanan ile ikinci ham aday arasındaki min ağırlık farkı
     fix1_weight: 0.45
     fix2_weight: 0.20
