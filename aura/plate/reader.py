@@ -11,17 +11,19 @@ from __future__ import annotations
 
 import logging
 import re
+from collections import deque
 from typing import TYPE_CHECKING
 
 import cv2  # modül-düzeyi (eskiden her sıcak-yol çağrısında fonksiyon içinde import ediliyordu)
+import numpy as np  # çok-kareli füzyon (median/stack/clip) — modül-düzeyi sıcak-yol
 
 from aura.optional.loader import get_optional
-from aura.plate.normalize import PlateVotePool
-from aura.plate.ocr import build_ocr
+from aura.plate.normalize import PlateVotePool, normalize_tr
+from aura.plate.ocr import build_agreement_ocr, build_ocr
 from aura.schema import BBox, PlateState
 
 if TYPE_CHECKING:
-    import numpy as np
+    from aura.plate.ocr import OCREngine
 
 log = logging.getLogger("aura.plate.reader")
 
@@ -101,6 +103,26 @@ class PlateReader:
         self._cu_min_h_px = int(cu.get("min_h_px", 40))
         self._cu_scale = float(cu.get("scale", 3.0))
         self._cu_unsharp = float(cu.get("unsharp_amount", 0.6))
+        # GRİ-BÖLGE ERKEN-OKUMA YOLU (SOTA-bilgili, hepsi guard'lı; default-on, graceful).
+        # Gerçek video_3 dersi: doğru '34TC8532' lp_h 67-83'te NET okunur; uzak misread
+        # '14TC857' lp_h 24-28'de. lp_vote_min_px=45 PLAIN (tek-motor, SR'siz) okumalar için
+        # GÜVENLİK AĞI olarak KALIR. Gri-bölge [gray_zone_min_px, lp_vote_min_px) yalnız EK
+        # güvencelerle oya girer: (a) SR/güçlü upscale + (b) çok-kareli füzyon (MF-LPR2 mantığı,
+        # hareketli araç için asıl kazanım) + (c) çok-motor MUTABAKATI (fastplate + ikinci motor
+        # AYNI + format-geçerli) VEYA çok-yüksek conf. Böylece 14TC857 tek-motor misread'i oya
+        # GİREMEZ. Bu okumalar normal oy havuzuna girer → position-veto + min_weight + confirm
+        # zemin koşulu ONLARI DA denetler (yanlış-onay imkânsız). K-004: videoya-özel sabit YOK.
+        er = cfg.get("plate.early_read", {}) or {}
+        self._er_enabled = bool(er.get("enabled", True)) and ocr is None
+        self._er_gray_min_px = int(er.get("gray_zone_min_px", 28))
+        self._er_fuse_frames = int(er.get("fuse_frames", 5))
+        self._er_sr_scale = float(er.get("sr_scale", 3.0))
+        self._er_require_agreement = bool(er.get("require_engine_agreement", True))
+        self._er_high_conf = float(er.get("high_conf", 0.90))
+        self._er_weight_cap = float(er.get("weight_cap", 0.6))
+        self._er_crops: dict[int, deque] = {}  # track başına son N gri-bölge crop'u (füzyon)
+        self._er_agree_ocr: OCREngine | None = None  # lazy ikinci motor
+        self._er_agree_built = False
         self._size_full_px = float(pv.get("size_full_px", 40))
         self._size_floor = float(pv.get("size_floor", 0.15))
         self._no_lp_weight = float(pv.get("no_lp_weight", 0.5))
@@ -210,6 +232,106 @@ class PlateReader:
             up = cv2.addWeighted(up, 1.0 + self._cu_unsharp, blur, -self._cu_unsharp, 0)
         return up
 
+    # --- gri-bölge erken-okuma (SOTA-bilgili, guard'lı) --------------------- #
+    def _er_upscale(self, img: np.ndarray) -> np.ndarray:
+        """Gri-bölge kırpığını SR (varsa) VEYA güçlü Lanczos+unsharp ile büyüt.
+
+        super_resolution opsiyoneli kuruluysa onu kullanır (en güçlü yol); yoksa
+        crop_upscale yardımcısının ölçek-bağımsız çekirdeğini sr_scale ile uygular
+        (Lanczos + unsharp). Saf cv2; install gerektirmez. Hata/boş girişte kimlik."""
+        if img is None or getattr(img, "size", 0) == 0:
+            return img
+        if self.sr is not None:
+            try:
+                return self.sr.enhance(img)
+            except Exception as e:  # noqa: BLE001 — SR hatası upscale'e düşmeli, hattı kırmamalı
+                log.debug("erken-okuma SR hatası: %s — Lanczos upscale'e düşülüyor", e)
+        up = cv2.resize(
+            img, None, fx=self._er_sr_scale, fy=self._er_sr_scale, interpolation=cv2.INTER_LANCZOS4
+        )
+        blur = cv2.GaussianBlur(up, (0, 0), sigmaX=1.0)
+        return cv2.addWeighted(up, 1.6, blur, -0.6, 0)
+
+    def _er_fuse(self, crops: deque) -> np.ndarray | None:
+        """Çok-kareli füzyon (MF-LPR2 mantığı): son N gri-bölge kırpığını ortak
+        yüksekliğe HİZALA + median birleştir → gürültü düşer, keskinleşir.
+
+        Optik-akış şart değil: basit ortak-yükseklik registrasyonu + piksel-bazlı
+        median, kare-arası rastgele gürültüyü (sensör/JPEG) baskılar ve hareketli
+        araçta sistematik tek-kare bozulmasını törpüler. Tek kare varsa füzyon yok
+        (None — çağıran tek-kare yoluna düşer). Hata/boş → None (güvenli)."""
+        if not crops or len(crops) < 2:
+            return None
+        valid = [c for c in crops if c is not None and getattr(c, "size", 0)]
+        if len(valid) < 2:
+            return None
+        th = min(int(c.shape[0]) for c in valid)
+        tw = min(int(c.shape[1]) for c in valid)
+        if th < 1 or tw < 1:
+            return None
+        resized = [
+            cv2.resize(c, (tw, th), interpolation=cv2.INTER_LANCZOS4).astype(np.float32)
+            for c in valid
+        ]
+        fused = np.median(np.stack(resized, axis=0), axis=0)
+        return np.clip(fused, 0, 255).astype(np.uint8)
+
+    def _agreement_ocr(self) -> OCREngine | None:
+        """İkinci bağımsız OCR motorunu (mutabakat için) lazy kur. Bir kez dener;
+        kurulamazsa None kalır (reader çok-yüksek-conf eşiğine düşer)."""
+        if not self._er_agree_built:
+            self._er_agree_built = True
+            try:
+                self._er_agree_ocr = build_agreement_ocr(self.cfg, self.ocr)
+            except Exception as e:  # noqa: BLE001 — kurulamazsa conf-eşiğine düşülür
+                log.warning("Mutabakat OCR motoru kurulamadı: %s — conf-eşiğine düşülüyor", e)
+                self._er_agree_ocr = None
+        return self._er_agree_ocr
+
+    def _early_read(
+        self,
+        track_id: int,
+        crop: np.ndarray | None,
+        vehicle_crop: np.ndarray | None,
+        size_w: float,
+    ) -> tuple[str | None, float, float] | None:
+        """Gri-bölge [gray_zone_min_px, lp_vote_min_px) EK-okuma yolu.
+
+        Adımlar: (1) kırpığı SR/güçlü upscale ile büyüt; (2) track başına son N
+        gri-bölge kırpığını biriktir, yeterliyse çok-kareli füzyonla keskin kompozit
+        üret; (3) birincil motorla oku; (4) GUARD: oya girmek için ya (a) ikinci motor
+        AYNI format-geçerli plakayı okumalı (mutabakat) ya da (b) okuma format-geçerli
+        ve conf >= high_conf olmalı. Aksi halde None (oy YAZILMAZ). Dönüş: (metin, conf,
+        weight) — weight = size_w * weight_cap (gri-bölge okuması tam ağırlık ALMAZ;
+        net/yakın okuma her zaman ezer). Hiçbir koşulda 14TC857 tek-motor misread'i
+        oya giremez. K-004: videoya-özel sabit YOK."""
+        if crop is None or getattr(crop, "size", 0) == 0:
+            return None
+        up = self._er_upscale(crop)
+        if self._er_fuse_frames > 1:
+            dq = self._er_crops.get(track_id)
+            if dq is None:
+                dq = self._er_crops[track_id] = deque(maxlen=self._er_fuse_frames)
+            dq.append(up)
+            fused = self._er_fuse(dq)
+            if fused is not None:
+                up = fused
+        text, conf = self.ocr.read(up, vehicle_crop)
+        cand, fixes = normalize_tr(text) if text else (None, 0)
+        if cand is None or fixes != 0:
+            return None  # format-geçersiz/düzeltmeli → gri-bölgede oya GİREMEZ
+        # GUARD: çok-motor mutabakatı VEYA çok-yüksek conf.
+        agreed = False
+        if self._er_require_agreement:
+            ag = self._agreement_ocr()
+            if ag is not None:
+                t2, _c2 = ag.read(up, vehicle_crop)
+                cand2, fixes2 = normalize_tr(t2) if t2 else (None, 0)
+                agreed = cand2 == cand and fixes2 == 0
+        if not (agreed or conf >= self._er_high_conf):
+            return None
+        return cand, conf, size_w * self._er_weight_cap
+
     @staticmethod
     def _enhance(img: np.ndarray) -> np.ndarray:
         """CLAHE + 2x büyütme varyantı (karanlık/küçük plaka için ikinci şans)."""
@@ -290,7 +412,39 @@ class PlateReader:
                 # gerçek video ölçümü: eski akışta ilk tetikten önce 12-14 çöp oy).
                 self.qod.request_quality(track_id, reason="plate_too_small")
             if lp_h < self.lp_vote_min_px:
-                return st  # kanıt değeri yok: çöp okuma havuza oy yazamaz
+                # GRİ-BÖLGE [gray_zone_min_px, lp_vote_min_px): PLAIN tek-motor okuma
+                # hâlâ oya GİREMEZ (güvenlik ağı korunur), ama EK-okuma yolu (SR/füzyon +
+                # çok-motor mutabakatı VEYA çok-yüksek conf) bir oy ÜRETEBİLİR. Bu oy
+                # normal havuza girer → position-veto + min_weight + confirm-zemin onu da
+                # denetler. lp_h < gray_zone_min_px ise EK yol da kapalı (çok küçük).
+                if (
+                    self._er_enabled
+                    and lp_h >= self._er_gray_min_px
+                    and crop is not None
+                    and getattr(crop, "size", 0)
+                ):
+                    gz_size_w = max(self._size_floor, min(1.0, lp_h / max(self._size_full_px, 1.0)))
+                    er = self._early_read(track_id, crop, vehicle_crop, gz_size_w)
+                    if er is not None:
+                        er_text, er_conf, er_w = er
+                        pool = self._pools.get(track_id)
+                        if pool is None:
+                            pool = self._pools[track_id] = PlateVotePool(**self._pool_kwargs)
+                        pool.add(er_text, er_conf, weight=er_w)
+                        st.votes = pool.counts()
+                        st.partial = pool.best_partial()
+                        self._reads_since_eval[track_id] = (
+                            self._reads_since_eval.get(track_id, 0) + 1
+                        )
+                        value, frac = pool.consensus()
+                        if value is not None and self.regex.match(value):
+                            st.value = value
+                            st.confidence = frac
+                            st.status = "confirmed"
+                            st.ocr_disabled = True
+                            if self.qod:
+                                self.qod.release_quality(track_id)
+                return st  # PLAIN okuma kanıt değeri yok: çöp okuma havuza oy yazamaz
             size_w = max(self._size_floor, min(1.0, lp_h / max(self._size_full_px, 1.0)))
         elif self._lp_enabled and not self._lp_failed and self._lp_model is not None:
             # LP dedektörü çalışıyor ama plakayı bulamadı → geniş-crop okuması
@@ -379,4 +533,5 @@ class PlateReader:
             self._state.pop(tid, None)
             self._pools.pop(tid, None)
             self._reads_since_eval.pop(tid, None)
+            self._er_crops.pop(tid, None)
             self._last_seen.pop(tid, None)
