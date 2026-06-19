@@ -161,15 +161,6 @@ plate:
   ocr_engine: fastplate         # easyocr | paddleocr | fastplate
   fastplate_model: global-plates-mobile-vit-v2-model  # fastplate motoru ilk koşuda otomatik indirir (~5MB)
   ocr_gpu: true                 # OCR'ı (EasyOCR/PaddleOCR) GPU'da çalıştır; CUDA yoksa otomatik CPU
-  # OCR-öncesi görüntü hazırlama (WP-A1, karanlık/açılı otopark): dewarp + enhance,
-  # LP kırpığına OCR'dan HEMEN ÖNCE bir kez uygulanır. Reader'ın düşük-güven
-  # CLAHE+2x ikinci-şans varyantından AYRIDIR (o ölçek büyütür, bu yalnız ton/perspektif).
-  dewarp:
-    enabled: false               # fronto-paralel perspektif düzeltme (açılı plaka → düz); köşe yoksa kimlik
-  enhance:
-    enabled: false               # CLAHE (LAB L) + gamma + hafif unsharp (karanlık kabini açar, kenar netleştirir)
-    clahe_clip: 2.5             # CLAHE kontrast sınırı (büyük = daha agresif yerel kontrast)
-    gamma: 1.2                  # >1 karanlık tonları aydınlatır (1.0 = etkisiz)
   # Sıkı plaka kırpma: özel LP dedektörü (YOLOv11n plaka fine-tune, ~5MB) plakayı
   # araç-altı geniş crop içinde bulup SIKI kırpar → OCR karakter doğruluğu artar.
   # Ağırlık bootstrap ile iner; yoksa loglu olarak geniş-crop davranışına düşülür.

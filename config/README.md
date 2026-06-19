@@ -71,11 +71,6 @@ kurulu değilse easyocr baseline'ına şeffaf düşülür. PaddleOCR için: `pip
 `ocr_gpu` (varsayılan `true` — OCR motorunu GPU'da çalıştır; **CUDA gerçekten kullanılabilir
 değilse otomatik CPU'ya düşer**, `aura/device.cuda_is_usable` ile probe edilir. EasyOCR'a
 `gpu=`, PaddleOCR'a sürüme göre `device=gpu`/`use_gpu=` olarak geçirilir),
-**`dewarp.enabled`** (WP-A1: fronto-paralel perspektif düzeltme — açılı plaka düzleştirilir,
-köşe bulunamazsa kimlik) ve **`enhance.enabled`/`enhance.clahe_clip`/`enhance.gamma`**
-(WP-A1: CLAHE+gamma+unsharp; LP kırpığına OCR'dan HEMEN ÖNCE bir kez uygulanır — reader'ın
-düşük-güven CLAHE+2x ikinci-şans varyantından AYRIDIR; karanlık/açılı otoparkta il-kodu
-misread'ini 3→0/2 azaltır — bkz. `aura/plate/dewarp.py`, `aura/plate/enhance.py`),
 `lp_detector.*` (sıkı plaka kırpma — özel YOLOv11n plaka modeli; yoksa loglu fallback),
 `lp_vote_min_px` / `lp_qod_below_px` (boyut-farkında kanıt: çok küçük LP oylamaya
 girmez; küçük LP görüldüğü an `plate_too_small` QoD tetiği — consensus_fail beklemeden),

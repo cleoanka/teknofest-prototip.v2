@@ -36,12 +36,18 @@ models:
     # K-004 A/B BULGUSU (19 Haz, 3 gerçek video): custom_smoking'i roi_objects'e DROP-IN
     # koymak REGRESYON yarattı — stok yolo26l'in sağladığı 'phone' nesne-kanıtı + sigara-
     # bastırma latch'i kayboldu → telefon videosunda (video_2) telefon KAÇTI + sigara FP arttı.
-    # Bu yüzden custom_smoking VARSAYILANA/ profile-default'a ALINMADI. Held-out mAP50 0.856
-    # (FTR §4'te kanıt olarak raporlanır). DOĞRU entegrasyon = aura/driver_state/pose.py'de
-    # roi_objects'in YANINDA opsiyonel ikinci 'smoking_model' kanıtı (phone korunur + sigara
-    # güçlenir) — KOD değişikliği, takip işi. Şimdilik sigara kanıtı pose-hibritten gelir
-    # (3 videoda makro-F1 1.0). Denemek isteyen elle açabilir (path: weights/custom_smoking.pt).
+    # Bu yüzden custom_smoking roi_objects'e ALINMADI. Held-out mAP50 0.856 (FTR §4).
+    # DOĞRU entegrasyon (artık KODDA): roi_objects'in YANINDA opsiyonel ikinci
+    # 'smoking_model' kanalı — aura/driver_state/pose.py yalnız 'smoking' NESNESİNİ
+    # OR'lar, phone yolu (nesne-kanıtı + bastırma latch'i) korunur. Bu profil ikinci
+    # modeli AÇIKÇA bağlar (default.yaml zaten enabled; burada path netleştirilir).
+    # GRACEFUL-ABSENT: ağırlık diskte yoksa no-op, davranış değişmez.
     backend: auto
+    smoking_model:
+      enabled: true
+      path: weights/custom_smoking.pt
+      conf: 0.30
+      imgsz: 640
     # --- OPSİYONEL / DÜŞÜK ÖNCELİK: emniyet kemeri (no_seatbelt) -------------------
     # weights/custom_seatbelt.pt (mAP50 0.895/0.546; sınıflar: no_seatbelt_evidence,
     # seatbelt_ok). VARSAYILAN KAPALI bırakıldı (default.yaml ile aynı): kemer ŞERİDİ

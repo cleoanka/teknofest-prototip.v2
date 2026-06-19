@@ -107,6 +107,19 @@ models:
       # bastırma muhafazakâr (düşük güvenli FP gerçek sigarayı ezemez).
       suppress_frames: 25
       suppress_conf: 0.30
+    # --- OPSİYONEL İKİNCİ MODEL: özel eğitimli sigara dedektörü ---
+    # roi_objects'in YANINDA (replace DEĞİL) sürücü ROI'sinde yalnız 'smoking' NESNESİ
+    # arar; bulgusu mevcut 'smoking' kanıtına OR'lanır (16/8 oylamasından geçer).
+    # phone yolu (roi_objects nesne-kanıtı + bastırma latch'i) HİÇ değişmez.
+    # K-004 A/B dersi: custom_smoking'i roi_objects'e DROP-IN koymak phone kanıtını
+    # siliyordu (video_2 telefon kaçtı) — ayrı kanal regresyonu önler. Held-out mAP50
+    # 0.856 (FTR §4). GRACEFUL-ABSENT: ağırlık diskte yoksa (CI/takım — gitignore)
+    # yüklenmez, davranış değişmez (no-op, loglanır).
+    smoking_model:
+      enabled: true
+      path: weights/custom_smoking.pt
+      conf: 0.30
+      imgsz: 640
     # --- Stage-1 kanıt füzyonu ---
     # Dedektör tam karede phone/smoking NESNESİ görür ve kutu araca düşerse sürücü
     # bayrağına OR'lanır (Katman B oylamasından geçer). v4/yolo26 'phone' üretebilir.
@@ -211,19 +224,6 @@ plate:
   # fast-plate-ocr modeli (ocr_engine=fastplate iken): ilk koşuda otomatik iner (~5MB).
   fastplate_model: global-plates-mobile-vit-v2-model
   ocr_gpu: true                 # OCR'ı (EasyOCR/PaddleOCR) GPU'da çalıştır; CUDA yoksa otomatik CPU
-  # OCR-öncesi görüntü hazırlama (WP-A1, karanlık/açılı otopark): dewarp + enhance,
-  # LP kırpığına OCR'dan HEMEN ÖNCE bir kez uygulanır. Reader'ın düşük-güven
-  # CLAHE+2x ikinci-şans varyantından AYRIDIR (o ölçek büyütür, bu yalnız ton/perspektif).
-  # ⚠ ÖLÇÜLDÜ (17 Haz 2026, 3 gerçek video): BU karanlık-otopark footage'ında OCR'ı
-  # tutarlı T→I'ya kaydırıp 34TC8532'yi 34IC8532 olarak YANLIŞ onayladı (ESKİ davranış
-  # 34TC8532'yi doğru onaylıyordu) → VARSAYILAN KAPALI. Opsiyonel kalır; farklı/komite
-  # footage'ında --config ile A/B test edip faydalıysa açın (K-004: dürüst, veriye dayalı).
-  dewarp:
-    enabled: false              # VARSAYILAN KAPALI (ölçülen plaka regresyonu); opsiyonel — fronto-paralel perspektif düzeltme
-  enhance:
-    enabled: false              # VARSAYILAN KAPALI (ölçülen plaka regresyonu); opsiyonel — CLAHE (LAB L) + gamma + hafif unsharp
-    clahe_clip: 2.5             # CLAHE kontrast sınırı (büyük = daha agresif yerel kontrast)
-    gamma: 1.2                  # >1 karanlık tonları aydınlatır (1.0 = etkisiz)
   # Sıkı plaka kırpma: ÖZEL EĞİTİMLİ LP dedektörü (custom_license_plate, YOLO26s, tek
   # sınıf 'license_plate'; held-out mAP50 0.983 / mAP50-95 0.707 — 9123 görsel keremberke/HF).
   # 19 Haz 2026 stok-vs-custom 3-video A/B: plaka 3/3 PLATE_CONFIRMED KORUNDU (regresyon yok)

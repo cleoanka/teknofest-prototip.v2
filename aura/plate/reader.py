@@ -16,8 +16,6 @@ from typing import TYPE_CHECKING
 import cv2  # modül-düzeyi (eskiden her sıcak-yol çağrısında fonksiyon içinde import ediliyordu)
 
 from aura.optional.loader import get_optional
-from aura.plate.dewarp import dewarp_plate
-from aura.plate.enhance import enhance_plate
 from aura.plate.normalize import PlateVotePool
 from aura.plate.ocr import build_ocr
 from aura.schema import BBox, PlateState
@@ -61,17 +59,6 @@ class PlateReader:
             confirm_peak_weight=float(pv.get("confirm_peak_weight", 0.30)),
         )
         self.ocr = ocr if ocr is not None else build_ocr(cfg)
-        # OCR-öncesi görüntü hazırlama (WP-A1): dewarp (fronto-paralel perspektif
-        # düzeltme) + enhance (CLAHE+gamma+unsharp). LP kırpığına, OCR'a girmeden
-        # HEMEN ÖNCE uygulanır. Karanlık/açılı otoparkta il-kodu misread'ini
-        # (3→0/2) azaltır. Flag'ler config'ten. VARSAYILAN KAPALI (güvenli-OFF):
-        # commit 8fef7f6 ölçtü ki bu footage'da T→I kayması 34TC8532→34IC8532
-        # YANLIŞ onayına yol açıyor — eksik-config kullanıcısı bu regresyona
-        # düşmesin diye kod-içi varsayılan da False. (config/default.yaml zaten
-        # false; iki kaynak hizalı.) Saf cv2/numpy, model gerektirmez; dışarıdan
-        # OCR enjekte edilmiş testlerde de çalışır.
-        self._dewarp_enabled = bool(cfg.get("plate.dewarp.enabled", False))
-        self._enhance_enabled = bool(cfg.get("plate.enhance.enabled", False))
         self.qod = qod
         self.sr = get_optional(cfg, "super_resolution")  # §8.2 (lazy; kapalıysa None)
         # Sıkı plaka kırpma (opsiyonel LP dedektörü): araç-altı GENİŞ crop yerine
@@ -311,33 +298,18 @@ class PlateReader:
             size_w = self._no_lp_weight
         # KESKİNLİK-FARKINDA kanıt ağırlığı (Aday-1): bulanık/uzak kare (düşük
         # Laplacian varyansı) size_w'yi [floor..1] çarpanla kısar → net/yakın kare
-        # konsensüste baskın olur. Yalnız flag açıkken; keskinlik OCR-öncesi
-        # dewarp/enhance dönüşümlerinden ETKİLENMESİN diye ham LP kırpığı üzerinden
-        # ÖLÇÜLÜR. Hesaplanamazsa 1.0 (kimlik — ağırlık kısılmaz).
+        # konsensüste baskın olur. Yalnız flag açıkken; keskinlik ham LP kırpığı
+        # üzerinden ÖLÇÜLÜR. Hesaplanamazsa 1.0 (kimlik — ağırlık kısılmaz).
         if self._sharp_enabled:
             size_w *= self._sharpness_factor(crop)
-        # OCR-öncesi hazırlama: önce fronto-paralel dewarp (açılı plaka → düz),
-        # sonra enhance (CLAHE+gamma+unsharp). Köşe bulunamazsa dewarp kimlik
-        # döner; ikisi de saf cv2/numpy ve şekil-korur. last_plate_bbox/size_w
-        # YUKARIDA lp_box'tan zaten türetildi → buradaki dönüşüm onları ETKİLEMEZ.
-        # İkinci-şans (CLAHE+2x) varyantı için dewarp-sonrası ama enhance-ÖNCESİ
-        # görüntü ayrıca tutulur: enhance + reader._enhance üst üste binerse
-        # (CLAHE-üzerine-CLAHE + çift kontrast) bazı karelerde OCR'ı KÖTÜLEŞTİRİR.
-        # İlk geçiş enhance'li okur; ikinci-şans HAM (enhance'siz) crop'tan türer.
         # LP-kırpık süper-çözünürlük (TEKNİK-2): OCR-öncesi, küçük kırpığı Lanczos
         # büyüt + unsharp. lp_h/size_w/last_plate_bbox YUKARIDA upscale-öncesi ham
         # kırpıktan türetildi → bu dönüşüm kanıt ağırlığını/QoD'yi ETKİLEMEZ. Yalnız
         # küçük kırpığa uygulanır (helper içinde min_h_px kapısı). İkinci-şans
-        # varyantı da büyütülmüş kırpıktan türesin diye dewarp/enhance'ten ÖNCE.
+        # varyantı da büyütülmüş kırpıktan türesin diye ÖNCE uygulanır.
         if self._cu_enabled and crop is not None and getattr(crop, "size", 0):
             crop = self._crop_upscale(crop)
-        raw_crop = crop  # dewarp sonrası, enhance öncesi — ikinci-şans referansı
-        if crop is not None and getattr(crop, "size", 0):
-            if self._dewarp_enabled:
-                crop = dewarp_plate(crop)
-                raw_crop = crop  # dewarp ikinci-şansa da uygulanır (yalnız enhance hariç)
-            if self._enhance_enabled:
-                crop = enhance_plate(crop, self.cfg)
+        raw_crop = crop  # ikinci-şans (CLAHE+2x) varyantı için referans
         text, conf = self.ocr.read(crop, vehicle_crop)
         # setdefault yerine 'if not in': setdefault argümanı eager değerlendirilir →
         # track zaten varsa her karede boş yere bir PlateVotePool (+kwargs) kurulup
@@ -352,8 +324,7 @@ class PlateReader:
             and getattr(raw_crop, "size", 0)
             and (text is None or conf < self._second_variant_below)
         ):
-            # ÇİFT-ENHANCE önleme: kendi CLAHE+2x varyantını enhance'li crop yerine
-            # HAM (dewarp sonrası, enhance öncesi) crop'a uygula → bağımsız ikinci kanıt.
+            # Düşük güvende kendi CLAHE+2x varyantını crop'a uygula → bağımsız ikinci kanıt.
             t2, c2 = self.ocr.read(self._enhance(raw_crop), vehicle_crop)
             pool.add(t2, c2, weight=size_w)
             if t2 and not text:
