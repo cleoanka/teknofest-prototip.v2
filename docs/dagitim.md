@@ -11,6 +11,9 @@ AURA'nın çalışma zamanı davranışı `config/profiles/*.yaml` ile seçilir 
 AURA_PROFILE=server ./run.sh                      # servisler (env ile profil)
 python -m aura --profile server --source rtsp://kamera   # CLI ile profil
 ```
+```powershell
+$env:AURA_PROFILE = "server"; .\run.ps1           # Windows eşdeğeri (env ile profil)
+```
 
 | Profil | Dedektör | Cihaz | imgsz | Hedef |
 |---|---|---|---|---|
@@ -51,6 +54,31 @@ Restart=always
 WantedBy=multi-user.target
 ```
 
+### Windows sunucu (PowerShell)
+Linux dışı sunucuda aynı servisler `run.ps1` ile kalkar (profil + GPU dahil):
+```powershell
+$env:AURA_PROFILE = "server"; .\run.ps1
+#   inference :8080 / QoD :8081 / NV :8082  (CUDA otomatik seçilir)
+```
+> NVIDIA GPU: güncel sürücü yeterli; `bootstrap.py` CUDA'lı PyTorch'u (cu128) kendi kurar.
+> Doğrulama: `.\dev.ps1 doctor --profile server` → "Cihaz (auto → cuda:0)" görünmeli.
+> Tam Windows rehberi: [`windows.md`](windows.md).
+
+**Task Scheduler ile servis (boot'ta otomatik başlat):** systemd yerine Windows'ta
+planlı görev kullanın — yükseltilmiş bir PowerShell'de bir kez:
+```powershell
+$action  = New-ScheduledTaskAction  -Execute "powershell.exe" `
+  -Argument "-NoProfile -ExecutionPolicy Bypass -File C:\opt\aura\run.ps1" `
+  -WorkingDirectory "C:\opt\aura"
+$trigger = New-ScheduledTaskTrigger -AtStartup
+$env_v   = @{ AURA_PROFILE = "server" }   # profil için run.ps1 .env'i de okur
+Register-ScheduledTask -TaskName "AURA Inference" -Action $action -Trigger $trigger `
+  -RunLevel Highest -Description "AURA servisleri (inference/qod/nv)"
+```
+> Profili kalıcı kılmak için `.env` içine `AURA_PROFILE=server` yazmak en güvenlisidir;
+> `run.ps1` `.env`'i otomatik yükler. Servis olarak kalıcı barındırma için NSSM veya
+> Windows Service sarmalayıcısı da kullanılabilir.
+
 ## 4. Final ortamı: mock → gerçek
 QoD ve Number Verification mock'ları gerçek CAMARA sözleşmesini taklit eder. Finalde yalnız
 **endpoint + credential** değişir (YZ çekirdeği aynı kalır):
@@ -79,4 +107,8 @@ number_verification: { backend: camara, endpoint: https://<operator-gateway>/nv 
 ```bash
 python tools/doctor.py --profile server   # bağımlılık, cihaz, ağırlık, config, profil
 ```
-Tüm çekirdek bileşenler ✓ ise sistem gerçek modda hazırdır; ağırlık eksikse `python bootstrap.py`.
+```powershell
+.\dev.ps1 doctor --profile server          # Windows eşdeğeri
+```
+Tüm çekirdek bileşenler ✓ ise sistem gerçek modda hazırdır; ağırlık eksikse `python bootstrap.py`
+(Windows: `.\setup.ps1`).

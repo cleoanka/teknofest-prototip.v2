@@ -17,10 +17,20 @@ AURA'yı sıfırdan, tek komutla, manuel adım olmadan kurar. İdempotenttir.
 ./setup.sh --dev     # dev bağımlılıklarıyla (pytest, ruff, black)
 ```
 
-### Windows (PowerShell 7+)
+### Windows (PowerShell 5.1+)
 ```powershell
-.\setup.ps1
+git lfs install ; git lfs pull   # model ağırlıkları LFS'te (pointer yerine gerçek .pt)
+.\setup.ps1                      # = python bootstrap.py (gerekirse otomatik 'py -3')
+.\setup.ps1 --dev               # dev araçlarıyla (pytest, ruff, black) — make setup eşdeğeri
 ```
+> Konsolide Windows rehberi (ön koşullar, CUDA, profiller, sorun giderme): **[`windows.md`](windows.md)**.
+>
+> **ExecutionPolicy:** Betik "çalıştırılamıyor" derse bir kez
+> `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` (veya
+> `powershell -ExecutionPolicy Bypass -File .\setup.ps1`).
+>
+> **CUDA (NVIDIA):** Güncel NVIDIA sürücüsü yeterli — `bootstrap.py`, `nvidia-smi` varsa
+> CUDA'lı PyTorch'u (cu128) otomatik kurar; yoksa CPU derlemesine düşer.
 
 `bootstrap.py` adımları: sistem doğrulama → `.venv` → torch backend (otomatik) →
 `pip install -e .` → model ağırlıkları (SHA256, trust-on-first-use) → config/.env →
@@ -38,12 +48,19 @@ python bootstrap.py --force          # .venv'i sıfırdan
 ```bash
 python tools/doctor.py    # bağımlılık, cihaz (MPS/CUDA/CPU), ağırlık, config, profil ✓
 ```
-Tüm çekirdek satırlar ✓ ise sistem gerçek modda hazır. Ağırlık eksikse `python bootstrap.py`.
+```powershell
+.\dev.ps1 doctor          # Windows eşdeğeri
+```
+Tüm çekirdek satırlar ✓ ise sistem gerçek modda hazır. Ağırlık eksikse `python bootstrap.py`
+(Windows: `.\setup.ps1`).
 
 ## Kullanım
 ```bash
 ./run.sh             # inference :8080, qod :8081, nv :8082
 open http://localhost:8080/
+```
+```powershell
+.\run.ps1            # Windows; ardından tarayıcıda http://localhost:8080/
 ```
 
 ## Örnekler
@@ -52,6 +69,11 @@ open http://localhost:8080/
 AURA_DEVICE=cpu ./run.sh
 # Farklı port
 AURA_INFERENCE_PORT=9090 ./run.sh
+```
+```powershell
+# Windows (PowerShell) — değişkeni önce ayarlayın
+$env:AURA_DEVICE = "cpu"; .\run.ps1
+$env:AURA_INFERENCE_PORT = "9090"; .\run.ps1
 ```
 
 ## Sorun Giderme
@@ -63,3 +85,6 @@ AURA_INFERENCE_PORT=9090 ./run.sh
 | Port dolu | `AURA_INFERENCE_PORT`/`AURA_QOD_MOCK_PORT`/`AURA_NV_MOCK_PORT` ile değiştirin |
 | `/cameras` izin istiyor (macOS) | Kamera izni verin veya `AURA_CAMERA_PROBE=0` |
 | node yok | Sarı uyarı; Python servisleri tam çalışır, mobil opsiyonel |
+| `.ps1 çalıştırılamıyor` (Windows) | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` — detay: [`windows.md`](windows.md) |
+| `python` Store'u açıyor (Windows) | `py -3` kullanın; betikler otomatik düşer. Kalıcı: Store stub'ını kapatın |
+| Türkçe karakter bozuk / `cp1254` (Windows) | `$env:PYTHONUTF8="1"` + `chcp 65001`; betikler bunu zaten ayarlar |
