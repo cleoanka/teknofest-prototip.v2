@@ -7,17 +7,21 @@
 > kopyala** akışını otomatik yürütür.
 
 ## 0. Mevcut durum (dürüst)
-- AURA'nın varsayılan dedektörü **stok `yolo26l`** (sunucu); sürücü davranışı **YOLO26-pose**
-  geometrisiyle fine-tune'suz çalışır. Yani **plaka/davranış demosu eğitim olmadan** çalışır.
+- AURA'nın varsayılan araç dedektörü **stok `yolo26l`** (sunucu); sürücü davranışı **YOLO26-pose**
+  geometrisiyle fine-tune'suz çalışır. Plaka kırpma artık **eğitilmiş `custom_license_plate`**
+  (YOLO26s) varsayılandır; ağırlık yoksa loglu stok LP'ye/geniş-crop'a düşer → **plaka/davranış
+  demosu eğitim olmadan da** çalışır.
 - 11-sınıf fine-tune `yolguvenligi_types_v4` (yolov8m, held-out mAP50 .788) açık-kaynak köprü
   veriyle eğitilmişti (`--profile v4-finetune`).
-- **YENİ (18 Haz 2026): zorunlu sınıflar için YOLO26s fine-tune ŞU AN SÜRÜYOR.** Dört gerçek açık
+- **YENİ (19 Haz 2026): zorunlu sınıflar için YOLO26s fine-tune TAMAMLANDI.** Dört gerçek açık
   veri seti indirilip işlendi (hepsi CC BY 4.0, PIL-doğrulanmış; bkz. `docs/veri_seti.md`):
   `license_plate` 8823, `seatbelt` 3104, `smoking` 557, `phone` 659. Eğitim taban=`weights/yolo26s.pt`,
   `imgsz 640`, 35 epoch, `--patience 12`, MPS (`runs/train/<sınıf>_s/`).
-  - **ARA değerler (kesin DEĞİL — eğitim sürüyor):** `license_plate` ~epoch 12/35 → mAP50 ≈ **0.977**,
-    mAP50-95 ≈ 0.676; `seatbelt` erken (~epoch 1); `smoking` sırada. **Final mAP'ler bitince
-    `*.metrics.json`'a yazılır** ve doğruluk iddiası ancak o zaman yapılır.
+  - **Gerçek held-out mAP** (Ultralytics `model.val` ayrılmış test bölmesi; `weights/custom_*.metrics.json`):
+    `license_plate` mAP50 **0.983** / mAP50-95 **0.707**; `smoking` **0.856** / **0.457**;
+    `seatbelt` **0.895** / **0.546**. `custom_license_plate` 3-video A/B'de regresyonsuz →
+    **varsayılan LP dedektör** (`config/default.yaml` `plate.lp_detector.path`); `custom_smoking`
+    `pose.py`'da ikinci-model (phone-kanıtını korur); `seatbelt` opsiyonel (dış-kamera görüş açısı).
 - **Komite TOGG/etiketli verisi paylaşıldığında** aynı akışla `minibus`/`fatigue` dahil tüm
   sınıflar için **YOLO26'yı fine-tune edin** → hem mandate (YOLO26) hem en yüksek doğruluk. Boru
   hattı uçtan uca doğrulandı (aşağıda §6).

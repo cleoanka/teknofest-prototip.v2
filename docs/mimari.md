@@ -78,6 +78,13 @@ kullanılmaz** (bkz. §9). `models.driver_state.backend` ile seçilir:
   (`v4`, `phone` sınıfı) aynı ROI'de koşulur; NESNE kanıtı geometriden üstündür (telefon
   nesnesi görülünce el-ağızda geometrisi 'sigara' sayılmaz — hoparlörde konuşma durumu).
   ROI ön-işleme: kısa kenar 320px'e büyütme + CLAHE + gamma (cam arkası karanlık kabin).
+  - **Opsiyonel özel sigara ikinci-modeli (`smoking_model`):** eğitilmiş `custom_smoking`
+    (YOLO26s; held-out **mAP50 0.856 / mAP50-95 0.457**, 557 görsel CigDet/Mendeley) hibrit
+    nesne kanıtının **YANINDA** (replace DEĞİL) sürücü ROI'sinde yalnız `smoking` nesnesi arar;
+    bulgusu mevcut `smoking` kanıtına OR'lanır (16/8 oylamasından geçer). **Telefon yolu
+    (roi_objects + bastırma latch'i) hiç değişmez** — A/B'de drop-in entegrasyon phone
+    kanıtını siliyordu (video_2 telefon kaçtı), ayrı kanal regresyonu önler. Ağırlık diskte
+    yoksa no-op (loglanır, davranış değişmez).
 - **`auto`** (varsayılan): pose ağırlığı (l-pose; yoksa s-pose) diskte varsa `pose`, yoksa `yolo`.
 
 **Sürücü-içi sıkı kırpma (`driver_crop`):** Modele giden alan MINIMUM tutulur. Gelen ROI
@@ -117,11 +124,18 @@ hayalet) track'ler annotation/event üretmez (gerçek video_3'te phantom `truck`
 ## 5. Plaka Okuma ve Konsensüs Döngüsü
 Hesap yükü en yüksek parça; katı kaynak yönetimiyle çalışır.
 (Karar ağacının yayın diyagramı: [`docs/diagrams/plaka_karar_akisi.mmd`](diagrams/plaka_karar_akisi.mmd).)
-- **Sweet Spot:** araç uzaktayken OCR pasif; önceden tanımlı sanal bölgeye girince
-  etkinleşir (x aralığı yanal yaklaşan araçları da kapsayacak şekilde geniş).
-- **Sıkı plaka kırpma (LP dedektörü):** özel YOLOv11n plaka modeli, araç-altı geniş
-  crop içinde plakanın kendisini bulup sıkı kırpar — OCR karakter doğruluğu belirgin
-  artar; ağırlık yoksa loglu olarak geniş-crop'a düşülür.
+- **Sweet Spot:** OCR'ı aracın kadrajdaki konumuna göre kapılar. **19 Haz fix:** bölge
+  eskiden test-videolarının "araç alttan yaklaşır" geometrisine dardı (0.18–0.85 /
+  0.40–0.90) → canlı/telefon kamerada araç bölgeye girmeyince OCR hiç tetiklenmiyordu.
+  Varsayılan artık **neredeyse tam-kadraj** (0.03–0.97 / 0.06–0.98); kaliteyi frame-bölgesi
+  değil **piksel-boyut kapısı** (`lp_vote_min_px`/`min_pixel_height`) + oy havuzu + dürüstlük
+  zırhları sınırlar (K-004: oran-bazlı, videoya-özel sabit yok).
+- **Sıkı plaka kırpma (LP dedektörü):** varsayılan **özel eğitimli `custom_license_plate`**
+  (YOLO26s, tek sınıf `license_plate`; held-out **mAP50 0.983 / mAP50-95 0.707**, 9123 görsel
+  keremberke/HF, CC BY 4.0), araç-altı geniş crop içinde plakanın kendisini bulup sıkı kırpar —
+  OCR karakter doğruluğu belirgin artar. 3-video stok-vs-custom A/B'de plaka 3/3
+  `PLATE_CONFIRMED` korundu (regresyon yok) → varsayılana terfi (`plate.lp_detector.path`).
+  Ağırlık yoksa bootstrap iner; o da yoksa loglu olarak stok `lp_yolo11n.pt`/geniş-crop'a düşülür.
 - **Boyut-farkında kanıt:** okumanın kanıt değeri = OCR güveni × kaynak kalitesi (LP
   kırpık yüksekliği). Çok küçük plaka (`lp_vote_min_px`) oylamaya hiç girmez; küçük plaka
   (`lp_qod_below_px`) görüldüğü AN `plate_too_small` QoD kalite tetiği (consensus_fail

@@ -53,7 +53,8 @@ ağırlığı için `path`'i değiştirin (bkz. `docs/egitim.md`).
 tutarlıysa yazılır (flicker koruması).
 
 ### `plate`
-`sweet_spot` (normalize ROI — yanal yaklaşan araçlar için geniş x aralığı),
+`sweet_spot` (normalize ROI — **19 Haz fix:** canlı/telefon kamera için neredeyse tam-kadraj
+0.03–0.97/0.06–0.98; kaliteyi frame-bölgesi değil piksel-boyut kapısı sınırlar),
 `voting_buffer_size` (rejected-event kadansı), `consensus_ratio`, `ocr_lang`,
 `regex` (Türk plaka), `min_pixel_height` (altında kalite tetiklenir),
 `ocr_max_side` / `ocr_enhance_below_px` (OCR girdi boyut yönetimi),
@@ -71,7 +72,8 @@ kurulu değilse easyocr baseline'ına şeffaf düşülür. PaddleOCR için: `pip
 `ocr_gpu` (varsayılan `true` — OCR motorunu GPU'da çalıştır; **CUDA gerçekten kullanılabilir
 değilse otomatik CPU'ya düşer**, `aura/device.cuda_is_usable` ile probe edilir. EasyOCR'a
 `gpu=`, PaddleOCR'a sürüme göre `device=gpu`/`use_gpu=` olarak geçirilir),
-`lp_detector.*` (sıkı plaka kırpma — özel YOLOv11n plaka modeli; yoksa loglu fallback),
+`lp_detector.*` (sıkı plaka kırpma — **varsayılan eğitilmiş `custom_license_plate`**, YOLO26s,
+held-out mAP50 0.983; A/B 3/3 korundu → varsayılan; yoksa loglu stok `lp_yolo11n`/geniş-crop fallback),
 `lp_vote_min_px` / `lp_qod_below_px` (boyut-farkında kanıt: çok küçük LP oylamaya
 girmez; küçük LP görüldüğü an `plate_too_small` QoD tetiği — consensus_fail beklemeden),
 `voting.*` (kalıcı oy havuzu: `min_weight` = min kanıt, `margin_weight` = kazananla
