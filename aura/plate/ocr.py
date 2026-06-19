@@ -387,6 +387,46 @@ def _build_real_ocr(cfg) -> OCREngine:
     return RealOCR(cfg)
 
 
+def build_agreement_ocr(cfg, primary: OCREngine | None = None) -> OCREngine | None:
+    """Gri-bölge erken-okuma MUTABAKATI için İKİNCİ bağımsız OCR motoru kur.
+
+    Gri-bölge (lp_h < lp_vote_min_px) okuması oy havuzuna girmek için fastplate +
+    ikinci motorun AYNI format-geçerli plakayı okuması gerekir (reader._early_read).
+    İkinci motor `plate.early_read.agreement_engine` ile seçilir; verilmemişse birincil
+    motordan FARKLI ilk kullanılabilir gerçek motor seçilir (easyocr↔fastplate). Hiç
+    bağımsız ikinci motor kurulamazsa None (reader o zaman yalnız çok-yüksek-conf eşiğine
+    düşer — yanlış-onay yine imkânsız). Mock/torch yok ortamında None (gri-bölge erken-
+    okuma gerçek-motor özelliği; mock akışı etkilenmez)."""
+    mode = str(cfg.get("runtime.ai_mode", "auto")).lower()
+    if mode == "mock" or (mode == "auto" and is_synthetic_source(cfg)):
+        return None
+    if not _easyocr_available():
+        return None
+    req = cfg.get("plate.early_read.agreement_engine", None)
+    primary_name = str(cfg.get("plate.ocr_engine", "easyocr")).lower()
+    if req:
+        engine = str(req).lower()
+    else:
+        # birincilden FARKLI ilk kullanılabilir motor (bağımsız kanıt)
+        engine = "easyocr" if primary_name != "easyocr" else "fastplate"
+    try:
+        if engine == "paddleocr" and _paddleocr_available():
+            return PaddleOCRReader(cfg)
+        if engine == "fastplate" and _fastplate_available():
+            return FastPlateOCRReader(cfg)
+        if engine == "easyocr":
+            return RealOCR(cfg)
+    except (
+        Exception
+    ) as exc:  # noqa: BLE001 — ikinci motor kurulamazsa erken-okuma conf-eşiğine düşer
+        log.warning(
+            "Mutabakat OCR motoru (%s) kurulamadı: %s — conf-eşiğine düşülüyor", engine, exc
+        )
+        return None
+    log.warning("Mutabakat OCR motoru (%s) kullanılamıyor — conf-eşiğine düşülüyor", engine)
+    return None
+
+
 def build_ocr(cfg) -> OCREngine:
     mode = str(cfg.get("runtime.ai_mode", "auto")).lower()
     # auto + gömülü sentetik örnek → mock OCR (renk→plaka, hızlı ve deterministik;

@@ -91,6 +91,31 @@ hep-uzak sistematik misread onaylanmaz; 0 = kapalı. Ek **pozisyon-veto** (v2.3)
 bütün-string marjını geçse bile her karakter pozisyonu belirsizse onay verilmez. — bkz.
 `aura/plate/normalize.py`).
 
+`early_read.*` (v2.4 — **gri-bölge erken-okuma**, SOTA-bilgili, hepsi guard'lı, graceful;
+**VARSAYILAN KAPALI** — aşağıdaki A/B gerekçesi): gerçek video_3 dersi — doğru `34TC8532` lp_h
+67-83'te NET, uzak misread `14TC857` lp_h 24-28'de; `lp_vote_min_px=45` PLAIN (tek-motor, SR'siz)
+okuma için **güvenlik ağı olarak KALIR**.
+> **A/B (19 Haz 2026, 3 gerçek video, MPS-YOLO+fastplate, GT=34TC8532):** `enabled=true` video_3'ü
+> 2.10s → 1.26s erken onayladı AMA değer YANLIŞ (`34TC8512`, son hane 3→1). `AURA_ER_TRACE` ölçümü:
+> lp_h 28-32'de fastplate `34TC8532`/`34TC8512`/`34TC8577` arası salınıyor, yanlış okumalar da conf
+> 0.91-0.96 (conf ayırt etmiyor); ikinci motor (easyocr) bu boyutta plakayı hiç okuyamıyor → mutabakat
+> ASLA oluşmuyor, yalnız `high_conf` kaçışı oya girip yanlışı onaya taşıyor. SR + 5-kare median füzyon
+> aktifken bile salınım ayrışmadı (lp_h<45'te son-hane çözünürlük altında — FİZİKSEL LİMİT). correctness
+> > latency (K-004) → erken-ama-yanlış config bırakılmaz; `enabled=false`. Scaffolding+guard'lar+testler
+> KORUNUR; ikinci motorun GERÇEKTEN uyuştuğu sahnede güvenle açılabilir. Gri-bölge `[gray_zone_min_px, lp_vote_min_px)` yalnız EK güvencelerle oya girer:
+(a) **SR/güçlü upscale** (`super_resolution` opsiyoneli varsa o, yoksa Lanczos+unsharp `sr_scale`),
+(b) **çok-kareli füzyon** (MF-LPR2 mantığı; hareketli araç için asıl kazanım: track başına son
+`fuse_frames` kırpık ortak-yüksekliğe hizalanıp median'la birleşir → kare-arası gürültü düşer),
+(c) **çok-motor mutabakatı** (`require_engine_agreement`: birincil + ikinci motor AYNI format-geçerli
+plakayı okumalı; ikinci motor `agreement_engine` ile ya da birincilden FARKLI ilk kullanılabilir
+motorla kurulur) **VEYA** `high_conf` üstü tek-motor okuma. Böylece `14TC857` tek-motor misread'i
+oya **GİREMEZ**. Üretilen oy NORMAL havuza girer → position-veto + `min_weight` + confirm-zemin
+onu da denetler (yanlış-onay imkânsız). `weight_cap` (<1): gri-bölge oyunun max kanıt ağırlığı
+çarpanı — net/yakın okuma her zaman ezer. `enabled=false` ya da `lp_h < gray_zone_min_px` → EK yol
+kapalı (PLAIN davranış). Yalnız gerçek-motor yolunda etkin (mock/sentetik akış etkilenmez).
+K-004: videoya-özel sabit/blacklist YOK; saf piksel-boyut + okuma-kalitesi kapısı. — bkz.
+`aura/plate/reader.py` (`_early_read`/`_er_upscale`/`_er_fuse`).
+
 ### `models.driver_state` (backend seçimi)
 `backend: auto|pose|yolo` — pose: YOLO26-pose keypoint geometrisi (`pose_path` =
 varsayılan `yolo26l-pose.pt`, yoksa s-pose'a loglu fallback; `pose_conf`,
