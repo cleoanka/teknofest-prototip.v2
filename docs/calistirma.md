@@ -19,8 +19,13 @@ Kurulu sistemde tipik bir demo akışını adım adım gösterir.
 ```bash
 ./run.sh
 ```
+```powershell
+.\run.ps1            # Windows (PowerShell 5.1+) — eşdeğer
+```
 inference_api (:8080), qod_mock (:8081), nv_mock (:8082) kalkar. Dashboard otomatik
 örnek videoyla başlar (`AURA_AUTOSTART=1`).
+
+> Tüm Windows iş akışı (profil, env sözdizimi, sorun giderme): **[`windows.md`](windows.md)**.
 
 ### 2. Dashboard'u aç
 ```
@@ -48,6 +53,10 @@ Gerçek 4K test videosunu pipeline'dan geçirip **annotated mp4 + JSON kanıt** 
 ```bash
 .venv/bin/python tools/test_video.py --source ~/video_1.mp4 --device mps
 #   → eval_results/video_1_annotated.mp4 + eval_results/video_1_summary.json
+```
+```powershell
+.\dev.ps1 video-test C:\yol\video_1.mp4    # Windows; cihaz otomatik (--device auto)
+#   → eval_results\video_1_annotated.mp4 + eval_results\video_1_summary.json
 ```
 
 ### 6. Mobil (opsiyonel)

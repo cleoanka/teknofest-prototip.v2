@@ -89,11 +89,14 @@ python tools/doctor.py           # ortam/hazırlık kontrolü (bağımlılık, c
 AURA_PROFILE=server ./run.sh     # sunucu profili (yolo26l, CUDA, büyük imgsz)
 ```
 
-### Windows (PowerShell 7+)
+### Windows (PowerShell 5.1+)
 ```powershell
-.\setup.ps1
-.\run.ps1
+git lfs install ; git lfs pull   # model ağırlıkları (LFS)
+.\setup.ps1                      # kurulum (dev araçları için: .\setup.ps1 --dev)
+.\run.ps1                        # inference :8080, QoD :8081, NV :8082
 ```
+Sıfır Windows bilgisiyle kurulum/çalıştırma/CUDA/sorun-giderme için tam rehber:
+**[`docs/windows.md`](docs/windows.md)**.
 
 Ardından tarayıcıda:
 - **Dashboard:** http://localhost:8080/

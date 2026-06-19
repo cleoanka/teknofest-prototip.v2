@@ -5,6 +5,7 @@
 | [`mimari.md`](mimari.md) | Tam sistem mimarisi v2.0 (YZ katmanı korunmuş + sistem katmanı) |
 | [`mimari_ek_moduller.md`](mimari_ek_moduller.md) | §8 opsiyonel modüller (lazy, toggle) |
 | [`kurulum.md`](kurulum.md) | Platform-bazlı kurulum + sorun giderme |
+| [`windows.md`](windows.md) | Konsolide Windows kılavuzu (ön koşullar, CUDA, profiller, sorun giderme) |
 | [`dagitim.md`](dagitim.md) | Sunucu dağıtımı (profil seçimi + servis kaldırma) |
 | [`calistirma.md`](calistirma.md) | Uçtan uca demo senaryosu |
 | [`cli_referans.md`](cli_referans.md) | Tüm `--help` çıktıları (gerçek çalıştırılmış) |

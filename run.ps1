@@ -4,7 +4,8 @@
 # isteyebilir (servis başına bir kez) — beklenen davranıştır, izin verin.
 $ErrorActionPreference = "Stop"
 $env:PYTHONUTF8 = "1"
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+# Bazı hostlarda (redirected/ISE) OutputEncoding ataması istisna atar — yutalım.
+try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 Push-Location $PSScriptRoot
 
 $PY = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"

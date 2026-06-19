@@ -2,7 +2,8 @@
 # Geliştirici ekstraları (pytest/ruff/black) için: .\setup.ps1 --dev   (make setup eşdeğeri)
 $ErrorActionPreference = "Stop"
 $env:PYTHONUTF8 = "1"
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+# Bazı hostlarda (redirected/ISE) OutputEncoding ataması istisna atar — yutalım.
+try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 Push-Location $PSScriptRoot
 try {
   # 'python' PATH'te yoksa ya da Microsoft Store stub'ıysa 'py -3' launcher'ına düş
