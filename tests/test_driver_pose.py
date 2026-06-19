@@ -143,6 +143,11 @@ def _pose_clf(model=None, **overrides):
     clf._smoke_suppress = {}
     clf._clahe = None
     clf._gamma_lut = None
+    # opsiyonel ikinci sigara modeli — VARSAYILAN YOK (graceful-absent / no-op)
+    clf.smoking_enabled = False
+    clf.smoking_conf = 0.30
+    clf.smoking_imgsz = 640
+    clf.smoking_model = None
     for k, v in overrides.items():
         setattr(clf, k, v)
     return clf
@@ -576,3 +581,108 @@ def test_infer_track_id_keying(track_id):
     clf.infer(_roi(), track_id=track_id)
     expected_key = -1 if track_id is None else track_id
     assert expected_key in clf._smoke_suppress
+
+
+# --------------------------------------------------------------------------- #
+# OPSİYONEL İKİNCİ MODEL: özel eğitimli sigara dedektörü (smoking_model)
+# roi_objects'in YANINDA koşar; 'smoking' OR'lanır, phone yolu KORUNUR.
+# --------------------------------------------------------------------------- #
+class _SmokingObjModel:
+    """Her karede 'smoking' NESNESİ döndüren sahte özel-eğitimli dedektör."""
+
+    def __init__(self, conf, cls_name="cigarette"):
+        self._conf = conf
+        self._name = cls_name
+        self.names = {0: cls_name}
+
+    def predict(self, *_a, **_k):
+        return [_Result(boxes=[_Box(conf=self._conf, cls=0)], names={0: self._name})]
+
+
+def test_smoking_model_absent_is_noop():
+    """smoking_model None → davranış DEĞİŞMEZ (graceful-absent, takım/CI no-op)."""
+    # nötr geometri (bilek uzakta) → tek başına hiçbir bayrak yok
+    pts = {NOSE: (50, 50), L_EAR: (30, 50), R_EAR: (70, 50), R_WRIST: (50, 95)}
+    model = _FakeModel(_Result(boxes=[_Box(conf=0.8)], keypoints=_make_kps(pts)))
+    clf = _pose_clf(model=model, crop_enabled=False, smoking_model=None)
+    ds = clf.infer(_roi(), track_id=1)
+    assert ds.active_flags() == []  # ikinci model yok → kanıt eklenmez
+
+
+def test_smoking_model_present_adds_smoking_evidence():
+    """Mock sigara modeli → 'smoking' kanıtı eklenir (canonical eşleme + conf)."""
+    pts = {NOSE: (50, 50), L_EAR: (30, 50), R_EAR: (70, 50), R_WRIST: (50, 95)}
+    model = _FakeModel(_Result(boxes=[_Box(conf=0.8)], keypoints=_make_kps(pts)))
+    clf = _pose_clf(model=model, crop_enabled=False, smoking_model=_SmokingObjModel(conf=0.7))
+    ds = clf.infer(_roi(), track_id=1)
+    assert ds.smoking is True
+    assert ds.confidence["smoking"] == 0.7
+
+
+def test_smoking_model_does_not_set_phone():
+    """İkinci model yalnız 'smoking' üretir — phone yolu (roi_objects) ona ait kalır."""
+    pts = {NOSE: (50, 50), L_EAR: (30, 50), R_EAR: (70, 50), R_WRIST: (50, 95)}
+    model = _FakeModel(_Result(boxes=[_Box(conf=0.8)], keypoints=_make_kps(pts)))
+    # model yanlışlıkla 'phone' sınıfı verse bile İKİNCİ kanal onu YOK SAYAR
+    clf = _pose_clf(
+        model=model,
+        crop_enabled=False,
+        smoking_model=_SmokingObjModel(conf=0.9, cls_name="cell phone"),
+    )
+    ds = clf.infer(_roi(), track_id=1)
+    assert ds.phone is False
+    assert ds.smoking is False  # 'phone' adı smoking kanalında yok sayıldı
+
+
+def test_smoking_model_preserves_phone_object_evidence():
+    """roi_objects phone NESNESİ + ikinci-model sigara BİRLİKTE çalışır (phone KAÇMAZ).
+
+    A/B regresyonunun çekirdeği: drop-in phone kanıtını siliyordu. Ayrı kanalda
+    phone (roi_objects) KORUNUR ve sigara (ikinci model) EKLENİR.
+    """
+    pts = {NOSE: (50, 50), L_EAR: (30, 50), R_EAR: (70, 50), R_WRIST: (50, 95)}
+    model = _FakeModel(_Result(boxes=[_Box(conf=0.8)], keypoints=_make_kps(pts)))
+    clf = _pose_clf(
+        model=model,
+        crop_enabled=False,
+        obj_model=_PhoneObjModel(conf=0.5),  # roi_objects: phone nesnesi
+        smoking_model=_SmokingObjModel(conf=0.6),  # ikinci model: sigara
+        obj_suppress_frames=3,
+    )
+    ds = clf.infer(_roi(), track_id=1)
+    assert ds.phone is True  # phone nesne-kanıtı KORUNDU (regresyon yok)
+    assert ds.smoking is True  # ikinci-model sigara kanıtı eklendi
+    assert ds.confidence["phone"] == 0.5
+    assert ds.confidence["smoking"] == 0.6
+
+
+def test_smoking_model_evidence_survives_phone_suppression():
+    """Telefon bastırma latch'i GEOMETRİK sigarayı söndürür ama NESNE kanıtını değil.
+
+    Bastırma yalnız geo.smoking'i sıfırlar; ikinci-model nesne kanıtı gerçek
+    sigara nesnesidir → ds.smoking'te kalır (phone-confusable geometri değil).
+    """
+    pts = {NOSE: (50, 50), L_EAR: (30, 50), R_EAR: (70, 50), R_WRIST: (51, 62)}
+    model = _FakeModel(_Result(boxes=[_Box(conf=0.8)], keypoints=_make_kps(pts)))
+    clf = _pose_clf(
+        model=model,
+        crop_enabled=False,
+        obj_model=_PhoneObjModel(conf=0.5),  # bastırma tetikler
+        smoking_model=_SmokingObjModel(conf=0.6),
+        obj_suppress_frames=3,
+    )
+    ds = clf.infer(_roi(), track_id=1)
+    assert ds.phone is True
+    assert ds.smoking is True  # nesne-kanıtı bastırmadan ETKİLENMEDİ
+    assert ds.confidence["smoking"] >= 0.6  # en az ikinci-model kanıtı korunur
+
+
+def test_smoking_model_max_merges_with_geometry_smoking():
+    """İkinci-model conf, geometrik sigara conf'u ile max-birleştirilir."""
+    # geometri sigara üretir (bilek ağza yakın), düşük conf person → düşük geo conf
+    pts = {NOSE: (50, 50), L_EAR: (30, 50), R_EAR: (70, 50), R_WRIST: (51, 62)}
+    model = _FakeModel(_Result(boxes=[_Box(conf=0.3)], keypoints=_make_kps(pts)))
+    clf = _pose_clf(model=model, crop_enabled=False, smoking_model=_SmokingObjModel(conf=0.95))
+    ds = clf.infer(_roi(), track_id=1)
+    assert ds.smoking is True
+    assert ds.confidence["smoking"] == 0.95  # ikinci model daha güçlü

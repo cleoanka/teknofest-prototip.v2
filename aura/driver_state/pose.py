@@ -142,6 +142,31 @@ class PoseDriverClassifier(DriverClassifier):
                 log.info("Pose hibrit ROI nesne kanıtı: %s (conf=%.2f)", obj_path, self.obj_conf)
             else:
                 log.warning("ROI nesne modeli yok (%s) — yalnız geometri kullanılacak", obj_path)
+        # --- OPSİYONEL İKİNCİ MODEL: özel eğitimli sigara dedektörü ----------- #
+        # roi_objects (stok phone + sigara-bastırma latch'i) AYNEN korunur; bu model
+        # onun YANINDA (replace DEĞİL) sürücü ROI'sinde yalnız 'smoking' NESNESİ arar.
+        # Bulgusu mevcut 'smoking' kanıtına OR'lanır (16/8 oylamasından geçer) → sigara
+        # GÜÇLENİR, phone yolu (nesne-kanıtı + bastırma) hiç değişmez. K-004 A/B dersi:
+        # custom_smoking'i roi_objects'e DROP-IN koymak phone kanıtını siliyordu;
+        # ayrı ikinci-model kanalı regresyonu önler.
+        # GRACEFUL-ABSENT: ağırlık diskte yoksa (CI/takım — gitignore) yüklenmez,
+        # davranış DEĞİŞMEZ (no-op). Loglanır.
+        sm = cfg.get("models.driver_state.smoking_model", {}) or {}
+        self.smoking_enabled = bool(sm.get("enabled", False))
+        self.smoking_conf = float(sm.get("conf", 0.25))
+        self.smoking_imgsz = int(sm.get("imgsz", 640))
+        self.smoking_model = None
+        if self.smoking_enabled:
+            sm_path = resolve_repo_path(sm.get("path", "weights/custom_smoking.pt"))
+            if sm_path.exists():
+                self.smoking_model = YOLO(str(sm_path))
+                log.info(
+                    "Pose ikinci-model sigara kanıtı: %s (conf=%.2f) — phone yolu korunur",
+                    sm_path,
+                    self.smoking_conf,
+                )
+            else:
+                log.warning("Sigara modeli yok (%s) — graceful no-op, davranış değişmez", sm_path)
         log.info(
             "Pose driver-state yüklendi: %s (imgsz=%d, device=%s, kulak=%.2f ağız=%.2f)",
             path,
@@ -275,6 +300,34 @@ class PoseDriverClassifier(DriverClassifier):
                 setattr(ds, name, True)
                 ds.confidence[name] = max(ds.confidence.get(name, 0.0), float(b.conf.item()))
 
+    def _smoking_object_evidence(self, roi: np.ndarray, ds: DriverState) -> None:
+        """Özel eğitimli ikinci modelle ROI'de yalnız 'smoking' NESNESİ ara.
+
+        roi_objects'ten BAĞIMSIZ ek kanal: bulgu mevcut 'smoking' bayrağına OR'lanır,
+        conf max-birleştirilir. 'phone' veya başka sınıf ÜRETMEZ (phone yolu yalnız
+        roi_objects'e ait kalır → bastırma latch'i karışmaz). Tek-sınıf eğitilmemiş
+        bir model 'smoking' dışında sınıf verse bile yok sayılır.
+        """
+        from aura.taxonomy import canonical
+
+        results = self.smoking_model.predict(
+            roi, conf=self.smoking_conf, imgsz=self.smoking_imgsz, device=self.device, verbose=False
+        )
+        if not results:
+            return
+        r = results[0]
+        names = getattr(r, "names", None) or self.smoking_model.names
+        for b in getattr(r, "boxes", None) or []:
+            idx = int(b.cls.item())
+            name = canonical(
+                names[idx] if isinstance(names, (list, tuple)) else names.get(idx, str(idx))
+            )
+            if name == "smoking":
+                ds.smoking = True
+                ds.confidence["smoking"] = max(
+                    ds.confidence.get("smoking", 0.0), float(b.conf.item())
+                )
+
     # --- ana giriş ----------------------------------------------------------- #
     def infer(self, cabin_roi: np.ndarray | None, track_id: int | None = None) -> DriverState:
         ds = DriverState()
@@ -296,6 +349,11 @@ class PoseDriverClassifier(DriverClassifier):
             self._crop_cache.pop(key, None)
         if self.obj_model is not None:
             self._object_evidence(roi, ds)
+        # İkinci-model sigara kanıtı: roi_objects'in YANINDA koşar, 'smoking'
+        # bayrağına OR'lanır. phone yolunu (yukarıdaki nesne-kanıtı + aşağıdaki
+        # bastırma latch'i) HİÇ etkilemez. Ağırlık yoksa smoking_model None → no-op.
+        if self.smoking_model is not None:
+            self._smoking_object_evidence(roi, ds)
         # Bastırma latch'i: telefon nesnesi BU karede görüldüyse zamanlayıcıyı doldur;
         # zamanlayıcı aktifken geometrik 'sigara' bastırılır (ağız önündeki el
         # telefondur) — ama telefon bayrağı İLERİ TAŞINMAZ (FP amplifikasyonu yok).

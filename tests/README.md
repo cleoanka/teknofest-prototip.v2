@@ -17,7 +17,7 @@ pytest -m integration       # gerçek model (ultralytics + ağırlık gerekir)
 | Tespit/takip | `test_detection.py`, `test_yolo_detector.py`, `test_class_vote.py` | Mock + gerçek YOLO26 dedektör, IoU takipçi, ROI geometri, alan-ağırlıklı sınıf oyu |
 | Stabilite | `test_stability.py` | 16/8 state machine (7/16→ret, 8/16→kabul, flicker) |
 | Sürücü durumu | `test_driver_state.py`, `test_driver_engine.py`, `test_driver_pose.py`, `test_driver_lock.py`, `test_driver_yolo_backend.py` | Katman A pose/yolo backend, Katman B `DriverStateEngine` ID-oylaması, sürücü kimlik kilidi |
-| Plaka | `test_plate.py`, `test_plate_normalize.py`, `test_plate_ocr.py`, `test_plate_ocr_engines.py`, `test_plate_reader_branches.py`, `test_plate_dewarp.py`, `test_plate_dewarp_internals.py` | Voting buffer, sweet-spot, TR regex/normalizasyon, OCR motorları (fastplate/easyocr/paddle), dewarp, ret→QoD |
+| Plaka | `test_plate.py`, `test_plate_normalize.py`, `test_plate_ocr.py`, `test_plate_ocr_engines.py`, `test_plate_reader_branches.py` | Sweet-spot, TR regex/normalizasyon, OCR motorları (fastplate/easyocr/paddle), ret→QoD |
 | Hız/yalpalama | `test_speed.py`, `test_speed_metric.py`, `test_speed_gt.py`, `test_speed_gaps.py`, `test_speed_plate_calib.py`, `test_swerving.py` | disabled relative flag, tripwire, metric oto-kalibrasyon, plaka-tabanlı kalib, swerving |
 | Sahne | `test_sign.py`, `test_sign_gaps.py` | Tabela takibi → aktif hız limiti |
 | Accumulator/risk | `test_accumulator.py` | ID-merkezli TrackRecord + risk kuralları |
