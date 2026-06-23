@@ -1,4 +1,19 @@
-# `docs/` — Dokümantasyon
+> 📂 **docs/** · Dokümantasyon · [⬅ repo köküne](../README.md)
+
+<div align="center">
+
+# 📚 `docs/` — Dokümantasyon
+
+![Belge Sayisi](https://img.shields.io/badge/Belgeler-15%20md%20%2B%20diagrams%2F-blue?style=flat-square)
+![Dil](https://img.shields.io/badge/Metin-Türkçe-red?style=flat-square)
+![Kod](https://img.shields.io/badge/Kod-İngilizce-informational?style=flat-square)
+![Diyagramlar](https://img.shields.io/badge/diagrams%2F-FTR%20§3.2%20Mermaid-success?style=flat-square)
+
+</div>
+
+---
+
+## 🗂️ Belge Haritası
 
 | Belge | İçerik |
 |---|---|
@@ -19,4 +34,40 @@
 | [`yol_haritasi.md`](yol_haritasi.md) | Sıradaki işler / veri toplama yol haritası (FTR'ye dek) |
 | [`diagrams/`](diagrams/) | FTR §3.2 için yayın-kalitesi Mermaid mimari diyagramları |
 
-Tüm `.md` Türkçe, kod İngilizce. Her dizin kendi `README.md`'sini taşır.
+---
+
+## 🧭 Belge İlişkileri
+
+```mermaid
+flowchart TD
+    DOCS["📂 docs/"]
+    DOCS --> KUR["Kurulum & Dağıtım"]
+    DOCS --> KUL["Çalıştırma & Referans"]
+    DOCS --> MIM["Mimari & Eğitim"]
+    DOCS --> SUR["Süreç & İzlenebilirlik"]
+
+    KUR --> KUR1["kurulum.md"]
+    KUR --> KUR2["windows.md"]
+    KUR --> KUR3["dagitim.md"]
+
+    KUL --> KUL1["calistirma.md"]
+    KUL --> KUL2["cli_referans.md"]
+    KUL --> KUL3["api_referans.md"]
+
+    MIM --> MIM1["mimari.md"]
+    MIM --> MIM2["mimari_ek_moduller.md"]
+    MIM --> MIM3["egitim.md"]
+    MIM --> MIM4["veri_seti.md"]
+    MIM --> MIM5["kalibrasyon.md"]
+    MIM --> MIM6["degerlendirme.md"]
+
+    SUR --> SUR1["sartname_izlenebilirlik.md"]
+    SUR --> SUR2["plan_insa_v2.md"]
+    SUR --> SUR3["yol_haritasi.md"]
+    SUR --> SUR4["diagrams/"]
+```
+
+---
+
+> [!NOTE]
+> Tüm `.md` Türkçe, kod İngilizce. Her dizin kendi `README.md`'sini taşır.

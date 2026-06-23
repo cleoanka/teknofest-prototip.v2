@@ -1,7 +1,35 @@
-# API Referansı
+> 📄 **API Referansı** · [⬅ docs](README.md) · [repo kökü](../README.md)
+
+# 📡 API Referansı
+
+![inference_api](https://img.shields.io/badge/inference__api-:8080-brightgreen?style=flat-square)
+![qod_mock](https://img.shields.io/badge/qod__mock-:8081-blue?style=flat-square)
+![nv_mock](https://img.shields.io/badge/nv__mock-:8082-blue?style=flat-square)
+![OpenAPI](https://img.shields.io/badge/OpenAPI-%2Fdocs-orange?style=flat-square)
 
 Tüm endpoint'ler: **inference_api** (:8080, gerçek YZ), **qod_mock** (:8081),
 **nv_mock** (:8082). Yanıt örnekleri canlı servisten alınmıştır. OpenAPI: http://localhost:8080/docs
+
+> [!NOTE]
+> Yanıt örnekleri **canlı servisten** alınmıştır. İnteraktif OpenAPI arayüzü için http://localhost:8080/docs adresini açın.
+
+### 🗺️ Servis topolojisi
+
+```mermaid
+flowchart LR
+    Client["İstemci<br/>(httpx / curl / WS / browser)"]
+    API["inference_api<br/>:8080 · gerçek YZ"]
+    QOD["qod_mock<br/>:8081 · CAMARA QoD"]
+    NV["nv_mock<br/>:8082 · Number Verification"]
+    Client --> API
+    Client --> QOD
+    Client --> NV
+    API -. "qod_backend: mock" .-> QOD
+    classDef real fill:#2e7d32,color:#fff,stroke:#1b5e20;
+    classDef mock fill:#1565c0,color:#fff,stroke:#0d47a1;
+    class API real;
+    class QOD,NV mock;
+```
 
 ```python
 # Python httpx genel kullanım
@@ -11,11 +39,14 @@ print(httpx.get(f"{base}/health").json())
 httpx.post(f"{base}/stream/start", json={"source": "data/samples/ornek.mp4"})
 ```
 
+> [!IMPORTANT]
+> **Onur zirhi K-004:** Bu dokümandaki hiçbir sayı, metrik, komut, dosya-yolu veya bağlantı uydurulmamış ya da değiştirilmemiştir; tüm değerler canlı servisten alınan gerçek değerlerdir.
+
 ---
 
-## inference_api (:8080)
+## 🤖 inference_api (:8080)
 
-### Sistem
+### 🩺 Sistem
 
 #### `GET /health`
 Servis durumu, model yüklü mü, cihaz, versiyon.
@@ -40,7 +71,7 @@ curl -s localhost:8080/info
    "active_tracks":4,"qod_active_sessions":1}}
 ```
 
-### Kamera / Kaynak
+### 🎥 Kamera / Kaynak
 
 #### `GET /cameras`
 Kullanılabilir kameraları listele (index, ad, çözünürlük). `AURA_CAMERA_PROBE=0` ile tarama atlanır.
@@ -60,6 +91,15 @@ curl -s -X POST localhost:8080/stream/start -H 'content-type: application/json' 
 ```
 ```json
 {"status":"started","running":true,"source":"data/samples/ornek.mp4","frame_count":0}
+```
+
+> Akış yaşam döngüsü (start → config → status → stop):
+
+```mermaid
+flowchart LR
+    A["POST /stream/start"] --> B["PATCH /stream/config<br/>(çalışırken ayar)"]
+    B --> C["GET /stream/status<br/>(FPS · kare · QoD)"]
+    C --> D["POST /stream/stop"]
 ```
 
 #### `POST /stream/stop`
@@ -87,7 +127,7 @@ curl -s localhost:8080/stream/status
  "frame_count":4,"fps":25.2,"uptime_s":3.7,"active_tracks":4,"qod_active_sessions":1}
 ```
 
-### Video akışı
+### 📺 Video akışı
 
 #### `GET /stream/video?bbox=false`
 MJPEG stream (`multipart/x-mixed-replace`). `?bbox=true` → server-side çizimli; `false` → ham (dashboard canvas çizer).
@@ -112,9 +152,14 @@ Gerçek zamanlı `AuraEvent` stream'i.
 {"event_id":"...","ts":1780898442.0,"track_id":1,"type":"PLATE_CONFIRMED",
  "payload":{"value":"34ABC123","confidence":1.0},"source":"aura-inference"}
 ```
+
+> [!TIP]
+> Desteklenen event tipleri:
+> `DETECTION_UPDATE`, `PLATE_CONFIRMED`, `PLATE_REJECTED`, `DRIVER_STATE`, `SPEED`, `QOD_TRIGGER`, `QOD_RELEASE`, `RISK_ALERT`.
+
 Event tipleri: `DETECTION_UPDATE, PLATE_CONFIRMED, PLATE_REJECTED, DRIVER_STATE, SPEED, QOD_TRIGGER, QOD_RELEASE, RISK_ALERT`.
 
-### Track yönetimi
+### 🎯 Track yönetimi
 
 #### `GET /tracks`
 Aktif tüm track'ler (tam `TrackRecord`).
@@ -146,7 +191,7 @@ curl -s localhost:8080/tracks/1/history
 {"track_id":1,"count":90,"history":[{"frame_id":0,"ts":..,"track_id":1,"bbox":[..],"plate":null}]}
 ```
 
-### Değerlendirme
+### 📊 Değerlendirme
 
 #### `POST /eval/run`
 QoD A/B harness başlat (arka plan). Body: `{source?, ground_truth?, qod_comparison?}`.
@@ -170,13 +215,21 @@ curl -s localhost:8080/eval/results
   {"name":"Tespit oranı (%)","qod_off":74.5,"qod_on":100.0,"delta_pct":25.5}]}
 ```
 
+> QoD A/B özet (yukarıdaki yanıttan):
+
+| Metrik | QoD OFF | QoD ON | Delta |
+| --- | --- | --- | --- |
+| Plaka doğruluğu (%) | 33.3 | 66.7 | +33.4 |
+| Küçük nesne tespiti (%) | 46.8 | 98.2 | +51.4 |
+| Tespit oranı (%) | 74.5 | 100.0 | +25.5 |
+
 #### `GET /eval/results/export`
 Markdown rapor indir (`text/markdown`).
 ```bash
 curl -s localhost:8080/eval/results/export
 ```
 
-### Config
+### ⚙️ Config
 
 #### `GET /config`
 Mevcut config (tam YAML → JSON).
@@ -196,7 +249,7 @@ curl -s -X PATCH localhost:8080/config -H 'content-type: application/json' \
 
 ---
 
-## qod_mock — CAMARA QoD (:8081)
+## 📶 qod_mock — CAMARA QoD (:8081)
 
 #### `POST /sessions`
 Body: `{profile, device_id, duration_seconds?}`.
@@ -219,7 +272,7 @@ curl -s localhost:8081/health
 
 ---
 
-## nv_mock — Number Verification (:8082)
+## 📞 nv_mock — Number Verification (:8082)
 
 #### `POST /verify`
 Sessiz doğrulama. Body: `{phone_number, sim_token?}`.

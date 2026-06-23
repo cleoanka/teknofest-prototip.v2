@@ -1,5 +1,26 @@
+<div align="center">
+
 # AURA — 5G & Yapay Zekâ ile Akıllı Yol Güvenliği
 
+**Trafik kamerasından araç · plaka · sürücü davranışı · hız → CAMARA 5G QoD ile birleşen tek-komut monorepo**
+
+![TEKNOFEST 2026](https://img.shields.io/badge/TEKNOFEST-2026-e30613?style=flat-square)
+![version](https://img.shields.io/badge/version-v2.3.0-blue?style=flat-square)
+![Python](https://img.shields.io/badge/Python-3.10+-3776ab?style=flat-square&logo=python&logoColor=white)
+![Ultralytics YOLO26](https://img.shields.io/badge/Ultralytics-YOLO26-00b0ff?style=flat-square)
+![PyTorch](https://img.shields.io/badge/PyTorch-2.12-ee4c2c?style=flat-square&logo=pytorch&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)
+
+![tests](https://img.shields.io/badge/tests-780+-success?style=flat-square)
+![plaka](https://img.shields.io/badge/plaka-3%2F3%20exact-success?style=flat-square)
+![CER](https://img.shields.io/badge/CER-0.0-success?style=flat-square)
+![makro--F1](https://img.shields.io/badge/makro--F1-1.0-success?style=flat-square)
+![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey?style=flat-square)
+![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
+
+</div>
+
+> [!NOTE]
 > **TEKNOFEST 2026** "5G & Yapay Zekâ ile Akıllı Yol Güvenliği" yarışması prototipi.
 > Üretim kalitesinde, cross-platform (macOS + Windows), tek komutla ayağa kalkan monorepo.
 
@@ -7,11 +28,15 @@ AURA; trafik kamerası görüntüsünden **araç / plaka / sürücü davranış�
 gerçek bir YZ çekirdeği ile, bu çekirdeği **5G QoD** (CAMARA Quality-on-Demand) ve
 **Number Verification** gibi telekom yetenekleriyle birleştiren bir sistemdir.
 
-**Gerçek / Mock sınırı:** YZ çekirdeğinin tamamı (CV/tracking/state-machine/OCR/speed/eval)
-**gerçektir**. Ağ/telekom/mobil katmanları (QoD gateway, NV API, 5G şebekesi) gerçek API
-sözleşmesini birebir taklit eden **mock**'lardır — final ortamında yalnızca endpoint/credential değişir.
+> [!IMPORTANT]
+> **Gerçek / Mock sınırı:** YZ çekirdeğinin tamamı (CV/tracking/state-machine/OCR/speed/eval)
+> **gerçektir**. Ağ/telekom/mobil katmanları (QoD gateway, NV API, 5G şebekesi) gerçek API
+> sözleşmesini birebir taklit eden **mock**'lardır — final ortamında yalnızca endpoint/credential değişir.
 
-**Öne çıkanlar (v2.3 + W1 — YOLO26 sunucu sürümü):**
+---
+
+## ✨ Öne çıkanlar (v2.3 + W1 — YOLO26 sunucu sürümü)
+
 - **YOLO26 omurga, konfigüre edilebilir:** varsayılan Stage-1 dedektör **stok `yolo26l`**
   (sunucu, doğruluk-önce); **config profilleri** (`--profile server|laptop|v4-finetune`)
   `default.yaml` üzerine derin-merge edilir. Sürücü davranışı **YOLO26-pose** geometrisi +
@@ -54,7 +79,24 @@ sözleşmesini birebir taklit eden **mock**'lardır — final ortamında yalnız
 
 ---
 
-## Durum Tablosu
+## 📊 Ölçülen Sonuçlar
+
+Yalnızca repo ölçümleriyle doğrulanmış, held-out rakamlar:
+
+| Metrik | Değer | Bağlam |
+|---|---|---|
+| 🎯 Plaka OCR | **3/3 exact-match · CER 0.0** | 3 gerçek video (`fast-plate-ocr`) |
+| 🧠 Davranış makro-F1 | **1.0** | 3 video held-out |
+| 🚗 Araç sınıfı doğruluğu | **%100** | held-out |
+| 📦 Stok `yolo26l` mAP | **mAP50 0.709 · mAP50-95 0.537** | COCO-val2017 (5000 görsel) |
+| 🚙 `license_plate` fine-tune | **mAP50 0.983 · mAP50-95 0.707** | YOLO26s held-out |
+| 🚬 `smoking` fine-tune | **mAP50 0.856 · mAP50-95 0.457** | YOLO26s held-out |
+| 🔒 `seatbelt` fine-tune | **mAP50 0.895 · mAP50-95 0.546** | YOLO26s held-out |
+| 📡 QoD A/B delta | **plaka +33pp · küçük nesne +51pp · tespit +25pp** | sentetik kontrollü set |
+
+---
+
+## ✅ Durum Tablosu
 
 Bir bakışta neyin **bittiği** (ölçülmüş) vs neyin **sürdüğü** (devam eden çalışma). K-004 gereği
 biten ile süren net ayrılır; rakamlar repo ölçümleriyle (`eval_results/`, `config/default.yaml`) doğrulanmıştır.
@@ -76,7 +118,7 @@ biten ile süren net ayrılır; rakamlar repo ölçümleriyle (`eval_results/`, 
 
 ---
 
-## Puanlama Uyumu (TEKNOFEST 2026)
+## 🎯 Puanlama Uyumu (TEKNOFEST 2026)
 
 Puanlama: **%40 YZ · %40 QoD · %20 rapor** (FTR son teslim 28.06.2026).
 
@@ -88,7 +130,7 @@ Puanlama: **%40 YZ · %40 QoD · %20 rapor** (FTR son teslim 28.06.2026).
 
 ---
 
-## Hızlı Başlangıç
+## 🚀 Hızlı Başlangıç
 
 ### macOS / Linux
 ```bash
@@ -114,6 +156,7 @@ Ardından tarayıcıda:
 `setup` idempotenttir; ikinci çalıştırma tamamlanmış adımları atlar. Donanım backend'i
 otomatik seçilir (Apple Silicon→MPS, NVIDIA→CUDA, diğer→CPU).
 
+> [!WARNING]
 > **Canlı / telefon kamera plaka okuma (19 Haz fix):** plaka OCR'ı tetikleyen `sweet_spot`
 > bölgesi eskiden test-videolarının "araç alttan yaklaşır" geometrisine dardı (0.18–0.85 /
 > 0.40–0.90) → telefonu elde tutunca araç bölgeye girmediği için OCR hiç çalışmıyordu. Artık
@@ -122,7 +165,46 @@ otomatik seçilir (Apple Silicon→MPS, NVIDIA→CUDA, diğer→CPU).
 
 ---
 
-## Mimari Özeti
+## 🧠 Mimari Özeti
+
+```mermaid
+flowchart TD
+    CAM["Kamera / Video / RTSP"] --> PRE["1. Ön-İşleme<br/>(Preprocessor)"]
+    PRE --> DET["2. YOLO26 + ByteTrack<br/>araç/kişi/tabela + track_id"]
+    DET --> CLSVOTE["Alan-ağırlıklı sınıf-oyu<br/>(TrackClassVoter)"]
+    CLSVOTE --> GATE{"Çıktı kapısı<br/>track_age ≥ min?"}
+    GATE -- "hayır (genç)" --> DROP["Hayalet track<br/>(çıktı yok)"]
+    GATE -- "evet" --> ROI["ROI ayrımı<br/>kabin + plaka"]
+
+    ROI --> DRV["Sürücü ROI — Stage-2<br/>Katman A: pose-hibrit / YOLO26l<br/>Katman B: per-ID 16/8 zaman-oylaması"]
+    ROI --> PLT["Plaka ROI — Konsensüs<br/>custom_license_plate LP →<br/>Güven-Ağırlıklı Oylama → fast-plate-ocr"]
+    ROI --> SPEED["Hız (SpeedEstimator)<br/>metric oto-kalibrasyon (Kalman+EMA)<br/>+ swerving"]
+
+    DRV --> ACC["6. ID-merkezli Accumulator<br/>risk kuralları"]
+    PLT --> ACC
+    SPEED --> ACC
+    ACC --> EMIT["Event / Annotation Stream<br/>(EventEmitter)"]
+
+    EMIT --> DASH["Dashboard (canvas)"]
+    EMIT --> MOB["Mobil (Expo)"]
+    EMIT --> JSONL["JSONL kanıt izi<br/>(--save-events · şartname 4.5)"]
+
+    SPEED -. "yaklaşma/anomali" .-> QOD["QoD Tetik (yaklaşma/kalite/anomali)<br/>QoDController (histerezis)"]
+    PLT -. "kalite" .-> QOD
+    QOD -. "qod_active/profile" .-> ACC
+
+    classDef real fill:#1b5e20,stroke:#0d3010,color:#fff;
+    classDef qod fill:#0d47a1,stroke:#062a66,color:#fff;
+    classDef out fill:#4a148c,stroke:#2a0c50,color:#fff;
+    classDef drop fill:#616161,stroke:#333,color:#fff,stroke-dasharray:4 3;
+    class PRE,DET,CLSVOTE,ROI,DRV,PLT,SPEED,ACC,EMIT real;
+    class QOD qod;
+    class DASH,MOB,JSONL out;
+    class DROP drop;
+```
+
+<details>
+<summary>📐 Orijinal ASCII akış diyagramı</summary>
 
 ```
 [Kamera] → [Ön-İşleme] → [YOLO26 + ByteTrack] ─┬─→ [Sürücü ROI] → Katman A: YOLO26-pose geometri+hibrit nesne
@@ -134,6 +216,8 @@ otomatik seçilir (Apple Silicon→MPS, NVIDIA→CUDA, diğer→CPU).
                                           ↓
                               [Event / Annotation Stream] → Dashboard + Mobil + JSONL kanıt
 ```
+
+</details>
 
 Mimari kararlar (değişmez): cascade pipeline (Stage-1 YOLO26 dedektör → Stage-2 sürücü motoru:
 **Katman A model + Katman B ID-merkezli zaman-oylaması**), ID-merkezli birikim, **landmark
@@ -148,7 +232,7 @@ profilleriyle** seçilir (`--profile`). Detay: [`docs/mimari.md`](docs/mimari.md
 
 ---
 
-## Komut Rehberi
+## 🛠️ Komut Rehberi
 
 | Komut | Açıklama |
 |---|---|
@@ -173,7 +257,7 @@ Tüm API endpoint'leri: [`docs/api_referans.md`](docs/api_referans.md).
 
 ---
 
-## Repo Haritası
+## 🗂️ Repo Haritası
 
 | Dizin | İçerik |
 |---|---|
@@ -191,7 +275,10 @@ Tüm API endpoint'leri: [`docs/api_referans.md`](docs/api_referans.md).
 
 ---
 
-## Dokümantasyon
+## 📚 Dokümantasyon
+
+<details>
+<summary>Tüm belgeler (tabloyu aç)</summary>
 
 | Belge | İçerik |
 |---|---|
@@ -212,11 +299,13 @@ Tüm API endpoint'leri: [`docs/api_referans.md`](docs/api_referans.md).
 | [`ftr.md`](ftr.md) | Final Tasarım Raporu doldurma rehberi + doldurulabilir taslak |
 | [`gemini.md`](gemini.md) | Gemini CLI kullanım rehberi (araştırma/ikinci-görüş) |
 
+</details>
+
 Her dizin kendi `README.md`'sini taşır.
 
 ---
 
-## Test & Kalite
+## 🧪 Test & Kalite
 
 ```bash
 pytest -m "not integration"        # 780+ unit test (mock modda, ağırlık gerektirmez)
@@ -228,6 +317,6 @@ CI iskeleti: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — ruff + b
 
 ---
 
-## Lisans
+## 📄 Lisans
 
 MIT — bkz. [`LICENSE`](LICENSE).

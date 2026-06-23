@@ -1,9 +1,24 @@
-# Windows Kılavuzu (konsolide)
+> 📄 **Windows Kılavuzu** · [⬅ docs](README.md) · [repo koku](../README.md)
 
+<div align="center">
+
+# 🪟 Windows Kılavuzu (konsolide)
+
+![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-0078D6?style=flat-square)
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=flat-square)
+![PowerShell](https://img.shields.io/badge/PowerShell-5.1%2B-012456?style=flat-square)
+![CUDA](https://img.shields.io/badge/CUDA-cu128%20(ops.)-76B900?style=flat-square)
+![Parite](https://img.shields.io/badge/Parite-run.sh%20%2F%20Makefile-success?style=flat-square)
+
+</div>
+
+> [!NOTE]
 > Bu belge, **Windows üzerinde sıfır AURA bilgisiyle** kurulum, çalıştırma, eğitim ve
 > değerlendirmeyi tek yerden anlatır. Tüm mantık `bootstrap.py` içindedir; `.ps1` betikleri
 > yalnızca onun ince sarmalayıcılarıdır ve macOS/Linux'taki `run.sh` / `Makefile` ile
 > **birebir aynı** işi yapar (port, profil ve `.env` sözleşmesi ortaktır).
+
+### 🔁 Komut paritesi (macOS/Linux ↔ Windows)
 
 | macOS / Linux | Windows (PowerShell) | İş |
 |---|---|---|
@@ -19,7 +34,7 @@
 
 ---
 
-## 1. Ön koşullar
+## 1. 📋 Ön koşullar
 
 | Bileşen | Sürüm / Not |
 |---|---|
@@ -28,20 +43,31 @@
 | **PowerShell** | Windows 10/11 ile gelen **5.1** yeterlidir; PowerShell 7+ de çalışır |
 | **NVIDIA CUDA** (opsiyonel) | Yalnızca GPU hızlandırma için. Güncel **NVIDIA sürücüsü** yeterli — CUDA Toolkit'i ayrıca kurmanıza gerek yok; `bootstrap.py` doğru CUDA'lı PyTorch tekerleğini (cu128) kendi indirir |
 
+> [!TIP]
 > **Python doğrulama:** Yeni bir PowerShell penceresinde `python --version` veya `py -3 --version`
 > en az `3.10` göstermeli. `python` komutu Microsoft Store'u açıyorsa (boş "stub"), `py -3`
 > kullanın — betikler bu durumu tespit edip otomatik `py -3`'e düşer.
 
-### NVIDIA GPU notları
+### 🟢 NVIDIA GPU notları
 - GPU'yu doğrulamak için: `nvidia-smi` (sürücü kuruluysa GPU adı + sürücü/CUDA sürümü listeler).
 - `bootstrap.py`, `nvidia-smi` varsa otomatik **CUDA (cu128)** PyTorch kurar; yoksa **CPU**
   derlemesine düşer. Backend'i `.env` içindeki `AURA_DEVICE=cuda|cpu` ile elle de zorlayabilirsiniz.
 - Kurulum sonrası `.\dev.ps1 doctor` çıktısında **"Cihaz (auto → cuda:0)  CUDA: <GPU adı>"**
   satırını görmelisiniz. Sadece CPU görünüyorsa GPU yok ya da sürücü eksik demektir.
 
+```mermaid
+flowchart TD
+    A["bootstrap.py"] --> B{"nvidia-smi<br/>var mı?"}
+    B -- "Evet" --> C["CUDA (cu128)<br/>PyTorch kur"]
+    B -- "Hayır" --> D["CPU derlemesi<br/>PyTorch kur"]
+    E[".env AURA_DEVICE=cuda|cpu"] -. "elle zorla" .-> B
+    C --> F["doctor: Cihaz (auto → cuda:0)"]
+    D --> G["doctor: yalnız CPU"]
+```
+
 ---
 
-## 2. Kurulum
+## 2. ⚙️ Kurulum
 
 ### a) Depoyu klonla
 ```powershell
@@ -58,10 +84,20 @@ git lfs pull             # .pt ağırlıklarını indir (pointer dosyaları yeri
 ```
 
 `setup.ps1` adımları (hepsi idempotent — ikinci çalıştırma tamamlanmışları atlar):
-sistem doğrulama → `.venv` → donanıma uygun torch (CUDA/CPU otomatik) → `pip install -e .` →
-model ağırlıkları (SHA256, ilk-kullanımda-güven) → `config/` + `.env` → örnek video →
-(opsiyonel) Node/mobil → smoke test.
 
+```mermaid
+flowchart LR
+    A["sistem doğrulama"] --> B[".venv"]
+    B --> C["torch<br/>(CUDA/CPU otomatik)"]
+    C --> D["pip install -e ."]
+    D --> E["model ağırlıkları<br/>(SHA256, TOFU)"]
+    E --> F["config/ + .env"]
+    F --> G["örnek video"]
+    G --> H["(ops.) Node/mobil"]
+    H --> I["smoke test"]
+```
+
+> [!IMPORTANT]
 > **PowerShell çalıştırma politikası (ExecutionPolicy):** `.ps1` betiği "çalıştırılamıyor"
 > hatası verirse, geçerli kullanıcı için bir kez:
 > ```powershell
@@ -90,23 +126,27 @@ ile yeniden indirin (veya `git lfs pull`).
 
 ---
 
-## 3. Çalıştırma
+## 3. ▶️ Çalıştırma
 
 ```powershell
 .\run.ps1
 ```
 Şunları kaldırır:
-- **Inference API** → http://localhost:8080/  (Dashboard + OpenAPI `/docs`)
-- **QoD mock** → http://localhost:8081
-- **NV mock** → http://localhost:8082
+
+| Servis | Adres | Açıklama |
+|---|---|---|
+| **Inference API** | http://localhost:8080/ | Dashboard + OpenAPI `/docs` |
+| **QoD mock** | http://localhost:8081 | — |
+| **NV mock** | http://localhost:8082 | — |
 
 `.venv` yoksa `run.ps1` önce bootstrap'ı çağırır. Servis modülü henüz yoksa (erken
 milestone) uyarır ve atlar. **Ctrl-C** ile tüm servisleri durdurur.
 
+> [!WARNING]
 > **Windows Defender Güvenlik Duvarı:** İlk çalıştırmada `0.0.0.0` bind'i için (servis
 > başına bir kez) izin penceresi çıkabilir — **beklenen davranıştır, izin verin.**
 
-### Profiller
+### 🎚️ Profiller
 Profil, çalışma zamanı davranışını seçer (`config/profiles/*.yaml`, `default.yaml` üzerine
 derin-merge). Inference servisi `AURA_PROFILE` env'ini otomatik okur (`run.sh` paritesi):
 ```powershell
@@ -120,7 +160,7 @@ $env:AURA_PROFILE = "laptop"; .\run.ps1     # yolo26s, imgsz 640 — hafif/geli�
 | `laptop` | yolo26s | auto (MPS/CPU) | 640 | geliştirme, hafif |
 | `v4-finetune` | yolguvenligi_types_v4 | auto | 768 | 11-sınıf fine-tune (plaka-kritik) |
 
-### PowerShell ortam değişkeni sözdizimi
+### 🔧 PowerShell ortam değişkeni sözdizimi
 Bash'teki `VAR=deger komut` Windows'ta çalışmaz. PowerShell'de değişkeni **önce** ayarlayın:
 ```powershell
 # Bash:   AURA_INFERENCE_PORT=9090 ./run.sh
@@ -137,12 +177,13 @@ Yaygın değişkenler: `AURA_PROFILE`, `AURA_DEVICE`, `AURA_INFERENCE_PORT`,
 `AURA_QOD_MOCK_PORT`, `AURA_NV_MOCK_PORT`. Kalıcı değerler için `.env` dosyasını düzenleyin
 (`run.ps1` `.env`'i okur; oturumda elle set edilen değerler ezilmez — önce gelen kazanır).
 
+> [!NOTE]
 > **Port temizliği:** `run.ps1` önceki çalıştırmadan kalıp portu tutan dinleyiciyi otomatik
 > serbest bırakır (aksi halde uvicorn `[10048]` hatası verir).
 
 ---
 
-## 4. Eğitim
+## 4. 🎓 Eğitim
 
 ```powershell
 .\dev.ps1 train                          # eğitim CLI yardımı (alt komutları listeler)
@@ -153,11 +194,12 @@ için `.venv` Python'ını doğrudan çağırın:
 .\.venv\Scripts\python.exe -m train dataset --input data\raw --output data\processed --train 0.8 --val 0.1
 .\.venv\Scripts\python.exe -m train detector --data data\processed\data.yaml --epochs 100 --imgsz 768 --device auto
 ```
+> [!TIP]
 > GPU'da eğitim için `--device cuda` (veya `auto`); `--batch -1` CUDA'da otomatik batch seçer.
 
 ---
 
-## 5. Değerlendirme ve gerçek video testi
+## 5. 📊 Değerlendirme ve gerçek video testi
 
 ```powershell
 .\dev.ps1 eval                           # örnek video + QoD A/B değerlendirmesi
@@ -168,12 +210,13 @@ için `.venv` Python'ını doğrudan çağırın:
 `eval_results\<ad>_summary.json` üretir (plaka kararı, sürücü bayrak süreleri, swerving, FPS).
 Cihaz otomatik seçilir (`--device auto`).
 
+> [!IMPORTANT]
 > Ground-truth plaka (repo'daki test videoları için): **`34TC8532`** — OCR doğruluğunu
 > bununla doğrulayın.
 
 ---
 
-## 6. Sorun Giderme
+## 6. 🛠️ Sorun Giderme
 
 | Belirti | Çözüm |
 |---|---|
@@ -190,7 +233,7 @@ Cihaz otomatik seçilir (`--device auto`).
 
 ---
 
-## İlgili belgeler
+## 📚 İlgili belgeler
 - [`kurulum.md`](kurulum.md) — platform-bazlı kurulum
 - [`calistirma.md`](calistirma.md) — uçtan uca demo senaryosu
 - [`dagitim.md`](dagitim.md) — sunucu dağıtımı (profil + servis)

@@ -1,18 +1,61 @@
-# `aura/` — YZ Çekirdeği
+> 📂 **aura/** · YZ Çekirdeği · [⬅ repo kökü](../README.md)
 
-AURA'nın **gerçek** yapay zekâ / bilgisayarlı görü çekirdeği. Upstream (kamera) ve
-downstream'i (dashboard/mobil) bilmez; yalnızca event + annotation stream yayar
-(decoupled mikroservis prensibi).
+<div align="center">
 
-## Pipeline akışı
+# 🧠 `aura/` — YZ Çekirdeği
+
+AURA'nın **gerçek** yapay zekâ / bilgisayarlı görü çekirdeği.
+
+![Katman](https://img.shields.io/badge/Katman-YZ%20%C3%87ekirde%C4%9Fi-blue?style=flat-square)
+![Tasarım](https://img.shields.io/badge/Tasar%C4%B1m-Decoupled%20Mikroservis-success?style=flat-square)
+![Dedektör](https://img.shields.io/badge/Dedekt%C3%B6r-YOLO26%20(l%2Fs)-orange?style=flat-square)
+![Cihaz](https://img.shields.io/badge/Cihaz-auto%20probe-9cf?style=flat-square)
+
+</div>
+
+---
+
+Upstream (kamera) ve downstream'i (dashboard/mobil) bilmez; yalnızca event + annotation stream yayar (decoupled mikroservis prensibi).
+
+> [!NOTE]
+> Çekirdek bilinçli olarak **decoupled** tasarlanmıştır: kamera ve dashboard/mobil katmanlarından habersizdir, sadece event + annotation stream üretir.
+
+---
+
+## 🔀 Pipeline akışı
+
+```mermaid
+flowchart LR
+    P["preprocessing"] --> D["detection<br/>(+ByteTrack+sınıf oyu)"]
+    D --> ROI["ROI"]
+    ROI --> DS["driver_state<br/>(Katman A model +<br/>Katman B ID-oylaması)"]
+    ROI --> PL["plate<br/>(LP kırpma+voting+OCR)"]
+    DS --> SP["speed"]
+    PL --> SP
+    SP --> ACC["accumulator"]
+    ACC --> OUT["events + annotations"]
+    classDef io fill:#1f6feb,stroke:#0b3d91,color:#fff;
+    classDef core fill:#238636,stroke:#0f5323,color:#fff;
+    class P,D,ROI core;
+    class OUT io;
+```
+
+<details><summary>📄 Orijinal ASCII akış diyagramı</summary>
+
 ```
 preprocessing → detection(+ByteTrack+sınıf oyu) → ROI ──┬─ driver_state (Katman A model + Katman B ID-oylaması)
                                                         └─ plate (LP kırpma+voting+OCR)
                                           → speed → accumulator → events + annotations
 ```
+
+</details>
+
 Dedektör/cihaz/eşikler **config profilleriyle** seçilir (`--profile server|laptop|v4-finetune`).
 
-## Modüller
+---
+
+## 🧩 Modüller
+
 | Paket | Sorumluluk | Milestone |
 |---|---|---|
 | `preprocessing/` | Far/blur/yansıma/occlusion ön-işleme | M-sonrası |
@@ -30,7 +73,10 @@ Dedektör/cihaz/eşikler **config profilleriyle** seçilir (`--profile server|la
 | `optional/` | §8 modüller (lazy, default kapalı) | M12 |
 | `eval/` | Metrikler + QoD A/B harness | M9 |
 
-## Yardımcı modüller
+---
+
+## 🛠️ Yardımcı modüller
+
 | Modül | Açıklama |
 |---|---|
 | `config.py` | `load_config()` — `config/default.yaml` yükleyici (noktalı erişim) |
@@ -40,11 +86,14 @@ Dedektör/cihaz/eşikler **config profilleriyle** seçilir (`--profile server|la
 | `synthetic.py` | `python -m aura.synthetic` — sentetik örnek video + GT |
 | `smoke.py` | `python -m aura.smoke` — adaptif kurulum/pipeline smoke testi |
 
-## Çalıştırma
+---
+
+## 🚀 Çalıştırma
+
 ```bash
 python -m aura --source data/samples/ornek.mp4 --device auto
 python -m aura --help
 ```
 
-`ai_mode: auto` (config) → ultralytics + ağırlık varsa gerçek YOLO; yoksa deterministik
-numpy mock dedektör (model olmadan tüm hat ve testler uçtan uca çalışır).
+> [!TIP]
+> `ai_mode: auto` (config) → ultralytics + ağırlık varsa gerçek YOLO; yoksa deterministik numpy mock dedektör (model olmadan tüm hat ve testler uçtan uca çalışır).

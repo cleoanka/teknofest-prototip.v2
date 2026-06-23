@@ -1,12 +1,57 @@
+<div align="center">
+
 # Proje AURA — Sistem Mimarisi v2.0
+
+![Surum](https://img.shields.io/badge/Surum-v2.0-1b5e20?style=flat-square)
+![Inference%20API](https://img.shields.io/badge/inference__api-:8080-0d47a1?style=flat-square)
+![QoD%20Mock](https://img.shields.io/badge/qod__mock-:8081-b71c1c?style=flat-square)
+![NV%20Mock](https://img.shields.io/badge/nv__mock-:8082-b71c1c?style=flat-square)
+![YOLO26](https://img.shields.io/badge/Tespit-YOLO26%20%2B%20ByteTrack-4a148c?style=flat-square)
+![Stabilite](https://img.shields.io/badge/Kararlilik-16%2F8-e65100?style=flat-square)
+
+</div>
 
 **Kapsam:** YZ/İnference katmanı (v1.1, korunmuş) + sistem katmanı (NV, QoD gateway,
 event/annotation stream, dashboard/mobil tüketimi, mock↔gerçek sınırı).
 
+> [!NOTE]
 > v1.1 (§1–7) YZ mimarisi korunmuştur; üstüne sistem katmanı (§8), yorgunluk/MediaPipe
 > gerekçesi (§9) ve kamera enumerasyonu (§10) eklenmiştir.
 
-## Genel Akış
+## 🧭 Genel Akış
+
+```mermaid
+flowchart TD
+    CAM["Kamera Girişi"]
+    PRE["1. Ön-İşleme"]
+    YOLO["2. YOLO26 ROI + ByteTrack + sınıf oyu"]
+    STAB["3. 16/8 Kararlılık"]
+    DRV["Sürücü ROI (sıkı)"]
+    PLT["Plaka ROI"]
+    P4["4. Pose/YOLO Driver State"]
+    P5["5. Sweet Spot + LP kırpma + OCR + Füzyon Voting"]
+    QODT["QoD Tetikleyici"]
+    ACC["6. ID-Merkezli Akümülatör"]
+    SPD["7. Hız — Kalibrasyon Bağımlı"]
+    OUT["Event / Annotation Stream"]
+    SINK["Dashboard + Mobil"]
+
+    CAM --> PRE --> YOLO
+    YOLO <--> STAB
+    YOLO --> DRV
+    YOLO --> PLT
+    DRV --> P4
+    PLT --> P5
+    P5 --> QODT --> ACC --> SPD --> OUT --> SINK
+    P4 --> ACC
+
+    classDef real fill:#1b5e20,stroke:#0d3010,color:#fff;
+    class PRE,YOLO,STAB,DRV,PLT,P4,P5,ACC,SPD real;
+```
+
+<details>
+<summary>📐 Orijinal ASCII akış diyagramı</summary>
+
 ```
 [Kamera Girişi]
       ↓
@@ -25,15 +70,93 @@ event/annotation stream, dashboard/mobil tüketimi, mock↔gerçek sınırı).
                             [Event / Annotation Stream]  →  Dashboard + Mobil
 ```
 
+</details>
+
+> [!TIP]
 > **Yayın diyagramları:** `docs/diagrams/` — yukarıdaki ASCII'nin yayın-kalite Mermaid
 > karşılıkları (FTR §3.2 için): [`pipeline_kusbakisi.mmd`](diagrams/pipeline_kusbakisi.mmd)
 > (uçtan uca akış + QoD tetikleri), [`sistem_topolojisi.mmd`](diagrams/sistem_topolojisi.mmd)
 > (servis topolojisi + gerçek↔mock sınırı), [`plaka_karar_akisi.mmd`](diagrams/plaka_karar_akisi.mmd)
 > (plaka onay karar ağacı + dürüstlük zırhları). Render: [`docs/diagrams/README.md`](diagrams/README.md).
 
+### 🦅 Pipeline Kuşbakışı (yayın diyagramı, gömülü)
+
+```mermaid
+flowchart TD
+    CAM["Kamera / Video / RTSP<br/>(cv2.VideoCapture: path | index | URL)"]
+    PRE["1. Ön-İşleme (Preprocessor)<br/>far-glare maskeleme · motion-blur · yansıma · occlusion"]
+    DET["2. YOLO26 + ByteTrack<br/>araç/kişi/tabela tespiti + track_id"]
+    CLSVOTE["Alan-ağırlıklı sınıf-oyu (TrackClassVoter)<br/>conf × bbox_alan/kare → kararlı car/truck"]
+    GATE{"Çıktı kapısı<br/>track_age ≥ min_track_frames?"}
+    DROP["Hayalet track (2-karelik)<br/>sadece hız geçmişi biriksin, çıktı yok"]
+    ROI["ROI ayrımı (crop_rois)<br/>kabin ROI + plaka ROI"]
+
+    subgraph DRV["Sürücü ROI — Stage-2 (DriverStateEngine)"]
+        DLOCK["DriverLock sıkı kırpma<br/>sürücü kişi-kutusu (+%10/%15 pad)"]
+        LA["Katman A: model (ham bayrak)<br/>pose-hibrit / YOLO26l<br/>bilek↔ağız·kulak geometri + nesne kanıtı"]
+        LB["Katman B: per-ID zaman-oylaması (TrackVoter)<br/>16/8 → phone·smoking·no_seatbelt·fatigue"]
+        DLOCK --> LA --> LB
+    end
+
+    subgraph PLT["Plaka ROI — Konsensüs Döngüsü"]
+        SWEET["Sweet-spot kapısı<br/>uzakta OCR pasif"]
+        LP["YOLO11n LP dedektör → sıkı kırpma"]
+        VOTE["Güven-ağırlıklı kalıcı oy havuzu<br/>conf × kaynak-kalitesi (LP px)"]
+        VETO["Pozisyon-veto + zemin-koşulu<br/>char_margin · confirm_peak_weight"]
+        OCR["OCR (EasyOCR/PaddleOCR)<br/>segment birleştirme · TR regex"]
+        SWEET --> LP --> VOTE --> VETO --> OCR
+    end
+
+    SPEED["Hız (SpeedEstimator)<br/>metric oto-kalibrasyon (Kalman+EMA)<br/>+ swerving (ZigZag yanal yörünge)"]
+    ACC["6. ID-merkezli Accumulator<br/>risk kuralları (speed.over_limit / swerving / driver)"]
+    EMIT["Event / Annotation stream (EventEmitter)<br/>AuraEvent (durum değişimi) ∥ AnnotationFrame (kare)"]
+
+    DASH["Dashboard (canvas)"]
+    MOB["Mobil (Expo)"]
+    JSONL["JSONL kanıt izi<br/>(--save-events · şartname 4.5)"]
+
+    subgraph QODT["QoD Tetikleyiciler (kritik an)"]
+        T1["Yaklaşma: bbox alan-büyüme ≥ growth<br/>(TOGG yaklaşıyor → optimize)"]
+        T2["Kalite: plate_too_small / voting-buffer ret<br/>(LP px düşük → HIGH_THROUGHPUT)"]
+        T3["Anomali: hız ≥ limit · relative-vel · swerving<br/>(→ LOW_LATENCY)"]
+    end
+    QOD["QoDController (histerezis)<br/>optimize iste / state / opsiyonel qod_mock sync"]
+
+    CAM --> PRE --> DET --> CLSVOTE --> GATE
+    GATE -- "hayir (genç)" --> DROP
+    GATE -- "evet" --> ROI
+    ROI --> DRV
+    ROI --> PLT
+    LB --> ACC
+    OCR --> ACC
+    ROI --> SPEED
+    SPEED --> ACC
+    ACC --> EMIT
+    EMIT --> DASH
+    EMIT --> MOB
+    EMIT --> JSONL
+
+    SPEED -. "yaklaşma/anomali" .-> T1
+    PLT -. "kalite" .-> T2
+    SPEED -. "anomali/swerving" .-> T3
+    T1 --> QOD
+    T2 --> QOD
+    T3 --> QOD
+    QOD -. "qod_active/profile" .-> ACC
+
+    classDef real fill:#1b5e20,stroke:#0d3010,color:#fff;
+    classDef qod fill:#0d47a1,stroke:#062a66,color:#fff;
+    classDef out fill:#4a148c,stroke:#2a0c50,color:#fff;
+    classDef drop fill:#616161,stroke:#333,color:#fff,stroke-dasharray:4 3;
+    class PRE,DET,CLSVOTE,ROI,DLOCK,LA,LB,SWEET,LP,VOTE,VETO,OCR,SPEED,ACC,EMIT real;
+    class QODT,T1,T2,T3,QOD qod;
+    class DASH,MOB,JSONL,EMIT out;
+    class DROP drop;
+```
+
 ---
 
-# YZ Katmanı (v1.1 — korunmuş)
+# 🧠 YZ Katmanı (v1.1 — korunmuş)
 
 ## 1. Dinamik Ön-İşleme Katmanı
 Görüntü modele girmeden çevresel gürültüyü temizleyen ilk filtre. Her filtre config'ten
@@ -54,8 +177,9 @@ kırpması** üretir:
 | Sürücü Kabini | Aşama 2 — YOLO26l Driver State |
 | Plaka Bölgesi | Aşama 2 — OCR Konsensüs Döngüsü |
 
-**ByteTrack** her araca benzersiz ID atar; tüm kararlar (hız, sürücü durumu, plaka) bu ID
-üzerinde zaman içinde biriktirilir — sistem **ID-merkezli**, kare-merkezli değil.
+> [!IMPORTANT]
+> **ByteTrack** her araca benzersiz ID atar; tüm kararlar (hız, sürücü durumu, plaka) bu ID
+> üzerinde zaman içinde biriktirilir — sistem **ID-merkezli**, kare-merkezli değil.
 
 ## 3. Kararlılık — 16/8 Kuralı
 Kamera kaynaklı "hayalet" (flickering) tespitlerin durumu bozmasını engelleyen state
@@ -106,8 +230,9 @@ kare başına TEK pose geçişi korunur. Bu sayede l-pose gibi büyük model aff
   (`fuse_detections`/`aux_classes`). Mustafa'nın `feature/stage2-driver-state` dalının
   iki-katman tasarımı bu sürümde regresyonsuz entegre edildi.
 
-Gerçek 4K test videolarında doğrulandı (sigara: video_1 — sürücü kırpma + l-pose; telefon:
-video_2 — 110+ kare; çapraz-FP yok; v4 makro-F1 1.0, dedektör A/B `eval_results/metrics_report.md`).
+> [!NOTE]
+> Gerçek 4K test videolarında doğrulandı (sigara: video_1 — sürücü kırpma + l-pose; telefon:
+> video_2 — 110+ kare; çapraz-FP yok; v4 makro-F1 1.0, dedektör A/B `eval_results/metrics_report.md`).
 
 **Araç-sınıfı kararlılığı (`tracking.class_vote`):** Fine-tune dedektör aynı aracı
 kareler arasında farklı sınıflarla görüyor — gerçek ölçüm (13 Haz): video_2'de ana araç
@@ -124,12 +249,65 @@ hayalet) track'ler annotation/event üretmez (gerçek video_3'te phantom `truck`
 ## 5. Plaka Okuma ve Konsensüs Döngüsü
 Hesap yükü en yüksek parça; katı kaynak yönetimiyle çalışır.
 (Karar ağacının yayın diyagramı: [`docs/diagrams/plaka_karar_akisi.mmd`](diagrams/plaka_karar_akisi.mmd).)
-- **Sweet Spot:** OCR'ı aracın kadrajdaki konumuna göre kapılar. **19 Haz fix:** bölge
-  eskiden test-videolarının "araç alttan yaklaşır" geometrisine dardı (0.18–0.85 /
-  0.40–0.90) → canlı/telefon kamerada araç bölgeye girmeyince OCR hiç tetiklenmiyordu.
-  Varsayılan artık **neredeyse tam-kadraj** (0.03–0.97 / 0.06–0.98); kaliteyi frame-bölgesi
-  değil **piksel-boyut kapısı** (`lp_vote_min_px`/`min_pixel_height`) + oy havuzu + dürüstlük
-  zırhları sınırlar (K-004: oran-bazlı, videoya-özel sabit yok).
+
+### 🔑 Plaka Karar Akışı (dürüstlük zırhları vurgulu, gömülü)
+
+```mermaid
+flowchart TD
+    IN["Plaka ROI (araç-altı geniş crop)"]
+    SWEET{"Sweet-spot içinde mi?<br/>(plate.sweet_spot)"}
+    SKIP["OCR pasif — araç uzak<br/>(kaynak tasarrufu)"]
+    LP["LP dedektör (YOLO11n) sıkı kırpma<br/>ağırlık yoksa loglu geniş-crop fallback"]
+
+    PXGATE{"LP kırpık yüksekliği<br/>≥ lp_vote_min_px (13)?"}
+    TOOSMALL["plate_too_small<br/>oylamaya GİRMEZ + kalite QoD tetiği<br/>(< lp_qod_below_px=26 → HIGH_THROUGHPUT)"]
+
+    OCR["OCR + güçlendirme<br/>aynı-satır segment birleştirme · parlama testi · CLAHE+2x"]
+    WEIGHT["Boyut-farkında ağırlık<br/>kanıt = OCR_conf × kaynak-kalitesi (LP px)"]
+    POOL["Format-öncelikli kalıcı oy havuzu<br/>track ömrü boyunca birikir (redde sıfırlanmaz)<br/>TR-blok normalizasyon: O→0 · 1→I"]
+
+    DEC{"Karar yolu"}
+    SEP["Ayrı-aday konsensüsü<br/>min ağırlık + ikinciye fark + oran"]
+    FUSE["Pozisyon-hizalı karakter füzyonu<br/>aynı yapıdaki okumalar pozisyon-pozisyon"]
+    MARGIN{"HER pozisyonda kazanan<br/>ikinciyi char_margin (1.5) MUTLAK geçti mi?"}
+    PEAK{"Zemin-koşulu<br/>tepe ağırlığı ≥ confirm_peak_weight (0.30)?"}
+
+    CONF["✅ PLATE_CONFIRMED<br/>ID'ye kalıcı yaz · OCR kapat (erken çıkış)<br/>kalite QoD oturumu hemen bırak<br/>post-validasyon: ^\\d{2}[A-Z]{1,3}\\d{2,4}$"]
+    PEND["⚠️ Dürüst PENDING<br/>en güçlü aday → PlateState.partial (KANIT izi, kesin değil)<br/>şartname 4.5 · yanlış onay yok"]
+
+    IN --> SWEET
+    SWEET -- "hayir" --> SKIP
+    SWEET -- "evet" --> LP --> PXGATE
+    PXGATE -- "hayir (çok küçük)" --> TOOSMALL --> PEND
+    PXGATE -- "evet" --> OCR --> WEIGHT --> POOL --> DEC
+    DEC --> SEP
+    DEC --> FUSE
+    SEP -- "konsensüs var" --> PEAK
+    SEP -- "konsensüs yok" --> PEND
+    FUSE --> MARGIN
+    MARGIN -- "bir pozisyon belirsiz (0↔3 / I↔T)" --> PEND
+    MARGIN -- "tüm pozisyonlar net" --> PEAK
+    PEAK -- "evet" --> CONF
+    PEAK -- "hayir (zayıf kanıt)" --> PEND
+
+    classDef armor fill:#e65100,stroke:#8a3000,color:#fff;
+    classDef ok fill:#1b5e20,stroke:#0d3010,color:#fff;
+    classDef pend fill:#f9a825,stroke:#9a6800,color:#000;
+    classDef step fill:#0d47a1,stroke:#062a66,color:#fff;
+    class IN,LP,OCR,WEIGHT,POOL,SEP,FUSE step;
+    class SWEET,PXGATE,DEC,MARGIN,PEAK armor;
+    class CONF ok;
+    class PEND,TOOSMALL,SKIP pend;
+```
+
+- **Sweet Spot:** OCR'ı aracın kadrajdaki konumuna göre kapılar.
+
+  > [!WARNING]
+  > **19 Haz fix:** bölge eskiden test-videolarının "araç alttan yaklaşır" geometrisine dardı (0.18–0.85 /
+  > 0.40–0.90) → canlı/telefon kamerada araç bölgeye girmeyince OCR hiç tetiklenmiyordu.
+  > Varsayılan artık **neredeyse tam-kadraj** (0.03–0.97 / 0.06–0.98); kaliteyi frame-bölgesi
+  > değil **piksel-boyut kapısı** (`lp_vote_min_px`/`min_pixel_height`) + oy havuzu + dürüstlük
+  > zırhları sınırlar (K-004: oran-bazlı, videoya-özel sabit yok).
 - **Sıkı plaka kırpma (LP dedektörü):** varsayılan **özel eğitimli `custom_license_plate`**
   (YOLO26s, tek sınıf `license_plate`; held-out **mAP50 0.983 / mAP50-95 0.707**, 9123 görsel
   keremberke/HF, CC BY 4.0), araç-altı geniş crop içinde plakanın kendisini bulup sıkı kırpar —
@@ -177,7 +355,9 @@ kullanır → mimariyi gerçekten 5G-native kılar.
 | `tripwire` | sabit kamera + bilinen mesafe | iki çizgi arası ByteTrack frame-delta × gerçek mesafe |
 | `ipm` | intrinsics + montaj | homography (opsiyonel modül, §11) |
 | `disabled` | kalibrasyon yok | hız üretilmez; `relative_velocity_flag` |
-Sistem kendi sınırlarını tanır; kalibrasyon yoksa hız iddiasında bulunmaz.
+
+> [!IMPORTANT]
+> Sistem kendi sınırlarını tanır; kalibrasyon yoksa hız iddiasında bulunmaz.
 
 ## 7.4 Swerving — Dikkatsiz Sürüş / Yalpalama Tespiti
 Hız tahmincisinin yanında, **kalibrasyon gerektirmeyen** yanal yörünge analizi
@@ -200,6 +380,22 @@ bir araca değil **sahneye** aittir; bu yüzden ID-merkezli accumulator'ın *yan
 ince bir **sahne katmanı** eklenir (`aura/scene/sign_tracker.py`).
 
 Akış:
+
+```mermaid
+flowchart TD
+    DET["YOLO26s<br/>(araç/kişi DIŞI tabela sınıfları)"] --> LAST["detector.last_signs"]
+    LAST --> ST["SignTracker<br/>value_map (speed_limit_50→50)"]
+    ST --> SC["SceneContext.active_speed_limit_kmh<br/>(persistence_frames boyunca korunur)"]
+    SC --> ACC["Accumulator.set_scene<br/>risk koşulu speed.over_limit"]
+    ACC --> EV["SPEED_LIMIT_VIOLATION"]
+
+    classDef real fill:#1b5e20,stroke:#0d3010,color:#fff;
+    class DET,LAST,ST,SC,ACC real;
+```
+
+<details>
+<summary>📐 Orijinal ASCII akış diyagramı</summary>
+
 ```
 [YOLO26s] ──(araç/kişi DIŞI tabela sınıfları)──► detector.last_signs
                                                       ↓
@@ -209,6 +405,8 @@ Akış:
                                                       ↓
    [Accumulator.set_scene] ──► risk koşulu `speed.over_limit` ──► SPEED_LIMIT_VIOLATION
 ```
+
+</details>
 
 - **Tespit:** Dedektör tabelaları araç/kişiden ayrı toplar (`Sign` tipi). Hangi sınıfların
   tabela olduğu `sign.classes` + `sign.value_map` ile config'ten gelir.
@@ -225,11 +423,51 @@ Dashboard tabela kutularını ve sol-üstte "LİMİT" banner'ını çizer (annot
 
 ---
 
-# Sistem Katmanı (v2.0 — yeni)
+# 🌐 Sistem Katmanı (v2.0 — yeni)
 
 ## 8. Sistem Mimarisi
 
 ### 8.1 Bileşen topolojisi
+
+```mermaid
+flowchart LR
+    SRC["Kamera/Video/RTSP"]
+    subgraph API["inference_api (:8080)"]
+        direction TB
+        PIPE["Pipeline (gerçek YZ)"]
+        EM["EventEmitter"]
+        MJPEG["MJPEG GET /stream/video"]
+        WSA["WS /stream/annotations"]
+        WSE["WS /stream/events"]
+        QODC["QoDController"]
+        PIPE --> EM
+        EM --> MJPEG
+        EM --> WSA
+        EM --> WSE
+        PIPE --> QODC
+    end
+    SRC --> PIPE
+    DASH["Dashboard"]
+    MOB["Mobil (Expo)"]
+    QODM["qod_mock (:8081)"]
+    NVM["nv_mock (:8082)"]
+
+    API -. "statik serve" .-> DASH
+    QODC -. "opsiyonel sync" .-> QODM
+    API -- "WS/HTTP" --> MOB
+    MOB --> NVM
+
+    classDef real fill:#1b5e20,stroke:#0d3010,color:#fff;
+    classDef mock fill:#b71c1c,stroke:#6a0e0e,color:#fff,stroke-dasharray:5 4;
+    classDef client fill:#4a148c,stroke:#2a0c50,color:#fff;
+    class PIPE,EM,MJPEG,WSA,WSE,QODC real;
+    class QODM,NVM mock;
+    class DASH,MOB client;
+```
+
+<details>
+<summary>📐 Orijinal ASCII topoloji diyagramı</summary>
+
 ```
                       ┌────────────────── inference_api (:8080) ───────────────────┐
 [Kamera/Video/RTSP] → │  Pipeline (gerçek YZ)  →  EventEmitter                      │
@@ -242,7 +480,65 @@ Dashboard tabela kutularını ve sol-üstte "LİMİT" banner'ını çizer (annot
                                  [Dashboard]                 [Mobil (Expo)] ──► nv_mock (:8082)
 ```
 
+</details>
+
+> [!TIP]
 > Yayın diyagramı (gerçek↔mock sınırı renkli): [`docs/diagrams/sistem_topolojisi.mmd`](diagrams/sistem_topolojisi.mmd).
+
+### 🗺️ Sistem Topolojisi (yayın diyagramı, gömülü)
+
+```mermaid
+flowchart LR
+    SRC["Kamera / Video / RTSP<br/>(GET /cameras · POST /stream/start)"]
+
+    subgraph REAL["GERÇEK — YZ Çekirdeği"]
+        direction TB
+        subgraph API["inference_api (:8080) — FastAPI"]
+            direction TB
+            PIPE["Pipeline (gerçek YZ)<br/>preprocessing→detection→ROI→driver∥plate→speed→accumulator"]
+            EM["EventEmitter (iki-kanal)"]
+            QODC["QoDController (in-process karar + histerezis)"]
+            MJPEG["GET /stream/video — MJPEG (?bbox=true server-side)"]
+            WSA["WS /stream/annotations — AnnotationFrame"]
+            WSE["WS /stream/events — AuraEvent"]
+            EVAL["POST /eval/run · GET /eval/results (A/B delta)"]
+            PIPE --> EM
+            EM --> WSA
+            EM --> WSE
+            PIPE --> MJPEG
+            PIPE --> QODC
+            PIPE --> EVAL
+        end
+    end
+
+    subgraph MOCK["MOCK — Telekom Sözleşme Taklidi"]
+        direction TB
+        QODM["qod_mock (:8081)<br/>CAMARA QoD: session aç/sorgula/sil"]
+        NVM["nv_mock (:8082)<br/>Number Verification: POST /verify (sessiz)"]
+    end
+
+    DASH["Dashboard (statik serve @ :8080)<br/>canvas: bbox · plaka · LİMİT banner · QoD paneli"]
+    MOBILE["Mobil (Expo)<br/>EXPO_PUBLIC_API_URL=:8080 · EXPO_PUBLIC_NV_URL=:8082"]
+
+    SRC --> PIPE
+    API -. "statik serve" .-> DASH
+    MJPEG --> DASH
+    WSA --> DASH
+    WSE --> DASH
+
+    QODC -. "opsiyonel HTTP sync (M7)" .-> QODM
+    MOBILE -- "POST /verify (açılış)" --> NVM
+    MOBILE -- "WS /stream/events" --> WSE
+
+    classDef real fill:#1b5e20,stroke:#0d3010,color:#fff;
+    classDef mock fill:#b71c1c,stroke:#6a0e0e,color:#fff,stroke-dasharray:5 4;
+    classDef client fill:#4a148c,stroke:#2a0c50,color:#fff;
+    class PIPE,EM,QODC,MJPEG,WSA,WSE,EVAL real;
+    class QODM,NVM mock;
+    class DASH,MOBILE client;
+
+    %% Not: Final ortamda yalnızca endpoint/credential değişir; sözleşme + YZ çekirdeği aynı kalır.
+```
 
 ### 8.2 Event + Annotation stream sözleşmesi (iki-kanal)
 - **`AnnotationFrame`** (kare başına): `{frame_id, ts, tracks:[{track_id, bbox, cls, plate,
@@ -262,6 +558,17 @@ QoDController karar + histerezisi in-process yönetir; CAMARA sözleşmesini `qo
 taklit eder. Session yaşam döngüsü (aç/sorgula/sil) gateway'de izlenebilir.
 
 ### 8.5 Mock ↔ Gerçek sınırı
+
+| 🟢 GERÇEK (YZ çekirdeği) | 🔴 MOCK (sözleşme taklidi) |
+|---|---|
+| preprocessing, detection, | qod_mock (CAMARA QoD) |
+| tracking, stability, driver, | nv_mock (Number Verification) |
+| plate/OCR, speed, accumulator, | 5G şebekesi, TOGG video beslemesi |
+| eval, train | |
+
+<details>
+<summary>📐 Orijinal ASCII sınır tablosu</summary>
+
 ```
 GERÇEK (YZ çekirdeği)           │  MOCK (sözleşme taklidi)
 preprocessing, detection,       │  qod_mock (CAMARA QoD)
@@ -269,13 +576,19 @@ tracking, stability, driver,    │  nv_mock (Number Verification)
 plate/OCR, speed, accumulator,  │  5G şebekesi, TOGG video beslemesi
 eval, train                     │
 ```
-**Final ortamında yalnızca endpoint/credential değişir; sözleşme ve YZ çekirdeği aynı kalır.**
+
+</details>
+
+> [!IMPORTANT]
+> **Final ortamında yalnızca endpoint/credential değişir; sözleşme ve YZ çekirdeği aynı kalır.**
 
 ## 9. Yorgunluk / MediaPipe Çözümü
-**Karar:** Sürücü durumları için MediaPipe/landmark KÜTÜPHANESİ kullanılmaz; ya
-fine-tune **YOLO26l detection sınıfı** ya da **YOLO26-pose keypoint geometrisi** (saf
-ultralytics, ek bağımlılık yok — §4 `pose` backend) kullanılır. Yorgunluk yalnızca
-detection yoluyla çözülür (kapalı göz/esneme/baş düşmesi pose ile güvenilir çıkarılamaz).
+
+> [!NOTE]
+> **Karar:** Sürücü durumları için MediaPipe/landmark KÜTÜPHANESİ kullanılmaz; ya
+> fine-tune **YOLO26l detection sınıfı** ya da **YOLO26-pose keypoint geometrisi** (saf
+> ultralytics, ek bağımlılık yok — §4 `pose` backend) kullanılır. Yorgunluk yalnızca
+> detection yoluyla çözülür (kapalı göz/esneme/baş düşmesi pose ile güvenilir çıkarılamaz).
 
 **Gerekçe:** Trafik kamerası montaj açıları ve değişken görüş mesafelerinde landmark/pose
 sistemleri tutarsız ve kırılgan sonuç üretir (yüz çözünürlüğü düşük, açı uç, occlusion sık).
@@ -293,7 +606,8 @@ platforma özgü isim döner:
   listede "iPhone Camera (Continuity)" olarak gösterilir.
 - **RTSP/IP kamera:** dashboard'da manuel URL girişi (EpocCam, Camo, DroidCam uyumlu).
 
-`AURA_CAMERA_PROBE=0` ile başsız/CI ortamında donanım taraması atlanır.
+> [!TIP]
+> `AURA_CAMERA_PROBE=0` ile başsız/CI ortamında donanım taraması atlanır.
 
 ## 11. Opsiyonel Ek Modüller (§8 toggle)
 Sıfır-atık payload, süper çözünürlük, homography/IPM — **default kapalı**, lazy import.
@@ -301,7 +615,7 @@ Detay yalnızca **[`docs/mimari_ek_moduller.md`](mimari_ek_moduller.md)**'de.
 
 ---
 
-## Mimari Tasarım Kararları — Özet
+## 📋 Mimari Tasarım Kararları — Özet
 | Karar | Gerekçe |
 |-------|---------|
 | Cascade pipeline (YOLO26s→YOLO26l) | Ağır modeli yalnızca gerektiği boyut/noktada çalıştır |
@@ -316,7 +630,7 @@ Detay yalnızca **[`docs/mimari_ek_moduller.md`](mimari_ek_moduller.md)**'de.
 | Swerving = ZigZag yanal analiz | Kalibrasyonsuz, fps/ölçek-bağımsız dikkatsiz-sürüş kanıtı (§7.4) |
 | Kanıt-izi alanları (partial, --save-events) | Şartname 4.5: kanıtlanamayan hedef puanlanmaz |
 
-## Şartname İzlenebilirlik (özet)
+## 🔗 Şartname İzlenebilirlik (özet)
 Tam eşleme: [`docs/sartname_izlenebilirlik.md`](sartname_izlenebilirlik.md).
 | Şartname | Bileşen |
 |---|---|

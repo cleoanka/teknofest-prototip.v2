@@ -1,25 +1,58 @@
-# CLI Referansı
+> 📄 **CLI Referansı** · [⬅ docs](README.md) · [repo kökü](../README.md)
 
+# 🖥️ CLI Referansı
+
+<div align="center">
+
+![AURA](https://img.shields.io/badge/AURA-CLI%20Referansı-0A66C2?style=flat-square)
+![Sürüm](https://img.shields.io/badge/sürüm-v2.3-2ea44f?style=flat-square)
+![Kaynak](https://img.shields.io/badge/kaynak-gerçek%20--help%20çıktıları-orange?style=flat-square)
+![profile](https://img.shields.io/badge/--profile-server%20%7C%20laptop%20%7C%20v4--finetune-blueviolet?style=flat-square)
+
+</div>
+
+> [!NOTE]
 > Bu dosya **gerçek çalıştırılmış `--help` çıktılarından** üretilmiştir.
 > Yeniden üretmek için: ilgili komutu `--help` ile çalıştırıp çıktıyı yapıştırın.
 
+> [!IMPORTANT]
 > **v2.3 yenileri:** çalıştırılabilirler `--profile {server,laptop,v4-finetune}` kabul eder
 > (config profili; `AURA_PROFILE` env ile de). Yeni komutlar: `python tools/doctor.py`
 > (ortam sağlık kontrolü), `python -m aura.eval --metrics-report` (FTR §4 P/R/F1 + dedektör A/B),
 > `python -m train dataset --report` (veri-dengeleme). `--help` çıktısı her zaman günceldir.
 
-## İçindekiler
-- [bootstrap.py](#bootstrappy) — kurulum
-- `python tools/doctor.py` — ortam/sağlık kontrolü (v2.3)
-- [python -m aura](#python--m-aura) — inference pipeline (`--profile`)
-- [python tools/test_video.py](#python-toolstest_videopy) — gerçek video testi (annotated mp4 + JSON kanıt)
-- [python -m aura.eval](#python--m-auraeval) — değerlendirme + QoD A/B + `--metrics-report`
-- [python -m train](#python--m-train) — eğitim (alt komutlar; doğrulama+metrik export)
-- [python -m aura.synthetic](#python--m-aurasynthetic) — örnek veri
-- [python -m aura.smoke](#python--m-aurasmoke) — smoke test
-- [python -m train.roboflow_pull](#python--m-trainroboflow_pull) — Roboflow
+---
 
-## bootstrap.py
+## 📑 İçindekiler
+
+| Komut | Amaç |
+| --- | --- |
+| [bootstrap.py](#bootstrappy) | kurulum |
+| `python tools/doctor.py` | ortam/sağlık kontrolü (v2.3) |
+| [python -m aura](#python--m-aura) | inference pipeline (`--profile`) |
+| [python tools/test_video.py](#python-toolstest_videopy) | gerçek video testi (annotated mp4 + JSON kanıt) |
+| [python -m aura.eval](#python--m-auraeval) | değerlendirme + QoD A/B + `--metrics-report` |
+| [python -m train](#python--m-train) | eğitim (alt komutlar; doğrulama+metrik export) |
+| [python -m aura.synthetic](#python--m-aurasynthetic) | örnek veri |
+| [python -m aura.smoke](#python--m-aurasmoke) | smoke test |
+| [python -m train.roboflow_pull](#python--m-trainroboflow_pull) | Roboflow |
+
+### 🧭 Tipik akış
+
+```mermaid
+flowchart LR
+    A["bootstrap.py<br/>kurulum"] --> B["tools/doctor.py<br/>ortam/sağlık"]
+    B --> C["python -m aura<br/>inference pipeline"]
+    C --> D["tools/test_video.py<br/>annotated mp4 + JSON"]
+    D --> E["python -m aura.eval<br/>metrikler + QoD A/B"]
+    F["python -m train<br/>detector / driver-state / dataset"] -.-> C
+    G["aura.synthetic<br/>örnek veri"] -.-> D
+    H["train.roboflow_pull<br/>veri seti"] -.-> F
+```
+
+---
+
+## 🚀 bootstrap.py
 
 ```
 usage: python bootstrap.py [-h] [--skip-weights] [--skip-node] [--skip-deps]
@@ -42,7 +75,9 @@ options:
   python bootstrap.py --force         # .venv'i sıfırdan kur
 ```
 
-## python -m aura
+---
+
+## 🧠 python -m aura
 
 ```
 usage: python -m aura [-h] [--config PATH] [--source SOURCE]
@@ -73,7 +108,9 @@ options:
   python -m aura --source rtsp://10.0.0.5:8554/cam --log-level DEBUG
 ```
 
-## python tools/test_video.py
+---
+
+## 🎬 python tools/test_video.py
 
 ```
 usage: python tools/test_video.py [-h] --source PATH [--config PATH]
@@ -106,12 +143,15 @@ options:
   python tools/test_video.py --source ~/video_3.mp4 --device mps --max-frames 200
 ```
 
-JSON özet şunları içerir: event sayıları, QoD tetik nedenleri, track başına
-plaka kararı + en güçlü 5 oy + `partial` aday, sürücü bayrak süreleri (kare),
-swerving kare sayısı, yanal yörünge (`trajectory`) ve işleme FPS'i — şartname
-4.5 "her hedefin otomatik analiz sonucu üretildiğini kanıtlama" izi.
+> [!TIP]
+> JSON özet şunları içerir: event sayıları, QoD tetik nedenleri, track başına
+> plaka kararı + en güçlü 5 oy + `partial` aday, sürücü bayrak süreleri (kare),
+> swerving kare sayısı, yanal yörünge (`trajectory`) ve işleme FPS'i — şartname
+> 4.5 "her hedefin otomatik analiz sonucu üretildiğini kanıtlama" izi.
 
-## python -m aura.eval
+---
+
+## 📊 python -m aura.eval
 
 ```
 usage: python -m aura.eval [-h] [--source SOURCE]
@@ -135,7 +175,9 @@ options:
   python -m aura.eval --source test.mp4 --ground-truth gt.json --qod-comparison
 ```
 
-## python -m train
+---
+
+## 🏋️ python -m train
 
 ```
 usage: python -m train [-h] {detector,driver-state,dataset} ...
@@ -158,7 +200,15 @@ options:
   python -m train dataset --input data/raw/ --output data/processed/
 ```
 
-### python -m train detector
+```mermaid
+flowchart TD
+    T["python -m train"] --> D1["detector<br/>Stage-1 araç tespit (YOLO26s)"]
+    T --> D2["driver-state<br/>Stage-2 sürücü durumu (YOLO26l)"]
+    T --> D3["dataset<br/>ham veri → YOLO formatı + split"]
+```
+
+<details>
+<summary>🔧 python -m train detector</summary>
 
 ```
 usage: python -m train detector [-h] --data DATA [--epochs EPOCHS]
@@ -179,7 +229,10 @@ options:
   --name NAME
 ```
 
-### python -m train driver-state
+</details>
+
+<details>
+<summary>🔧 python -m train driver-state</summary>
 
 ```
 usage: python -m train driver-state [-h] --data DATA [--epochs EPOCHS]
@@ -200,7 +253,10 @@ options:
   --name NAME
 ```
 
-### python -m train dataset
+</details>
+
+<details>
+<summary>🔧 python -m train dataset</summary>
 
 ```
 usage: python -m train dataset [-h] --input INPUT --output OUTPUT
@@ -217,7 +273,11 @@ options:
   --seed SEED
 ```
 
-## python -m aura.synthetic
+</details>
+
+---
+
+## 🧪 python -m aura.synthetic
 
 ```
 usage: python -m aura.synthetic [-h] [--out OUT] [--frames FRAMES] [--fps FPS]
@@ -237,7 +297,9 @@ options:
   python -m aura.synthetic --out data/samples --frames 90
 ```
 
-## python -m aura.smoke
+---
+
+## 💨 python -m aura.smoke
 
 ```
 usage: python -m aura.smoke [-h] [--frames FRAMES]
@@ -249,7 +311,9 @@ options:
   --frames FRAMES  İşlenecek kare sayısı
 ```
 
-## python -m train.roboflow_pull
+---
+
+## 🗂️ python -m train.roboflow_pull
 
 ```
 usage: python -m train.roboflow_pull [-h] --workspace WORKSPACE
@@ -266,4 +330,3 @@ options:
   --format FORMAT       Etiket formatı (YOLO uyumlu)
   --output OUTPUT
 ```
-
