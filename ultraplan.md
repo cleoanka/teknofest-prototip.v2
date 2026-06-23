@@ -1,16 +1,32 @@
-# ULTRAPLAN — AURA: FTR'yi Geç + Her Şeyi Geliştir (Codex CLI ile yürütülür)
+<div align="center">
 
+# 🛣️ ULTRAPLAN — AURA
+
+### FTR'yi Geç + Her Şeyi Geliştir (Codex CLI ile yürütülür)
+
+![Proje](https://img.shields.io/badge/Proje-AURA-blue?style=flat-square)
+![Yarışma](https://img.shields.io/badge/TEKNOFEST-2026-informational?style=flat-square)
+![Tema](https://img.shields.io/badge/5G%20%26%20YZ-Akıllı%20Yol%20Güvenliği-success?style=flat-square)
+![Plan%20Tarihi](https://img.shields.io/badge/Plan-17.06.2026-lightgrey?style=flat-square)
+![FTR%20Kapı](https://img.shields.io/badge/FTR%20Kapı-28.06.2026-critical?style=flat-square)
+![Yürütücü](https://img.shields.io/badge/Yürütme-Codex%20CLI-orange?style=flat-square)
+
+</div>
+
+> [!NOTE]
 > **Ne bu?** AURA'nın (TEKNOFEST 2026 "5G & YZ ile Akıllı Yol Güvenliği") FTR aşamasını
 > geçmek ve finale kadar **her cephede** (öncelik YZ; sonra QoD, mobil, rapor, altyapı)
 > en üst seviyeye çıkarmak için **uçtan uca, gerçeğe oturmuş** bir yol haritası.
 > **Özelliği:** her iş kalemi bir **Codex CLI iş emri** olarak yazılmıştır — kopyala,
 > çalıştır, Codex yazar; Claude/aura inceler; testler doğrular.
->
+
+> [!IMPORTANT]
 > **Bağlam tarihleri (bağlayıcı):** Plan tarihi **17.06.2026**. **FTR son teslim 28.06.2026**
 > (ertelendi; BİRİNCİL KAPI). Finalistler **31.07.2026**. Final **Ağu–Eyl 2026**.
 > Kaynak okuma: `şartname PDF` (v1 repo), `ftr.md`, `docs/mimari.md`, `config/default.yaml`,
 > `CHANGELOG.md`, `docs/sartname_izlenebilirlik.md`, `docs/yol_haritasi.md`.
->
+
+> [!TIP]
 > ✅ **YÜRÜTME DURUMU (18.06.2026):** Bu planın **W1 (1. hafta) kısmı büyük ölçüde
 > UYGULANDI** (`feat/ultraplan-w1` dalı, origin'e push'lu): A1 plaka hattı (dewarp/enhance
 > ölçülüp KAPATILDI; **fast-plate-ocr getirildi → plaka 3/3 exact, CER 0**), A3 mAP harness,
@@ -19,14 +35,34 @@
 > KOŞUYOR** (A2/A5/A6 — license_plate ara `mAP50≈0.97` ep12/35; seatbelt/smoking sırada;
 > *nihai mAP'ler kesinleşmedi*). Aşağıdaki iş emirleri **tarihsel referans + kalan işler**
 > (CAMARA/NV gerçek entegrasyon, fine-tune'u bitir, final demo) için geçerlidir.
+
+> [!WARNING]
 > **Not (araç durumu):** Codex **ölü** (0-çıktı); Gemini **kısmi** (pro `403`, `gemini-2.5-flash`
 > çalıştı). Bu planın iş emirleri Codex içindi; fiilen çalışmalar Claude (Opus) tarafından yürütüldü.
 
 ---
 
-## 0. Yürütme modeli — planı Codex nasıl "yapar"
+## 🧭 0. Yürütme modeli — planı Codex nasıl "yapar"
 
-Her iş emri (WP-x) aşağıdaki kalıpla çalıştırılır. **Codex = eller (kod yazar)**, **Claude/aura = beyin (inceler)**, **Gemini = kütüphaneci (araştırır)**.
+Her iş emri (WP-x) aşağıdaki kalıpla çalıştırılır.
+
+<div align="center">
+
+![Eller](https://img.shields.io/badge/Codex-Eller%20(kod%20yazar)-orange?style=flat-square)
+![Beyin](https://img.shields.io/badge/Claude%2Faura-Beyin%20(inceler)-blue?style=flat-square)
+![Kütüphaneci](https://img.shields.io/badge/Gemini-Kütüphaneci%20(araştırır)-9cf?style=flat-square)
+
+</div>
+
+```mermaid
+flowchart LR
+    G["📚 Gemini<br/>araştırır"] --> C["🛠️ Codex<br/>kod yazar"]
+    C --> R["🧠 Claude/aura<br/>inceler"]
+    R --> T["✅ Testler<br/>doğrular"]
+    T -->|"yeşil + temiz"| M["🔀 PR / main"]
+    T -->|"kırmızı"| C
+    R -->|"düzeltme gerek"| C
+```
 
 **A) Tek iş emri — doğrudan Codex (yazma yetkili):**
 ```bash
@@ -43,6 +79,7 @@ aura fix  --apply                  # önizlenen yamayı uygula
 aura ship "<kısa görev>"           # plan(claude) → uygula(codex) → review(claude), tek komut
 aura ship --deep --research "..."  # en güçlü modeller + gemini araştırma adımı
 ```
+> [!NOTE]
 > İş emirlerinin uzun/kesin promptu **A kalıbı** içindir. Kısa görev cümleleri **B kalıbı**
 > (`aura ship`) içindir; aura zaten Codex'i çağırır ve Claude review ekler. İkisi de **commit etmez**.
 
@@ -60,13 +97,14 @@ Yeşil + inceleme temiz değilse → düzeltme iş emri, birleştirme yok.
 metrikleri (WP-B) **paralel** ilerler; QoD/Mobil (WP-C/D) FTR sonrası ağırlık kazanır.
 Her WP **ayrı feature dalında** yürür (`git switch -c feat/<wp>`), yeşilse PR.
 
-**E) Onur zırhı (değişmez, K-004):** Hiçbir iş emri sayı uydurmaz, eşik footage'a gömmez,
-"pending"i sahte "confirmed"e çevirmez. Codex'e her promptta hatırlatılır: *"ölçülen gerçek
-sayıları yaz; belirsizlikte dürüstçe çekimser kal; videoya-özel sabit ekleme."*
+> [!CAUTION]
+> **E) Onur zırhı (değişmez, K-004):** Hiçbir iş emri sayı uydurmaz, eşik footage'a gömmez,
+> "pending"i sahte "confirmed"e çevirmez. Codex'e her promptta hatırlatılır: *"ölçülen gerçek
+> sayıları yaz; belirsizlikte dürüstçe çekimser kal; videoya-özel sabit ekleme."*
 
 ---
 
-## 1. Mevcut durum envanteri (kod okunarak DOĞRULANDI, 17.06.2026)
+## 🗂️ 1. Mevcut durum envanteri (kod okunarak DOĞRULANDI, 17.06.2026)
 
 | Alan | Durum | Kanıt |
 |---|---|---|
@@ -88,35 +126,40 @@ sayıları yaz; belirsizlikte dürüstçe çekimser kal; videoya-özel sabit ekl
 | İstatistiksel metrik | 🟡 mAP/PR eğrisi yok (geniş etiketli set lazım) | `ftr.md` §4 |
 | Dokümantasyon | 🟡 Çoğu güncel; `AURA_Repo_Detayli_Anlatim.md` gövdesi eski (58 test / yolo26s) | — |
 
-**Net özet:** YZ çekirdeği + servisler + eval + eğitim hattı **güçlü ve gerçek**. Üç büyük açık:
-**(1) plaka karanlık-il-kodu** (en zayıf metrik), **(2) eksik sınıflar için veri/fine-tune**
-(§2 ve §4'ü birlikte besler), **(3) mobil + gerçek 5G entegrasyonu** (final). FTR raporu henüz
-**yazılmadı** (rehber `ftr.md` hazır).
+> [!IMPORTANT]
+> **Net özet:** YZ çekirdeği + servisler + eval + eğitim hattı **güçlü ve gerçek**. Üç büyük açık:
+> **(1) plaka karanlık-il-kodu** (en zayıf metrik), **(2) eksik sınıflar için veri/fine-tune**
+> (§2 ve §4'ü birlikte besler), **(3) mobil + gerçek 5G entegrasyonu** (final). FTR raporu henüz
+> **yazılmadı** (rehber `ftr.md` hazır).
 
 ---
 
-## 2. Öncelik matrisi (puan-etki × efor × tarih)
+## 📊 2. Öncelik matrisi (puan-etki × efor × tarih)
 
 | WP | Başlık | FTR/Yarışma puanı | Efor | Ne zaman | Öncelik |
 |---|---|---|---|---|---|
-| **WP-B** | FTR raporunu yaz + kanıt üret | §1-5 = 100p rapor; rapor %20 | Orta | **17–28 Haz (KAPI)** | 🔥 P0 |
-| **WP-A** | YZ derinleştirme (plaka/sınıf/metrik) | YZ %40 + §2/§4 = 40p | Yüksek | 17–28 Haz (FTR'yi güçlendirir) + sonrası | 🔥 P0/P1 |
-| **WP-C** | QoD: ölçülen delta + CAMARA hazırlığı | QoD %40 | Orta | FTR sonrası ağırlık | P1 |
-| **WP-D** | Mobil uygulama (NV+kamera+QoD+canlı) | Final demo (%40 QoD + %40 YZ kanıtı) | Yüksek | Tem–Eyl (final) | P1/P2 |
-| **WP-E** | Çapraz kalite (dashboard/docs/CUDA/test/paket) | rapor %20 + sağlamlık | Düşük-Orta | Sürekli | P2 |
+| **WP-B** | FTR raporunu yaz + kanıt üret | §1-5 = 100p rapor; rapor %20 | 🟡 Orta | **17–28 Haz (KAPI)** | 🔥 P0 |
+| **WP-A** | YZ derinleştirme (plaka/sınıf/metrik) | YZ %40 + §2/§4 = 40p | 🔴 Yüksek | 17–28 Haz (FTR'yi güçlendirir) + sonrası | 🔥 P0/P1 |
+| **WP-C** | QoD: ölçülen delta + CAMARA hazırlığı | QoD %40 | 🟡 Orta | FTR sonrası ağırlık | P1 |
+| **WP-D** | Mobil uygulama (NV+kamera+QoD+canlı) | Final demo (%40 QoD + %40 YZ kanıtı) | 🔴 Yüksek | Tem–Eyl (final) | P1/P2 |
+| **WP-E** | Çapraz kalite (dashboard/docs/CUDA/test/paket) | rapor %20 + sağlamlık | 🟢 Düşük-Orta | Sürekli | P2 |
 
+> [!TIP]
 > **Altın kural:** 28.06'ya kadar **WP-B (rapor) + WP-A'nın FTR'de gösterilebilen kısımları**
 > bitmeli. WP-A'nın geri kalanı, WP-C/D FTR sonrası finale kadar.
 
 ---
 
-## 3. WP-A — YZ Derinleştirme (ÖNCELİK; FTR §3/§4 + yarışma %40)
+## 🤖 3. WP-A — YZ Derinleştirme (ÖNCELİK; FTR §3/§4 + yarışma %40)
 
+> [!NOTE]
 > Codex çalışma kökü hep `~/teknofest-prototip.v2`. Her iş emrinden sonra **Bölüm 0-C** kapısı.
 
-### A1 — Plaka: low-light + perspektif düzeltme (dewarp) + PaddleOCR adaptörü  🔥 (en zayıf metrik)
-**Sorun:** karanlık/açılı otoparkta EasyOCR il-kodunu tutarlı yanlış okuyor (3→0/2); oy-mantığı
-kurtaramıyor. **Hedef:** OCR'a temiz, düzleştirilmiş, parlatılmış plaka girsin.
+### 🔥 A1 — Plaka: low-light + perspektif düzeltme (dewarp) + PaddleOCR adaptörü (en zayıf metrik)
+
+> [!WARNING]
+> **Sorun:** karanlık/açılı otoparkta EasyOCR il-kodunu tutarlı yanlış okuyor (3→0/2); oy-mantığı
+> kurtaramıyor. **Hedef:** OCR'a temiz, düzleştirilmiş, parlatılmış plaka girsin.
 
 ```bash
 codex exec -s workspace-write -C ~/teknofest-prototip.v2 "AURA plaka hattını güçlendir. Mevcut yapı: aura/plate/reader.py (LP-dedektör + ROI), aura/plate/ocr.py:build_ocr (OCR motoru SOYUTLANMIŞ — fabrika), aura/plate/normalize.py (oy havuzu). YAP: (1) Yeni modül aura/plate/dewarp.py: plaka ROI'sinin 4 köşesini tahmin edip cv2.getPerspectiveTransform ile fronto-paralel düzleştiren saf-OpenCV fonksiyon (köşe yoksa kimlik dönüşü; köşe bulma için minAreaRect + en büyük kontur fallback). (2) aura/plate/enhance.py: CLAHE+gamma+keskinleştirme low-light iyileştirme (mevcut plate ön-işlemeyle çakışmadan, config plate.enhance.* ile aç/kapa). (3) aura/plate/ocr.py'ye PaddleOCR adaptörü ekle: build_ocr config plate.ocr_engine: easyocr|paddleocr ile motor seçsin; PaddleOCR kurulu değilse LOGLU EasyOCR'a düş (import guard). Mevcut EasyOCR yolu AYNEN korunur (geriye dönük uyum). (4) reader.py akışı: dewarp→enhance→OCR; config flag'leri default.yaml'a ekle (varsayılan dewarp:true, enhance:true, ocr_engine:easyocr — Paddle opsiyonel). Eşikler oran-bazlı, videoya-özel sabit YOK. Test: tests/test_plate_dewarp.py (kimlik dönüşü, köşe düzeltme, motor fallback) ve mevcut tests/test_plate*.py yeşil kalmalı. pyproject.toml'a paddleocr'ı OPSIYONEL extra olarak ekle (zorunlu bağımlılık yapma). Dürüstlük: belirsiz okuma yine 'pending'; bu iş sadece girdi kalitesini artırır, onay zırhlarını gevşetME."
@@ -148,6 +191,7 @@ codex exec -s workspace-write -C ~/teknofest-prototip.v2 "AURA hız modülüne m
 ```
 
 ### A5/A6 — Komite/geniş veri gelince: detector & driver-state fine-tune (tek komut, hazır)
+> [!NOTE]
 > **İnsan tetikli** (veri varlığına bağlı). İş emirleri A2 manifesti + mevcut train tool'uyla hazır:
 ```bash
 # Detector (YOLO26 fine-tune → custom_detector.pt), sonra config models.detector.path veya yeni profil:
@@ -157,8 +201,9 @@ codex exec -s workspace-write -C ~/teknofest-prototip.v2 "config/profiles/custom
 
 ---
 
-## 4. WP-B — FTR Raporu (28.06 KAPISI; rapor 100p + yarışma %20)
+## 📝 4. WP-B — FTR Raporu (28.06 KAPISI; rapor 100p + yarışma %20)
 
+> [!CAUTION]
 > Rehber `ftr.md` hazır; bu WP **gerçek kanıtları üretir** ve **raporu yazar**. Format zorunlu:
 > 3–10 sayfa, Arial 12 / başlık Arial Black 14, satır 1.15, iki yana yaslı, kenar üst 2.8/diğer 2.5,
 > Kapak + İçindekiler ayrı 2 sayfa, tekrar cümle yok. **Uymayan rapor değerlendirilmez.**
@@ -173,6 +218,7 @@ codex exec -s workspace-write -C ~/teknofest-prototip.v2 "FTR §2 için veri-set
 # Önce 3 videoyu iki dedektörle koş (A/B), sonra metrik raporunu üret:
 codex exec -s workspace-write -C ~/teknofest-prototip.v2 "FTR §4 kanıt üretim akışını tek script'e bağla: scripts/ftr_evidence.sh — (1) her video için tools/test_video.py hem varsayılan (yolo26l) hem --profile v4-finetune ile koşup özetleri eval_results/ab/'a yazar, (2) python -m aura.eval --metrics-report --summaries eval_results/ab üretir, (3) python -m aura.eval --qod-comparison ile QoD A/B delta üretir, (4) (varsa) A3 --map'i çağırır. README + ftr.md'ye 'tek komutla FTR kanıtı' notu. Script idempotent, --device auto. Çalıştırma ZORUNLU değil (model/ağırlık gerektirir); script doğru ve --help'li olsun. tests etkilenmez."
 ```
+> [!NOTE]
 > Çalıştır (insan, ağırlıklar kurulu makinede): `bash scripts/ftr_evidence.sh` → `eval_results/metrics_report.md` + QoD delta tablosu rapora hazır.
 
 ### B3 — §3.2 Mimari diyagramları (kuşbakışı, ham video → etiketli çıktı)
@@ -184,14 +230,24 @@ codex exec -s workspace-write -C ~/teknofest-prototip.v2 "FTR §3.2 için yayın
 ```bash
 aura ship --deep "ftr.md rehberini ve eval_results/ kanıtlarını kullanarak ftr_rapor_taslak.md adında TAM Final Tasarım Raporu taslağı yaz: §1 Özet(5) §2 Veri Seti(20) §3 YZ Çözümü(50: 3.1 problem 15 / 3.2 mimari 15 / 3.3 detay 20) §4 Sınama(20) §5 Kaynakça(5). Her bölüm gerçek AURA kanıtlarıyla (metrics_report.md sayıları, mimari diyagram referansı, config kararları). Akademik dil, tekrar cümle yok, alıntı formatına uygun kaynakça. 3-10 sayfa hedefi. SADECE markdown üret (docx formatlama insan adımı)."
 ```
-**İnsan adımı (format):** `ftr_rapor_taslak.md` → docx şablonuna: `pandoc ftr_rapor_taslak.md -o ftr_rapor.docx` veya v1 repodaki `..._FTR_şablon_TR_....docx` şablonuna elle yerleştir; Arial 12 / Arial Black 14 / 1.15 / yaslı / kenar boşlukları ayarla; Kapak+İçindekiler 2 ayrı sayfa. **KYS'ye 28.06 17:00'dan önce yükle.**
+> [!IMPORTANT]
+> **İnsan adımı (format):** `ftr_rapor_taslak.md` → docx şablonuna: `pandoc ftr_rapor_taslak.md -o ftr_rapor.docx` veya v1 repodaki `..._FTR_şablon_TR_....docx` şablonuna elle yerleştir; Arial 12 / Arial Black 14 / 1.15 / yaslı / kenar boşlukları ayarla; Kapak+İçindekiler 2 ayrı sayfa. **KYS'ye 28.06 17:00'dan önce yükle.**
 
 ### B5 — Kontrol listesi (rapor reddini önle)
-- [ ] 3–10 sayfa (kapak+içindekiler+kaynakça dahil) · [ ] Arial 12 / Arial Black 14 · [ ] 1.15 satır · [ ] iki yana yaslı · [ ] kenar üst 2.8 / alt-sağ-sol 2.5 · [ ] Kapak ve İçindekiler **ayrı 2 sayfa** · [ ] tekrar cümle yok · [ ] geçmiş-yıl alıntısı varsa formatına uygun · [ ] tüm sayılar `eval_results/`ten (uydurma yok) · [ ] Takım Adı/ID/Başvuru ID dolu.
+- [ ] 3–10 sayfa (kapak+içindekiler+kaynakça dahil)
+- [ ] Arial 12 / Arial Black 14
+- [ ] 1.15 satır
+- [ ] iki yana yaslı
+- [ ] kenar üst 2.8 / alt-sağ-sol 2.5
+- [ ] Kapak ve İçindekiler **ayrı 2 sayfa**
+- [ ] tekrar cümle yok
+- [ ] geçmiş-yıl alıntısı varsa formatına uygun
+- [ ] tüm sayılar `eval_results/`ten (uydurma yok)
+- [ ] Takım Adı/ID/Başvuru ID dolu
 
 ---
 
-## 5. WP-C — QoD (yarışma %40; FTR sonrası ağırlık)
+## 📡 5. WP-C — QoD (yarışma %40; FTR sonrası ağırlık)
 
 ### C1 — Ölçülen A/B delta'yı sağlamlaştır ("neden güveniyoruz")
 ```bash
@@ -210,10 +266,18 @@ codex exec -s workspace-write -C ~/teknofest-prototip.v2 "NV gerçek-entegrasyon
 
 ---
 
-## 6. WP-D — Mobil Uygulama (FINAL demo; şu an iskelet)
+## 📱 6. WP-D — Mobil Uygulama (FINAL demo; şu an iskelet)
 
+> [!NOTE]
 > Şartname 3. aşama: telefonda canlı kamera → YZ → TOGG yaklaşınca QoD → tespitleri ekranda göster;
 > giriş NV ile sessiz doğrulama. **En büyük açık.** Tem–Eyl. Sıra: D1→D2→D3→D4.
+
+```mermaid
+flowchart LR
+    D1["📲 D1<br/>Navigasyon +<br/>NV sessiz giriş"] --> D2["🎥 D2<br/>Canlı kamera<br/>yakalama + akış"]
+    D2 --> D3["⚡ D3<br/>QoD-tetikli<br/>çözünürlük"]
+    D3 --> D4["🚦 D4<br/>Canlı tespit<br/>paneli"]
+```
 
 ### D1 — Navigasyon + NV sessiz giriş akışı
 ```bash
@@ -232,7 +296,7 @@ codex exec -s workspace-write -C ~/teknofest-prototip.v2 "mobile: (D3) QOD_TRIGG
 
 ---
 
-## 7. WP-E — Çapraz kalite (sürekli; rapor %20 "modern mimari" + sağlamlık)
+## 🧹 7. WP-E — Çapraz kalite (sürekli; rapor %20 "modern mimari" + sağlamlık)
 
 ```bash
 # E1 dashboard polish
@@ -247,7 +311,47 @@ codex exec -s workspace-write -C ~/teknofest-prototip.v2 "pytest-cov ekle (opsiy
 
 ---
 
-## 8. Yürütme sırası (bağımlılık grafiği + sprint)
+## 🔗 8. Yürütme sırası (bağımlılık grafiği + sprint)
+
+```mermaid
+flowchart TD
+    subgraph H1["🗓️ HAFTA 1 (17–22 Haz) — FTR'yi kilitle, paralel iki kol"]
+        A1["A1<br/>plaka dewarp/OCR"]
+        A3["A3<br/>mAP harness"]
+        A2["A2<br/>dataset manifest"]
+        B3["B3<br/>mimari diyagram"]
+        B2["B2<br/>§4 kanıt"]
+        B1["B1<br/>§2 kanıt"]
+        B4w1["B4<br/>rapor yaz"]
+        A1 --> B2
+        A3 --> B2
+        A2 --> B2
+        A2 --> B1
+        B2 --> B4w1
+        B1 --> B4w1
+        B3 --> B4w1
+    end
+    subgraph H2["🗓️ HAFTA 2 (23–28 Haz) — rapor + cila"]
+        B4done["B4 tamam"] --> B5["B5<br/>format kontrol"]
+        B5 --> KYS["📤 KYS yükle<br/>(28.06 17:00)"]
+        Firsat["A4 (hız GT) · E2 (docs)<br/>C1 (QoD delta)<br/>fırsat buldukça"]
+    end
+    subgraph SON["🗓️ SONRASI (28 Haz–31 Tem)"]
+        Bekle["sonuç bekle"]
+        C2C3["C2/C3<br/>CAMARA/NV iskelet"]
+        Retrain["A2 gerçek indirme<br/>→ A5/A6 fine-tune"]
+    end
+    subgraph FIN["🗓️ FINAL (Ağu–Eyl)"]
+        Mobil["D1→D2→D3→D4<br/>(mobil)"]
+        E3["E3<br/>CUDA FPS"]
+        Prova["canlı 5G/QoD/NV<br/>provası + sunum"]
+    end
+    B4w1 -.-> B4done
+    H1 --> H2 --> SON --> FIN
+```
+
+<details>
+<summary>📄 Orijinal ASCII sprint planı (korundu)</summary>
 
 ```
 HAFTA 1 (17–22 Haz) — FTR'yi kilitle, paralel iki kol:
@@ -261,12 +365,15 @@ HAFTA 2 (23–28 Haz) — rapor + cila:
 SONRASI (28 Haz–31 Tem): sonuç bekle + C2/C3 (CAMARA/NV iskelet) + A2 gerçek indirme→A5/A6 fine-tune
 FINAL (Ağu–Eyl): D1→D2→D3→D4 (mobil) + E3 (CUDA FPS) + canlı 5G/QoD/NV provası + sunum
 ```
+
+</details>
+
 **Paralellik:** YZ ve Veri kolları ayrı dallarda eşzamanlı; her dal yeşil+inceleme sonrası `main`.
 **Gate:** B-kolu A-kolundan kanıt bekler ama A1/A3/A2 bitmeden B2/B1 iskeleti yazılabilir (kanıt sonradan dolar).
 
 ---
 
-## 9. Risk kaydı + açık kararlar
+## ⚠️ 9. Risk kaydı + açık kararlar
 
 | Risk / Karar | Etki | Aksiyon |
 |---|---|---|
@@ -280,7 +387,7 @@ FINAL (Ağu–Eyl): D1→D2→D3→D4 (mobil) + E3 (CUDA FPS) + canlı 5G/QoD/NV
 
 ---
 
-## 10. HEMEN BAŞLA — ilk 5 Codex iş emri (kopyala-çalıştır)
+## 🚀 10. HEMEN BAŞLA — ilk 5 Codex iş emri (kopyala-çalıştır)
 
 ```bash
 # 0) Güvenlik: ayrı dal
@@ -304,10 +411,16 @@ codex exec -s workspace-write -C ~/teknofest-prototip.v2 "<B2 PROMPTU>"
 aura ship --deep "ftr.md + eval_results kanıtlarıyla ftr_rapor_taslak.md tam FTR taslağı yaz (Bölüm 4-B4)"
 ```
 
+> [!TIP]
 > **Çalıştırma notu:** Yazma iş emirleri `-s workspace-write` ile dosya değiştirir ama **commit etmez**.
 > Önce görmek istersen `aura fix --dry "<görev>"` ile yamayı önizle, sonra `aura fix --apply`.
 > Her iş eminden sonra **Bölüm 0-C doğrulama kapısı** + `aura review`. Yeşil değilse birleştirme yok.
 
 ---
-*Bu plan, repo kodu + şartname + FTR şablonu + config + CHANGELOG okunarak (17.06.2026) hazırlandı.
-Sayılar ve dosya yolları gerçektir. Yürütme: Codex CLI (eller) + aura/Claude (inceleme) + Gemini (araştırma).*
+
+<div align="center">
+
+*Bu plan, repo kodu + şartname + FTR şablonu + config + CHANGELOG okunarak (17.06.2026) hazırlandı.*
+*Sayılar ve dosya yolları gerçektir. Yürütme: Codex CLI (eller) + aura/Claude (inceleme) + Gemini (araştırma).*
+
+</div>

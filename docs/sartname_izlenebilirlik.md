@@ -1,10 +1,25 @@
-# Şartname İzlenebilirlik
+> 📄 **Şartname İzlenebilirlik** · [⬅ docs](README.md) · [repo kökü](../README.md)
+
+<div align="center">
+
+# 📋 Şartname İzlenebilirlik
+
+![surum](https://img.shields.io/badge/s%C3%BCr%C3%BCm-v2.3-blue?style=flat-square)
+![dedektor](https://img.shields.io/badge/dedekt%C3%B6r-stok_YOLO26l-success?style=flat-square)
+![plaka](https://img.shields.io/badge/plaka_OCR-fast--plate--ocr_3%2F3_exact-success?style=flat-square)
+![CER](https://img.shields.io/badge/CER-0.0-success?style=flat-square)
+![makro--F1](https://img.shields.io/badge/makro--F1-1.0-success?style=flat-square)
+
+</div>
 
 TEKNOFEST 2026 "5G & Yapay Zekâ ile Akıllı Yol Güvenliği" şartnamesindeki her zorunlu
 madde, onu karşılayan bileşene/dosyaya bağlanır. (Kaynak: şartname PDF + `plan.md` §0/§17.)
 
-## Zorunluluk → Bileşen eşlemesi
+---
 
+## 🗂️ Zorunluluk → Bileşen eşlemesi
+
+> [!NOTE]
 > **v2.3 notu:** Dedektör omurgası artık varsayılan **stok YOLO26l** (sunucu); `v4` fine-tune
 > seçilebilir profil (`--profile v4-finetune`). Sürücü durumu **iki katman**: Katman A model
 > (pose-hibrit/YOLO26l) + Katman B per-ID 16/8 zaman-oylaması (`DriverStateEngine`). Metrik
@@ -27,7 +42,28 @@ madde, onu karşılayan bileşene/dosyaya bağlanır. (Kaynak: şartname PDF + `
 | 9b | **Her hedefin otomatik üretildiğinin kanıtı** (Bölüm 4.5) | `--save-events` JSONL izi + `tools/test_video.py` (annotated mp4 + JSON özet + oy dökümü) + `PlateState.partial` | — | ✅ |
 | 10 | Modern mimari / rapor | repo yapısı + `docs/` + CI (`.github/workflows/ci.yml`) | %20 | ✅ |
 
-## Mimari kararlar (şartname uyumu)
+---
+
+## 🧠 Mimari kararlar (şartname uyumu)
+
+Aşağıdaki diyagram, video girişinden karar/QoD çıktısına kadar şartname-uyumlu akışı özetler:
+
+```mermaid
+flowchart LR
+    V["Video girişi<br/>(TOGG / mock)"] --> PRE["preprocessing"]
+    PRE --> DET["detection<br/>(stok YOLO26l + ByteTrack)"]
+    DET --> TRK["tracking / stability<br/>(16/8 state machine)"]
+    TRK --> PLATE["plate / OCR<br/>(fast-plate-ocr)"]
+    TRK --> DS["driver_state<br/>(pose-hibrit / YOLO26s)"]
+    TRK --> SPD["speed<br/>(tripwire / ipm / swerving)"]
+    PLATE --> ACC["ID-merkezli accumulator"]
+    DS --> ACC
+    SPD --> ACC
+    ACC --> QOD["CAMARA QoD<br/>(histerezis, kritik an)"]
+    ACC --> NV["Number Verification"]
+    ACC --> MOB["mobile/ ekran<br/>(WS /stream/events)"]
+```
+
 | Karar | Şartname gerekçesi |
 |---|---|
 | Cascade YOLO26s→YOLO26l | Edge-first verim; ağır modeli yalnızca ROI'de çalıştır |
@@ -38,12 +74,32 @@ madde, onu karşılayan bileşene/dosyaya bağlanır. (Kaynak: şartname PDF + `
 | No-MediaPipe yorgunluk | Trafik kamerası koşullarında dayanıklılık (detection sınıfı) |
 | Kalibrasyon-bağımlı hız | Sistemin sınırını tanıması (kalibrasyon yoksa flag) |
 
-## Gerçek / Mock sınırı
+---
+
+## 🔀 Gerçek / Mock sınırı
+
+```mermaid
+flowchart TD
+    subgraph REAL["✅ Gerçek (YZ çekirdeği)"]
+        R["preprocessing · detection · tracking<br/>stability · driver_state · plate/OCR<br/>speed · accumulator · eval · train"]
+    end
+    subgraph MOCK["🟡 Mock (sözleşme taklidi)"]
+        M["qod_mock (CAMARA QoD) · nv_mock (Number Verification)<br/>5G şebekesi · TOGG video beslemesi"]
+    end
+    REAL --> FINAL["Final ortam:<br/>yalnızca endpoint/credential değişir"]
+    MOCK --> FINAL
+```
+
 - **Gerçek (YZ çekirdeği):** preprocessing, detection, tracking, stability, driver_state, plate/OCR, speed, accumulator, eval, train.
 - **Mock (sözleşme taklidi):** `qod_mock` (CAMARA QoD), `nv_mock` (Number Verification), 5G şebekesi, TOGG video beslemesi.
-- Final ortamda **yalnızca endpoint/credential** değişir; sözleşme ve YZ çekirdeği aynı kalır.
 
-## Kanıt komutları
+> [!IMPORTANT]
+> Final ortamda **yalnızca endpoint/credential** değişir; sözleşme ve YZ çekirdeği aynı kalır.
+
+---
+
+## 🧪 Kanıt komutları
+
 ```bash
 python -m aura.eval --source data/samples/ornek.mp4 --qod-comparison   # QoD A/B delta
 python tools/test_video.py --source <video.mp4> --device mps           # annotated mp4 + JSON kanıt

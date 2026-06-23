@@ -1,10 +1,36 @@
-# Veri Seti Stratejisi
+> 📄 **Veri Seti Stratejisi** · [⬅ docs](README.md) · [repo koku](../README.md)
 
-## Ne yapar
+# 🗂️ Veri Seti Stratejisi
+
+<div align="center">
+
+![surum](https://img.shields.io/badge/durum-4%20set%20indirildi%20%2B%20işlendi-success?style=flat-square)
+![lisans](https://img.shields.io/badge/lisans-CC%20BY%204.0-blue?style=flat-square)
+![split](https://img.shields.io/badge/split-80%2F10%2F10%20(seed%2042)-informational?style=flat-square)
+![fine_tune](https://img.shields.io/badge/YOLO26s%20fine--tune-TAMAMLANDI%2019%20Haz%202026-success?style=flat-square)
+
+</div>
+
+---
+
+## 🎯 Ne yapar
 AURA modellerini eğitmek için veri toplama, etiketleme ve sentetik augmentasyon
 stratejisini tanımlar. İki ayrı veri seti: araç tespiti (Stage-1) ve sürücü durumu (Stage-2).
 
-## Toplanan gerçek veri (18 Haz 2026) — özet ✅
+```mermaid
+flowchart LR
+    A["Açık veri setleri"] --> B["AURA taksonomisine eşleme"]
+    B --> C["PIL doğrulama"]
+    C --> D["80/10/10 split<br/>(seed 42)"]
+    D --> E["data/processed/*/data.yaml"]
+    E --> F["YOLO26s fine-tune"]
+    classDef done fill:#1f883d,color:#fff,stroke:#1a7f37;
+    class F done;
+```
+
+---
+
+## ✅ Toplanan gerçek veri (18 Haz 2026) — özet
 Aşağıdaki dört açık veri seti **gerçekten indirildi**, sınıfları AURA taksonomisine
 eşlendi, **tümü PIL ile doğrulandı** (bozuk görüntü yok) ve 80/10/10 (seed 42) split'lendi.
 Hepsi **CC BY 4.0** (FTR §5 kaynakçaya yazılır). Sayılar `data/processed/*/data.yaml` ve
@@ -19,12 +45,15 @@ Hepsi **CC BY 4.0** (FTR §5 kaynakçaya yazılır). Sayılar `data/processed/*/
 | `minibus` | (no-auth açık bbox seti bulunamadı) | — | — | ⏳ komite verisi / Roboflow erişimi |
 | `fatigue` | (teyitli açık set yok) | — | — | ⏳ komite verisi |
 
-> Dürüstlük: `smoking` (557) yakın/kontrollü kabin-içi sigara setidir; `phone` (659)
+> [!IMPORTANT]
+> **Dürüstlük:** `smoking` (557) yakın/kontrollü kabin-içi sigara setidir; `phone` (659)
 > **sentetik render** olduğundan gerçek trafik domain'ine uyum riski taşır (FTR'de belirtilir).
 > Bu setler stok modeli **fine-tune** etmek içindir; eğitim **TAMAMLANDI (19 Haz 2026)**
 > (bkz. `docs/egitim.md` §0 ve aşağıdaki "Eğitim durumu").
 
-### Eğitim durumu (TAMAMLANDI — 19 Haz 2026) ✅
+---
+
+### 📊 Eğitim durumu (TAMAMLANDI — 19 Haz 2026) ✅
 YOLO26s tabanlı fine-tune **TAMAMLANDI (19 Haz 2026)** (`weights/yolo26s.pt` taban,
 `imgsz 640`, MPS). Gerçek held-out mAP (`weights/custom_*.metrics.json`, Ultralytics `model.val`):
 
@@ -34,12 +63,15 @@ YOLO26s tabanlı fine-tune **TAMAMLANDI (19 Haz 2026)** (`weights/yolo26s.pt` ta
 | `smoking` | **0.856** | **0.457** | 557 görsel (CigDet/Mendeley) |
 | `seatbelt` | **0.895** | **0.546** | 3104 görsel (Roboflow/HF) |
 
+> [!NOTE]
 > `custom_license_plate` 3-video A/B'de regresyon göstermedi → **varsayılan LP dedektör**
 > (`config/default.yaml`). `custom_smoking` (held-out 0.856) drop-in regresyon nedeniyle
 > varsayılana alınmadı; doğru entegrasyon takip işi. `seatbelt` opsiyonel (dış-kamera görüş
 > açısı). ASIL araç-tespiti doğruluğu hâlâ stok `yolo26l` COCO val2017 held-out (mAP50-95 0.537).
 
-## Veri toplama zorluğu
+---
+
+## 🔍 Veri toplama zorluğu
 - **Araç tespiti:** COCO/araç veri setleri bol; Türk trafiği için yerel kamera kaydı ekleyin.
 - **Sürücü durumu:** En zor kısım. Telefon/sigara/kemer/yorgunluk için kabin-içi
   görüntü azdır ve gizlilik kısıtlıdır. Strateji:
@@ -47,7 +79,9 @@ YOLO26s tabanlı fine-tune **TAMAMLANDI (19 Haz 2026)** (`weights/yolo26s.pt` ta
   - Kontrollü çekim (araçta simülasyon, izinli sürücüler).
   - Sentetik augmentasyon ile çoğaltma (aşağıda).
 
-## Etiketleme rehberi
+---
+
+## 🏷️ Etiketleme rehberi
 - Format: YOLO (`<class> <cx> <cy> <w> <h>` normalize, her görüntü için `.txt`).
 - Dizin: `images/` + `labels/` (veya görüntüyle aynı klasörde `<stem>.txt`).
 - Sınıf listesi: `classes.txt` (her satır bir sınıf) veya `--classes` argümanı.
@@ -61,8 +95,11 @@ YOLO26s tabanlı fine-tune **TAMAMLANDI (19 Haz 2026)** (`weights/yolo26s.pt` ta
   aynı anda birden çok aktif olabilir; her durum ayrı bbox).
 - **Yorgunluk:** kapalı göz, esneme, baş düşmesi sahnelerini `fatigue` olarak etiketleyin.
 
-## Sentetik augmentasyon stratejisi
+---
+
+## 🎨 Sentetik augmentasyon stratejisi
 Eğitimde ultralytics otomatik uygular; öne çıkanlar:
+
 | Teknik | Amaç |
 |---|---|
 | Mozaik | bağlam çeşitliliği, küçük nesne öğrenimi |
@@ -75,7 +112,9 @@ Eğitimde ultralytics otomatik uygular; öne çıkanlar:
 testleri içindir; eğitim verisi değildir. Gerçek TOGG veri seti geldiğinde
 `data/raw/` altına yerleştirip `prepare_dataset` ile işleyin.
 
-## Veri dengeleme (data balancing) — FTR §2 (20 puan)
+---
+
+## ⚖️ Veri dengeleme (data balancing) — FTR §2 (20 puan)
 FTR şablonu verinin nasıl **dengelendiğini** açıkça ister. AURA tool'u dağılımı ölçer:
 ```bash
 python -m train dataset --report --output data/processed/
@@ -90,13 +129,16 @@ dengesizlik oranı (en kalabalık / en seyrek sınıf)**. Oran **> 3** ise uyar�
 4. **Split oranı:** varsayılan **%80/%10/%10** (train/val/test) — küçük özel sette val/test'in
    istatistiksel anlamı için %10+%10; çok dengesizse stratified split önerilir.
 
+> [!TIP]
 > FTR'ye: `dataset --report` çıktısını tablo olarak koyun + uyguladığınız dengeleme
 > tekniklerini ve gerekçesini yazın. Komut + sayılar = "veriyi nasıl dengelediğinizin" kanıtı.
 
 **Eksik sınıflar için somut açık veri setleri** (cigarette/seatbelt/minibus — URL + lisans +
 görüntü sayısı): `docs/yol_haritasi.md` §2 (Gemini araştırması; kullanım öncesi lisans teyidi).
 
-## Eksik-sınıf manifesti + çekme aracı (`train/datasets.yaml`)
+---
+
+## 📦 Eksik-sınıf manifesti + çekme aracı (`train/datasets.yaml`)
 Yol haritası §2'deki açık setler artık **bildirimsel bir manifestte** toplanır:
 `train/datasets.yaml` her hedef sınıf (`cigarette`, `seatbelt`, `fatigue`, `minibus`,
 `license_plate`) için **kaynak(lar) + lisans + ~görüntü sayısı + AURA taksonomisine
@@ -114,6 +156,7 @@ sınıf-eşlemesi** tutar. Eşleme `aura/taxonomy.py` ile tutarlıdır (ör. `ci
 | `minibus → minibus` | **(no-auth açık bbox seti bulunamadı)** | — | — | Roboflow/Kaggle anahtarı veya komite verisi gerekir |
 | `fatigue` | **(teyitli açık set yok — boş)** | — | — | komite verisi beklenir |
 
+> [!IMPORTANT]
 > **ONUR:** Sistem BASE/stok YOLO26 modelleriyle çalışır; üstüne **dört gerçek açık veri seti**
 > indirilip işlenmiştir (`data/processed/{license_plate,seatbelt,smoking,phone}/data.yaml`,
 > tümü PIL-doğrulanmış, CC BY 4.0): `license_plate` 8823 görsel (keremberke/HF), `seatbelt`
@@ -148,6 +191,7 @@ Plan her kaynak için **indirme tipi/koordinatları + lisans + ~görüntü sayı
 + çıktı dizini** basar ve sonda **FTR §5 kaynakça lisanslarını** özetler. Manifestte
 taksonomiyle çelişen bir eşleme varsa planda `⚠` ile işaretlenir (sessiz düzeltme yok).
 
+> [!WARNING]
 > **ONUR notu:** `fatigue` ve `license_plate` için teyitli açık set olmadığından manifestte
 > `sources: []` bırakılır; plan bunları boş gösterir (uydurma kaynak eklenmez). Kaggle/URL
 > kaynakları `--run` ile **otomatik indirilmez** (kimlik/lisans onayı gerekir) — araç yalnız
@@ -156,7 +200,16 @@ taksonomiyle çelişen bir eşleme varsa planda `⚠` ile işaretlenir (sessiz d
 İndirilen set sonrası akış değişmez: `python -m train dataset --input ... --output ... --report`
 (denge) → birden çok sürücü-davranış seti için `python -m train.merge_driver_datasets`.
 
-## Dizin yapısı
+```mermaid
+flowchart TD
+    A["train fetch<br/>(plan / --run indir)"] --> B["train dataset --report<br/>(denge ölçümü)"]
+    B --> C["train.merge_driver_datasets<br/>(çoklu davranış seti)"]
+    C --> D["data/processed/*<br/>(train/val/test + data.yaml)"]
+```
+
+---
+
+## 📁 Dizin yapısı
 ```
 data/
 ├── raw/            # ham, etiketsiz veya etiketli (git'e dahil değil)
@@ -164,7 +217,9 @@ data/
 └── samples/        # sentetik hat-testi verisi
 ```
 
-## Roboflow entegrasyonu
+---
+
+## 🔌 Roboflow entegrasyonu
 ```bash
 export ROBOFLOW_API_KEY=...
 python -m train.roboflow_pull --workspace W --project P --version 1 --output data/raw/roboflow
@@ -172,7 +227,12 @@ python -m train dataset --input data/raw/roboflow --output data/processed
 ```
 Anahtar yoksa local veriyle çalışın; pipeline mock modda eğitim olmadan da çalışır.
 
-## Sorun Giderme
-- **Görüntü bulunamadı:** `--input` altında `images/` var mı, uzantılar `.jpg/.png` mi?
-- **Etiket eşleşmiyor:** `<stem>.txt` görüntüyle aynı isimde mi, `labels/` altında mı?
-- **Sınıf indeksleri:** `data.yaml` `names` sırası etiket dosyalarındaki indekslerle uyumlu olmalı.
+---
+
+## 🛠️ Sorun Giderme
+
+| Belirti | Kontrol |
+|---|---|
+| **Görüntü bulunamadı** | `--input` altında `images/` var mı, uzantılar `.jpg/.png` mi? |
+| **Etiket eşleşmiyor** | `<stem>.txt` görüntüyle aynı isimde mi, `labels/` altında mı? |
+| **Sınıf indeksleri** | `data.yaml` `names` sırası etiket dosyalarındaki indekslerle uyumlu olmalı. |

@@ -1,12 +1,25 @@
-# PROJE AURA — Uygulama Planı v2.0
+> 📄 **PROJE AURA — Uygulama Planı v2.0** · [⬅ docs](README.md) · [repo kökü](../README.md)
 
+<div align="center">
+
+# 🛣️ PROJE AURA — Uygulama Planı v2.0
+
+![surum](https://img.shields.io/badge/plan-v2.0-blue?style=flat-square)
+![hedef](https://img.shields.io/badge/hedef-monorepo-informational?style=flat-square)
+![platform](https://img.shields.io/badge/platform-macOS%20%2B%20Windows-success?style=flat-square)
+![YOLO](https://img.shields.io/badge/YOLO26-s%20%2B%20l-orange?style=flat-square)
+![QoD](https://img.shields.io/badge/CAMARA-QoD-9cf?style=flat-square)
+
+</div>
+
+> [!NOTE]
 > **Hedef kitle:** Bu dosyayı işleyecek otonom kodlama agent'ı (Claude Code).
 > **Kaynak doğruluk:** TEKNOFEST 2026 "5G & Yapay Zekâ ile Akıllı Yol Güvenliği" Teknik Şartnamesi + `AURA_YZ_Mimarisi_v1.1.md`.
 > **Görev:** Şartnamenin gerektirdiği tüm sistemi — mobil + 5G API + YZ çekirdeği + profesyonel dashboard — GitHub'a yüklenmeye hazır, tek komutla ayağa kalkan, Windows/macOS uyumlu bir monorepo olarak üret.
 
 ---
 
-## 0. Bağlayıcı Gerçekler
+## 0. 🎯 Bağlayıcı Gerçekler
 
 | Şartname zorunluluğu | Karşılayan bileşen | Puan ağırlığı |
 |---|---|---|
@@ -17,15 +30,18 @@
 | Tespitlerin mobil ekranda gösterimi | `mobile/` + event stream | — |
 | Modern mimari / rapor | repo yapısı + `docs/` + CI | %20 |
 
-**YZ çekirdeği gerçek; ağ/telekom/mobil katmanları mock/sandbox.** Mock'lar gerçek API sözleşmesini birebir taklit eder — final ortamında yalnızca endpoint/credential değişir.
+> [!IMPORTANT]
+> **YZ çekirdeği gerçek; ağ/telekom/mobil katmanları mock/sandbox.** Mock'lar gerçek API sözleşmesini birebir taklit eder — final ortamında yalnızca endpoint/credential değişir.
 
-**YOLO26 notu:** `yolo26s.pt` ve `yolo26l.pt` gerçek Ultralytics modelleridir (Eylül 2025). Yer tutucu değil — bootstrap sırasında otomatik indirilir. ByteTrack tracking mode ultralytics'e dahildir.
+> [!NOTE]
+> **YOLO26 notu:** `yolo26s.pt` ve `yolo26l.pt` gerçek Ultralytics modelleridir (Eylül 2025). Yer tutucu değil — bootstrap sırasında otomatik indirilir. ByteTrack tracking mode ultralytics'e dahildir.
 
-**MediaPipe yasağı:** Mimari kararı — landmark/pose tabanlı hiçbir yaklaşım kullanılmaz. Yorgunluk dahil tüm sürücü durumları YOLO26l detection sınıfları olarak öğrenilir.
+> [!WARNING]
+> **MediaPipe yasağı:** Mimari kararı — landmark/pose tabanlı hiçbir yaklaşım kullanılmaz. Yorgunluk dahil tüm sürücü durumları YOLO26l detection sınıfları olarak öğrenilir.
 
 ---
 
-## 1. Genel İlkeler
+## 1. 📐 Genel İlkeler
 
 1. **Tek komutla ayağa kalkar.** `./setup.sh` veya `.\setup.ps1` → bağımlılıklar, model ağırlıkları, örnek veri, servisler — hiçbir manuel adım olmadan hazır. İdempotent: ikinci çalıştırma tekrar kurmaz.
 2. **Cross-platform.** Windows (PowerShell 7+) ve macOS (zsh). Donanım backend'i otomatik seçilir: Apple Silicon→MPS, NVIDIA→CUDA, diğer→CPU. Path'ler `pathlib` ile platform-bağımsız.
@@ -38,7 +54,7 @@
 
 ---
 
-## 2. Repo Yapısı
+## 2. 🗂️ Repo Yapısı
 
 ```
 teknofest-prototip/
@@ -149,9 +165,22 @@ teknofest-prototip/
 
 ---
 
-## 3. Bootstrap ve Otomatik Kurulum
+## 3. ⚙️ Bootstrap ve Otomatik Kurulum
 
 `bootstrap.py` saf Python stdlib kullanır. Adımlar:
+
+```mermaid
+flowchart TD
+    A["3.1 Sistem doğrulama<br/>(Python ≥ 3.10, git)"] --> B["3.2 Sanal ortam<br/>(.venv, idempotent)"]
+    B --> C["3.3 Torch backend<br/>tespit + kurulum"]
+    C --> D["3.4 Paket kurulumu<br/>pip install -e '.[core,dev]'"]
+    D --> E["3.5 Model ağırlıkları<br/>indir + SHA256 doğrula"]
+    E --> F["3.6 Config ve env<br/>kopyala"]
+    F --> G["3.7 Örnek veri<br/>sentetik test videosu"]
+    G --> H["3.8 Node.js<br/>(opsiyonel)"]
+    H --> I["3.9 Smoke test<br/>10 kare koştur"]
+    I --> J["3.10 Sarmalayıcılar<br/>setup/run"]
+```
 
 ### 3.1 Sistem doğrulama
 - Python ≥ 3.10 kontrol; aksi halde `docs/kurulum.md` bağlantısıyla açıklayıcı hata.
@@ -212,7 +241,7 @@ Pipeline'ı `data/samples/test.mp4` ile 10 kare koştur → tüm modüller OK, e
 
 ---
 
-## 4. CLI Tasarımı — `--help` Her Yerde
+## 4. 🖥️ CLI Tasarımı — `--help` Her Yerde
 
 Her entry point `argparse` ile tam yardım sunar. Stil kuralları:
 - `description`: tek satır, ne yaptığını açıklar.
@@ -301,9 +330,12 @@ options:
 
 ---
 
-## 5. API Endpoint Tasarımı
+## 5. 🔌 API Endpoint Tasarımı
 
 `services/inference_api/` — FastAPI. Port: `8080`. OpenAPI docs: `http://localhost:8080/docs`.
+
+> [!NOTE]
+> **Servis portları:** inference_api `8080`, NV Mock `8082`, QoD Mock `8081`.
 
 ### 5.1 Sistem
 
@@ -341,7 +373,8 @@ options:
 | `WS` | `/stream/annotations` | Gerçek zamanlı annotation verisi (bbox koordinatları, label'lar) |
 | `WS` | `/stream/events` | Gerçek zamanlı `AuraEvent` JSON stream'i |
 
-**İki-kanal tasarımı:** Dashboard `/stream/video` ile raw/annotated MJPEG alır VE `/stream/annotations` üzerinden bbox koordinatlarını alır. Canvas üzerinde client-side çizim yapılır. Bu şekilde bbox toggle için sunucuya git-gel olmaz — client karar verir.
+> [!TIP]
+> **İki-kanal tasarımı:** Dashboard `/stream/video` ile raw/annotated MJPEG alır VE `/stream/annotations` üzerinden bbox koordinatlarını alır. Canvas üzerinde client-side çizim yapılır. Bu şekilde bbox toggle için sunucuya git-gel olmaz — client karar verir.
 
 ### 5.4 Track Yönetimi
 
@@ -389,7 +422,22 @@ Tüm endpoint'ler `docs/api_referans.md`'de tam örnekli (curl + Python httpx + 
 
 ---
 
-## 6. YZ Çekirdek Modülleri
+## 6. 🧠 YZ Çekirdek Modülleri
+
+```mermaid
+flowchart LR
+    P["preprocessing"] --> D["detection<br/>+ track"]
+    D --> R["ROI crop"]
+    R --> S["stability"]
+    S --> DS["driver_state"]
+    S --> PL["plate"]
+    DS --> SP["speed"]
+    PL --> SP
+    SP --> AC["accumulator"]
+    AC --> EV["events +<br/>annotations"]
+    PL -. "kalite tetiği" .-> Q["qod"]
+    AC -. "anomali tetiği" .-> Q
+```
 
 ### 6.0 Çekirdek veri sözleşmeleri (pydantic v2)
 ```python
@@ -502,7 +550,7 @@ Pipeline orkestratörü: preprocessing → detection+track → ROI → stability
 
 ---
 
-## 7. §8 Opsiyonel Modüller
+## 7. 🧩 §8 Opsiyonel Modüller
 
 `aura/optional/`'da, `config.optional_modules.*` ile toggle (default kapalı). Kapalıyken hiçbir import bile yapılmaz — lazy loading pattern kullanılır.
 
@@ -514,11 +562,14 @@ Tüm detay `docs/mimari_ek_moduller.md`'de. `docs/mimari.md` yalnızca "bkz. mim
 
 ---
 
-## 8. Dashboard — Profesyonel Web Arayüzü
+## 8. 📺 Dashboard — Profesyonel Web Arayüzü
 
 **Yığın:** Vanilla HTML5 + ES6 Modules + Canvas API + WebSocket + Chart.js (CDN). Node.js/npm gerektirmez. `inference_api` tarafından statik dosya olarak serve edilir (`/` endpoint).
 
 ### 8.1 Genel Düzen
+
+<details>
+<summary>ASCII düzen şeması</summary>
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -542,6 +593,8 @@ Tüm detay `docs/mimari_ek_moduller.md`'de. `docs/mimari.md` yalnızca "bkz. mim
 │  Küçük nesne mAP:  QoD OFF: 0.52 →  QoD ON: 0.71  +37% │
 └─────────────────────────────────────────────────────────┘
 ```
+
+</details>
 
 ### 8.2 Kamera / Kaynak Seçici (`camera-selector.js`)
 
@@ -615,8 +668,9 @@ Dashboard CSS'i CSS custom properties (dark theme default, light theme toggle) i
 
 ---
 
-## 9. Eğitim Modülü (`train/`)
+## 9. 🏋️ Eğitim Modülü (`train/`)
 
+> [!IMPORTANT]
 > **Durum (18 Haz 2026):** Bu modül uygulandı; zorunlu sınıflar için **gerçek açık veri toplandı
 > ve YOLO26s fine-tune SÜRÜYOR** (`license_plate` 8823, `seatbelt` 3104, `smoking` 557, `phone` 659
 > — hepsi CC BY 4.0). Ara `license_plate` mAP50 ≈ 0.977 (epoch 12/35; **final kesin DEĞİL**). Güncel
@@ -632,9 +686,10 @@ Dashboard CSS'i CSS custom properties (dark theme default, light theme toggle) i
 
 ---
 
-## 10. Değerlendirme (`aura/eval.py`)
+## 10. 📊 Değerlendirme (`aura/eval.py`)
 
-Puanın %80'i doğrudan burada ölçülüyor.
+> [!IMPORTANT]
+> Puanın %80'i doğrudan burada ölçülüyor.
 
 **Metrikler:**
 - Detection mAP@0.5, mAP@0.5:0.95
@@ -652,7 +707,7 @@ Puanın %80'i doğrudan burada ölçülüyor.
 
 ---
 
-## 11. Mobil (`mobile/`)
+## 11. 📱 Mobil (`mobile/`)
 
 Expo (React Native) çalışan iskelet:
 - NV mock ile sessiz giriş (`POST /verify` → verified=true → ana ekran).
@@ -663,7 +718,7 @@ Expo (React Native) çalışan iskelet:
 
 ---
 
-## 12. Dokümantasyon Planı
+## 12. 📚 Dokümantasyon Planı
 
 Her `.md` aşağıdaki yapıyı takip eder:
 1. **Ne yapar** — bir paragraf
@@ -695,7 +750,7 @@ Her `.md` aşağıdaki yapıyı takip eder:
 
 ---
 
-## 13. `mimari.md` v2.0 Tamamlama
+## 13. 🏛️ `mimari.md` v2.0 Tamamlama
 
 `AURA_YZ_Mimarisi_v1.1.md`'nin içeriği korunur, üstüne eklenir:
 
@@ -708,7 +763,7 @@ Her `.md` aşağıdaki yapıyı takip eder:
 
 ---
 
-## 14. Config Şeması (tam)
+## 14. 🛠️ Config Şeması (tam)
 
 ```yaml
 runtime:
@@ -785,7 +840,7 @@ dashboard:
 
 ---
 
-## 15. Test Stratejisi
+## 15. 🧪 Test Stratejisi
 
 ```
 tests/
@@ -802,7 +857,7 @@ tests/
 
 ---
 
-## 16. Definition of Done
+## 16. ✅ Definition of Done
 
 - [ ] Temiz macOS ve Windows makinesinde `./setup.sh` / `.\setup.ps1` + `./run.sh` / `.\run.ps1` sıfır manuel adımla çalışıyor.
 - [ ] `weights/yolo26s.pt` ve `weights/yolo26l.pt` bootstrap sırasında otomatik indiriliyor, SHA256 doğrulanıyor.
@@ -826,7 +881,7 @@ tests/
 
 ---
 
-## 17. Şartname İzlenebilirlik
+## 17. 🔗 Şartname İzlenebilirlik
 
 | Şartname | Bileşen |
 |---|---|
@@ -841,7 +896,26 @@ tests/
 
 ---
 
-## 18. Geliştirme Sırası
+## 18. 🚦 Geliştirme Sırası
+
+```mermaid
+flowchart TD
+    M1["1. Repo iskeleti<br/>+ bootstrap + smoke test"] --> M2["2. Pydantic sözleşmeleri<br/>+ pipeline iskeleti"]
+    M2 --> M3["3. detection + ByteTrack<br/>+ ROI → accumulator"]
+    M3 --> M4["4. stability (16/8)<br/>+ driver_state"]
+    M4 --> M5["5. plate<br/>+ QoD kalite tetiği"]
+    M5 --> M6["6. speed<br/>(disabled → tripwire)"]
+    M6 --> M7["7. events + inference_api<br/>+ qod_mock + nv_mock"]
+    M7 --> M8["8. Dashboard"]
+    M8 --> M9["9. QoD A/B panel"]
+    M9 --> M10["10. train modülü"]
+    M10 --> M11["11. mobile iskeleti"]
+    M11 --> M12["12. §8 opsiyonel modüller"]
+    M12 --> M13["13. --help + cli_referans"]
+    M13 --> M14["14. api_referans"]
+    M14 --> M15["15. mimari.md v2.0"]
+    M15 --> M16["16. tests + CI + DoD"]
+```
 
 1. Repo iskeleti + `bootstrap.py` + `config/default.yaml` + `weights/` auto-download + smoke test.
 2. Pydantic sözleşmeleri (`TrackRecord`, `AuraEvent`, `AnnotationFrame`) + pipeline iskeleti (boş modüller, akış doğru).
@@ -860,4 +934,5 @@ tests/
 15. `docs/mimari.md` v2.0 tamamlama.
 16. `tests/` + CI + DoD checklist doğrulaması.
 
+> [!TIP]
 > Her milestone: çalışan kod → smoke test yeşil → ilgili README güncel → commit + CHANGELOG satırı. Bir sonrakine geçmeden mevcut adım sağlam olsun.

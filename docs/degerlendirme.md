@@ -1,36 +1,70 @@
-# Değerlendirme — Metrikler + QoD A/B Protokolü
+> 📄 **Değerlendirme — Metrikler + QoD A/B Protokolü** · [⬅ docs](README.md) · [repo kökü](../README.md)
 
-## Ne yapar
+# 📊 Değerlendirme — Metrikler + QoD A/B Protokolü
+
+<div align="center">
+
+![surum](https://img.shields.io/badge/Sürüm-v2.3-blue?style=flat-square)
+![sartname](https://img.shields.io/badge/Şartname%20payı-%2580-success?style=flat-square)
+![plaka](https://img.shields.io/badge/Plaka%20exact--match-3%2F3-brightgreen?style=flat-square)
+![cer](https://img.shields.io/badge/CER-0.0-brightgreen?style=flat-square)
+![davranis](https://img.shields.io/badge/Davranış%20makro--F1-1.0-brightgreen?style=flat-square)
+![qod](https://img.shields.io/badge/QoD%20A%2FB-delta%20pozitif-orange?style=flat-square)
+
+</div>
+
+## 🎯 Ne yapar
 Şartname puanının %80'i doğrudan burada ölçülür: doğruluk metrikleri ve QoD'nin
 ölçülebilir başarım katkısı (A/B).
 
-## Metrikler
+---
+
+## 📐 Metrikler
 - **Plaka:** exact-match accuracy, CER (Character Error Rate).
 - **Tespit:** kare-bazlı tespit oranı, küçük/uzak nesne tespit oranı.
 - **Hız:** MAE/RMSE (kalibrasyon varsa).
 - **Sürücü durumu / swerving:** precision/recall/F1 (video-düzeyi; `prf1`/`accuracy`).
 - **FPS:** ortalama (referans amaçlı).
 
-## FTR §4 metrik raporu (v2.3) — `--metrics-report`
+---
+
+## 🧾 FTR §4 metrik raporu (v2.3) — `--metrics-report`
 `tools/test_video.py` özetlerinden **video-düzeyi P/R/F1 + plaka exact-match/CER + araç
 doğruluğu + FPS** üretir; **dedektöre göre gruplar** (yolo26l vs v4-finetune A/B). Doğrudan
 FTR §4 tablolarına yapıştırılabilir.
+
+```mermaid
+flowchart LR
+    V1["test_video.py<br/>video_1 · yolo26l"] --> S["eval_results/ab<br/>(özet JSON'lar)"]
+    V2["test_video.py<br/>video_1 · v4-finetune"] --> S
+    S --> R["aura.eval<br/>--metrics-report"]
+    R --> O["metrics_report<br/>.md + .csv + .json"]
+```
+
 ```bash
 python tools/test_video.py --source ~/video_1.mp4 --json eval_results/ab/video_1_yolo26l.json
 python tools/test_video.py --source ~/video_1.mp4 --profile v4-finetune --json eval_results/ab/video_1_v4.json
 python -m aura.eval --metrics-report --summaries eval_results/ab   # → eval_results/metrics_report.md+csv+json
 ```
-> Dürüstlük: 3-videoluk küçük held-out set (davranış tespitinin *çalıştığının* kanıtı).
+
+> [!NOTE]
+> **Dürüstlük:** 3-videoluk küçük held-out set (davranış tespitinin *çalıştığının* kanıtı).
 > İstatistiksel mAP için etiketli set + `python -m train` (`model.val` mAP/P/R/F1 export).
 > Detay + doldurulabilir taslak: `ftr.md` §4.
 
-### Ölçülen sonuçlar (17 Haz 2026; dewarp/enhance OFF; `eval_results/`)
+---
+
+### 📈 Ölçülen sonuçlar (17 Haz 2026; dewarp/enhance OFF; `eval_results/`)
+
 - **(ASIL DOĞRULUK) Stok dedektör (`yolo26l`) — COCO val2017 HELD-OUT** (5000 görsel,
   `map_yolo26l.json`): mAP50-95 **0.537**, mAP50 **0.709**, P **0.740**, R **0.641**. Bu, modelin
   eğitiminde görmediği ayrı doğrulama setidir ve asıl dedektör doğruluk göstergesidir.
-- **(YALNIZ HIZLI SAĞLIK) Stok `yolo26l` — coco128** (küçük, train-örtüşmeli): mAP50 **0.790**,
-  mAP50-95 **0.619**. DİKKAT: fine-tune DEĞİLDİR ve doğruluk iddiası olarak kullanılmaz; yalnız
-  boru hattının kurulduğunu gösteren sağlık kontrolüdür ("fine-tune 0.790" atfı YANLIŞTIR).
+
+> [!WARNING]
+> **(YALNIZ HIZLI SAĞLIK) Stok `yolo26l` — coco128** (küçük, train-örtüşmeli): mAP50 **0.790**,
+> mAP50-95 **0.619**. DİKKAT: fine-tune DEĞİLDİR ve doğruluk iddiası olarak kullanılmaz; yalnız
+> boru hattının kurulduğunu gösteren sağlık kontrolüdür ("fine-tune 0.790" atfı YANLIŞTIR).
+
 - **ZORUNLU SINIFLAR — YOLO26s fine-tune TAMAMLANDI (19 Haz 2026), gerçek held-out mAP**
   (Ultralytics `model.val`, ayrılmış test bölmesi; `weights/custom_*.metrics.json`):
 
@@ -48,10 +82,12 @@ python -m aura.eval --metrics-report --summaries eval_results/ab   # → eval_re
   ikinci-model, takip işi). `seatbelt` dış-kamera görüş açısı nedeniyle opsiyonel/kapalı
   (K-004: ölçülmeyen senaryoda varsayılan açmıyoruz). ASIL araç-tespiti doğruluğu hâlâ stok
   `yolo26l` COCO val2017 held-out (mAP50-95 0.537) + 3-video davranış + boru-hattı doğrulaması.
+
 - **Davranış (3 gerçek video, video-düzeyi):** **her iki dedektör de** (yolo26l ve v4-finetune)
   makro-F1 **1.0**; phone/smoking/swerving P=R=F1=1.0. (Stabilite fixleri öncesi yolo26l
   video_2'de 1 `swerving` yanlış-pozitifiyle 0.933 veriyordu; `track_id=-1`/phantom çıktı kapısı
   ve `max_roi_area_ratio` zırhlarıyla bu FP gitti.)
+
 - **Plaka — OCR motoruna göre (dürüst çerçeve):**
   - **VARSAYILAN `fast-plate-ocr` (config `plate.ocr_engine: fastplate`):** 3 gerçek videoda
     **3/3 exact-match, CER 0.0** (18 Haz 2026; GT=`34TC8532`; bkz. `config/default.yaml` ölçüm
@@ -65,14 +101,29 @@ python -m aura.eval --metrics-report --summaries eval_results/ab   # → eval_re
     çekimser kalır (`confirm_min_char_margin=2.0` + pozisyon-veto + zemin koşulu). Eski stok yolo26l
     1/3 exact + 2 yanlış-onay üretiyordu; conservative confirm eşiğiyle düzeldi. v4 ikincil
     track'lerde biraz daha temiz kırpık üretir (ikincil not; plaka doğruluğu eşit).
+
 - **Araç sınıfı doğruluğu:** %100 (her iki dedektör). **FPS (MPS, M4 Pro):** ~5.9 (yolo26l) /
   ~5.3 (v4) — MPS alt-sınırı; CUDA sunucuda belirgin daha yüksektir.
+
 - **Eğitim hattı doğrulaması (uçtan uca):** açık `coco128` setinde `yolo26s` ile 5 epoch
   koşturularak gerçek `best.pt` + val mAP üretildi (**best.pt mAP50 0.7645, mAP50-95 0.5909**)
   → "eğitim hattı uçtan uca çalışır" kanıtı (doğruluk iddiası değil); komite verisiyle tek komut.
 
-## QoD A/B harness (kritik)
+---
+
+## 🔬 QoD A/B harness (kritik)
 Aynı video iki senaryoda koşulur:
+
+```mermaid
+flowchart TD
+    SRC["Aynı video"] --> OFF["QoD OFF<br/>düşük çözünürlük<br/>(düşük bant simülasyonu)"]
+    SRC --> ON["QoD ON<br/>tam çözünürlük<br/>(HIGH_THROUGHPUT benzeri)"]
+    OFF --> MOFF["Tam metrik seti"]
+    ON --> MON["Tam metrik seti"]
+    MOFF --> D["Δ delta tablosu<br/>(mutlak + yüzde fark)"]
+    MON --> D
+```
+
 1. **QoD OFF** — düşük çözünürlük (düşük bant simülasyonu): küçük plaka ROI'leri
    `min_pixel_height` altına düşer, küçük/uzak araçlar kaçar.
 2. **QoD ON** — tam çözünürlük (HIGH_THROUGHPUT benzeri).
@@ -86,19 +137,22 @@ Her senaryo için tam metrik seti; çıktı **delta tablosu** (mutlak + yüzde f
 Çıktı: `eval_results/report.md` + `report.json`; ayrıca `GET /eval/results` ve dashboard
 Chart.js paneli.
 
-### Ölçülen sonuç (sentetik kontrollü örnek — kare-düzeyi GT)
+---
+
+### 🧪 Ölçülen sonuç (sentetik kontrollü örnek — kare-düzeyi GT)
 Atıf şeffaflığı: QoD A/B kare-düzeyi ground-truth gerektirir; üç gerçek videoda kare-düzeyi GT
 bulunmadığından QoD A/B **orada ölçülemez** ve ölçüm, kare-düzeyi GT içeren **kontrollü sentetik
 set** (`data/samples/ornek.mp4`) üzerinde, `--qod-comparison` ile yapılır. Kaynak:
 `eval_results/report.md` / `report.json` (her koşuda üzerine yazılır).
 
-**DÜRÜST NOT (K-004) — delta koşuya bağlıdır:** Aşağıdaki tablodaki pozitif deltalar, OFF
-senaryosunun **baskılı (agresif düşük-bant)** simüle edildiği bir A/B koşusundan gelir ve
-QoD'nin kritik anda OCR/küçük-nesne tespitini kurtardığını gösterir. **En güncel
-`eval_results/report.json` (18 Haz 2026) koşusunda OFF baseline'ı zaten yüksek olduğu için
-Δ ≈ +0.0'dır** (OFF da ON da 3/3 plaka, CER 0.0). Pozitif deltayı yeniden üretmek için OFF
-simülasyonunu daha baskılı koşmak gerekir; rapora her zaman **mevcut `report.json`'dan** okunan
-güncel sayı yazılmalıdır. Örnek (baskılı-OFF) koşusu:
+> [!IMPORTANT]
+> **DÜRÜST NOT (K-004) — delta koşuya bağlıdır:** Aşağıdaki tablodaki pozitif deltalar, OFF
+> senaryosunun **baskılı (agresif düşük-bant)** simüle edildiği bir A/B koşusundan gelir ve
+> QoD'nin kritik anda OCR/küçük-nesne tespitini kurtardığını gösterir. **En güncel
+> `eval_results/report.json` (18 Haz 2026) koşusunda OFF baseline'ı zaten yüksek olduğu için
+> Δ ≈ +0.0'dır** (OFF da ON da 3/3 plaka, CER 0.0). Pozitif deltayı yeniden üretmek için OFF
+> simülasyonunu daha baskılı koşmak gerekir; rapora her zaman **mevcut `report.json`'dan** okunan
+> güncel sayı yazılmalıdır. Örnek (baskılı-OFF) koşusu:
 
 | Metrik | QoD OFF | QoD ON | Δ |
 |---|---|---|---|
@@ -106,17 +160,22 @@ güncel sayı yazılmalıdır. Örnek (baskılı-OFF) koşusu:
 | Küçük nesne tespiti (%) | 41.4 | 92.8 | **+51.4** |
 | Tespit oranı (%) | 71.8 | 97.3 | **+25.5** |
 
+> [!TIP]
 > QoD yalnızca kritik anda devreye girerek küçük/uzak plaka ROI'lerinin yeterli pikselle
 > okunmasını sağlar; **pozitif delta** bunun kanıtıdır (şartname %40). Delta'nın yönü QoD
 > katkısını gösterir; mutlak değerler ve delta büyüklüğü OFF-simülasyonu baskısına ve gerçek
 > model/veriye göre değişir.
 
-## Rapor yorumlama
+---
+
+## 🧭 Rapor yorumlama
 - **Plaka doğruluğu** ↑: QoD'nin kalite tetiği OCR'ı kurtardı.
 - **Küçük nesne** ↑: yüksek çözünürlük uzak araçları yakaladı.
 - Gerçek model/veriyle mutlak değerler değişir; **delta'nın pozitifliği** QoD katkısının kanıtıdır.
 
-## Sorun Giderme
+---
+
+## 🛠️ Sorun Giderme
 | Belirti | Çözüm |
 |---|---|
 | Delta ≈ 0 | Ground-truth doğru mu? Senaryo yeterince zorlayıcı mı (küçük nesneler)? |
