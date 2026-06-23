@@ -4,6 +4,10 @@ weights/*.pt
 weights/*.onnx
 weights/*.engine
 weights/*.metrics.json
+# Eğitim çıktısı özel ağırlıklar (custom_*; uzantısız ara checkpoint kopyaları dahil — bootstrap/train üretir)
+weights/custom_*
+# weights/ altındaki model-olmayan ekler (araştırma PDF vb.)
+weights/*.pdf
 
 # Eğitim koşum çıktıları (ultralytics train/val)
 runs/
