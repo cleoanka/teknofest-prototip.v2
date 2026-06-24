@@ -77,7 +77,9 @@ class PlateReader:
         self._lp_conf = float(lp.get("conf", 0.30))
         self._lp_imgsz = int(lp.get("imgsz", 640))
         self._lp_pad = float(lp.get("pad_ratio", 0.08))
-        self._lp_path = str(lp.get("path", "weights/lp_yolo11n.pt"))
+        # Production varsayılanı: özel YOLO26s LP dedektörü (custom_license_plate, LFS'te).
+        # lp_yolo11n (YOLO11n) production DEĞİL — yalnız A/B kıyas tabanı / explicit opt-in fallback.
+        self._lp_path = str(lp.get("path", "weights/custom_license_plate.pt"))
         self._lp_model = None  # lazy yüklenir
         self._lp_failed = False
         # Boyut-farkında kanıt politikası (gerçek video dersi: uzak karelerin

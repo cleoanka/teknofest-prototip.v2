@@ -6,7 +6,7 @@
 # PROFİLLER (config/profiles/*.yaml): bu taban dosyanın ÜZERİNE derin-merge edilir.
 #   python -m aura --profile server      # sunucu: yolo26l, CUDA, büyük imgsz (VARSAYILANLA AYNI)
 #   python -m aura --profile laptop      # geliştirme: yolo26s, MPS/CPU, hafif
-#   python -m aura --profile v4-finetune # fine-tune v4 (yolov8m, 11 sınıf) birincil
+#   python -m aura --profile v4-finetune # ESKİ yolov8m — yalnız A/B kıyas tabanı (production DEĞİL)
 #   AURA_PROFILE=server python -m aura   # env ile de seçilebilir
 # Mevcut profiller: `python -c "from aura.config import available_profiles as a; print(a())"`
 # Bu repo SUNUCU dağıtımı içindir (edge değil) → varsayılan dedektör yolo26l.
@@ -30,7 +30,7 @@ models:
     # car/truck/bus/motorcycle + person + 'cell phone'→phone (taxonomy) üretir.
     #   • Daha hafif/cascade için: --profile laptop  (yolo26s)
     #   • 11-sınıf fine-tune (minibus/license_plate dahil, mAP50 .788) için:
-    #     --profile v4-finetune  (weights/yolguvenligi_types_v4.pt, yolov8m)
+    #     --profile v4-finetune  (ESKİ yolov8m A/B tabanı — production değil; weights/yolguvenligi_types_v4.pt)
     # Ağırlık yoksa detection/yolo.py LOGLU olarak stok yolo26s.pt'ye düşer.
     # EŞİK REHBERİ (hidden_prototip gerçek-video dersi): STOK model gerçek trafikte
     # araçlara 0.05-0.15 conf verir → stokta conf 0.08-0.12; fine-tune (v4) → 0.25-0.35.

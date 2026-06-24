@@ -51,7 +51,7 @@ sırası: `--profile` argümanı > `AURA_PROFILE` env > yok. CLI: `--profile` ba
 |---|---|---|---|---|
 | `server` | yolo26l | auto (CUDA) | 960 | sunucu, maksimum doğruluk (önerilen) |
 | `laptop` | yolo26s | auto (MPS) | 640 | geliştirme, hafif |
-| `v4-finetune` | yolguvenligi_types_v4 | auto | 768 | 11-sınıf fine-tune (plaka-kritik) |
+| `v4-finetune` | yolguvenligi_types_v4 (ESKİ yolov8m) | auto | 768 | A/B kıyas tabanı — production değil (production: YOLO26) |
 
 Kendi profilinizi ekleyin (`config/profiles/uretim.yaml`) → `--profile uretim`. Liste:
 `python -c "from aura.config import available_profiles as a; print(a())"`. Detay: `docs/dagitim.md`.
