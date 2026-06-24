@@ -8,6 +8,14 @@ weights/*.metrics.json
 weights/custom_*
 # weights/ altındaki model-olmayan ekler (araştırma PDF vb.)
 weights/*.pdf
+# İSTİSNA — 3 ÜRETİM custom modeli + held-out kanıt metrikleri repoya DAHİL (.pt → LFS, metrics → düz)
+# custom_license_plate = varsayılan LP dedektörü; klonda `git lfs pull` ile gelir. _s.metrics.json = aynı modelin model.val çıktısı
+!weights/custom_license_plate.pt
+!weights/custom_smoking.pt
+!weights/custom_seatbelt.pt
+!weights/custom_license_plate_s.metrics.json
+!weights/custom_smoking_s.metrics.json
+!weights/custom_seatbelt_s.metrics.json
 
 # Eğitim koşum çıktıları (ultralytics train/val)
 runs/

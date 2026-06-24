@@ -233,7 +233,7 @@ plate:
   # sınıf 'license_plate'; held-out mAP50 0.983 / mAP50-95 0.707 — 9123 görsel keremberke/HF).
   # 19 Haz 2026 stok-vs-custom 3-video A/B: plaka 3/3 PLATE_CONFIRMED KORUNDU (regresyon yok)
   # → custom VARSAYILAN'a terfi (bkz. docs/degerlendirme.md "Custom model A/B").
-  # Ağırlık yoksa bootstrap iner; o da yoksa loglu olarak stok lp_yolo11n.pt/geniş-crop'a düşülür.
+  # Ağırlık repoda LFS ile gelir (`git lfs pull`); yoksa loglu olarak stok lp_yolo11n.pt/geniş-crop'a düşülür.
   lp_detector:
     enabled: true
     path: weights/custom_license_plate.pt   # önceki stok: weights/lp_yolo11n.pt
