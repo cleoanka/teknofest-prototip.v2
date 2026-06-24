@@ -1,5 +1,5 @@
 # =============================================================================
-# PROFİL: v4-finetune — 11-sınıf fine-tune dedektör birincil (yolov8m)
+# PROFİL: v4-finetune — ESKİ yolov8m A/B KARŞILAŞTIRMA TABANI (production DEĞİL; production = YOLO26)
 # Kullanım:  python -m aura --profile v4-finetune
 # default.yaml ÜZERİNE derin-merge edilir; yalnız farklılıklar burada.
 #
