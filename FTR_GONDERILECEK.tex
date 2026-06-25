@@ -115,7 +115,7 @@ verilmiştir. Dengeleme için üç tamamlayıcı strateji uygulanır: (i) seyrek
 toplama; (ii) az temsil edilen sınıfların oversampling ile çoğaltılması; (iii) seyrek sınıf
 sahnelerinde augmentasyonun sınıf lehine güçlendirilmesi.
 
-\begin{figure}[H]\centering
+\begin{figure}[ht]\centering
 \includegraphics[width=0.45\textwidth]{fig_veri_dengesi.png}
 \caption{Toplanan açık-kaynak veri setlerinin görüntü dağılımı (tümü CC BY 4.0).}
 \label{fig:denge}
@@ -136,7 +136,7 @@ istatistiksel anlam taşıması için her birine \%10 pay ayrılması; sınıf-d
 (stratified) bölme önerilir. Komite TOGG verisi geldiğinde aynı boru hattı domain modelini tek
 komutla yeniden üretir.
 
-\begin{figure}[H]\centering
+\begin{figure}[ht]\centering
 \includegraphics[width=0.50\textwidth]{fig_split.png}
 \caption{\tcode{license\_plate} setinin \%80/\%10/\%10 train/val/test dağılımı (8.823 görsel).}
 \label{fig:split}
@@ -181,8 +181,8 @@ olarak dashboard, mobil ve JSONL kanıt izine yayılır. QoD tetikleri (yaklaşm
 akıştan türetilir. \textbf{Gerçek$\leftrightarrow$mock sınırı:} YZ çekirdeği gerçek, telekom katmanı
 CAMARA sözleşmesini taklit eden mock'tur (finalde yalnız uç nokta/kimlik değişir).
 
-\begin{figure}[H]\centering
-\includegraphics[width=0.60\textwidth]{fig_mimari.png}
+\begin{figure}[ht]\centering
+\includegraphics[width=0.56\textwidth]{fig_mimari.png}
 \caption{AURA kuşbakışı kaskad boru hattı (kaynak: \tcode{aura/pipeline/pipeline.py}, \tcode{docs/diagrams/}).}
 \label{fig:mimari}
 \end{figure}
@@ -224,9 +224,11 @@ yoksa sistem mutlak hız iddia etmez, yalnız göreli-hız bayrağı üretir. Sw
 serisindeki ZigZag ekstremum sayımıyla (araç-genişliği birimi, saniye penceresi) kalibrasyonsuz tespit
 edilir.
 
-\textbf{Yazılım ve Donanım.} Python 3.13, PyTorch 2.12, Ultralytics 8.4.66, fast-plate-ocr/EasyOCR,
-OpenCV 4.13, Shapely, FastAPI/Uvicorn. Cihaz otomatik seçilir (CUDA $\rightarrow$ MPS $\rightarrow$ CPU);
-sunucu dağıtımı CUDA, geliştirme Apple Silicon/MPS üzerindedir.
+\textbf{Yazılım ve Donanım.} Python 3.13, PyTorch (Ultralytics 8.4.66), fast-plate-ocr/EasyOCR,
+OpenCV, Shapely, FastAPI/Uvicorn. Cihaz otomatik seçilir (CUDA $\rightarrow$ MPS $\rightarrow$ CPU).
+Geliştirme Apple Silicon/MPS; hedef sunucu dağıtımı NVIDIA CUDA üzerindedir — gerçek ölçüm donanımı
+RTX 5070 Laptop GPU (4.608 CUDA çekirdeği, 8 GB VRAM, Compute 12.0/Blackwell, torch 2.8.0+cu128;
+bkz. \S4.6).
 
 % ========================== 4. SINAMA ================================
 \section{Çözümün Sınanması}
@@ -258,10 +260,9 @@ Varsayılan stok \tcode{yolo26l} ayrıca COCO val2017 (5.000 görsel) held-out �
 \end{tabularx}
 \end{table}
 
-\begin{figure}[H]\centering
-\begin{minipage}{0.49\textwidth}\centering\includegraphics[width=\textwidth]{fig_tespit_map.png}\end{minipage}\hfill
-\begin{minipage}{0.49\textwidth}\centering\includegraphics[width=\textwidth]{fig_custom_prf1.png}\end{minipage}
-\caption{Sol: held-out mAP@0.50 / mAP@0.50:0.95 (özel modeller domain held-out; \tcode{yolo26l} COCO genel). Sağ: özel modellerin held-out P/R/F1 (YOLO26s).}
+\begin{figure}[ht]\centering
+\includegraphics[width=0.62\textwidth]{fig_tespit_map.png}
+\caption{Held-out mAP@0.50 / mAP@0.50:0.95 (özel modeller domain held-out; \tcode{yolo26l} COCO genel set). Precision/Recall/F1 değerleri Tablo~\ref{tab:map}'dedir.}
 \label{fig:map}
 \end{figure}
 
@@ -300,7 +301,7 @@ Baseline (EasyOCR · stok/v4) & 2/3 (66,7\%) & 0,083 & 2 & 1 & \textbf{0} \\
 \end{tabularx}
 \end{table}
 
-\begin{figure}[H]\centering
+\begin{figure}[ht]\centering
 \includegraphics[width=0.48\textwidth]{fig_plaka_ab.png}
 \caption{Plaka exact-match A/B: baseline 2/3 (CER 0,083) $\rightarrow$ production 3/3 (CER 0,0).}
 \label{fig:plate}
@@ -322,12 +323,17 @@ küçük/uzak plaka ROI'sinin yeterli piksele ulaşması) QoD katkısının ası
 \tcode{vehicle\_approach} tetiği şartnamenin ``TOGG yaklaşınca QoD'' senaryosunu birebir karşılar.
 
 \subsection{İşleme Hızı (FPS)}
-Ortalama işleme hızı Apple Silicon/MPS (M4 Pro) üzerinde ölçülmüştür (Şekil~\ref{fig:fps}) ve bir
-\textbf{alt-sınırdır}; sunucu dağıtımında CUDA ile belirgin biçimde daha yüksek değerler elde edilir.
-\tcode{yolo26l} ortalama \textbf{5,9 FPS}, \tcode{v4-finetune} (A/B tabanı) \textbf{5,3 FPS}.
-\begin{figure}[H]\centering
-\includegraphics[width=0.38\textwidth]{fig_fps.png}
-\caption{Ortalama işleme hızı (MPS, M4 Pro) — alt-sınır. Kaynak: \tcode{eval\_results/metrics\_report.md}.}
+İşleme hızı hem geliştirme ortamında (Apple Silicon/MPS, M4 Pro) hem de hedef sunucu donanımında
+(NVIDIA RTX 5070 Laptop GPU, \textbf{4.608 CUDA çekirdeği}) \textbf{gerçek ölçümle} değerlendirilmiştir
+(Şekil~\ref{fig:fps}; \tcode{eval\_results/bench\_cuda0\_*.md}, 2026-06-26). CUDA, MPS geliştirme
+alt-sınırının (yolo26l ${\sim}5,9$ FPS) \textbf{${\approx}2\times$}'i throughput sağlar: \tcode{server}
+profilinde (yolo26l, imgsz 960) \textbf{12,31 FPS} (p95 93 ms), \tcode{laptop} profilinde (yolo26s,
+imgsz 640) \textbf{14,72 FPS} (p95 88 ms). \tcode{p95}=93 ms, 25--30 fps'lik trafik kamerası akışı için güvenli
+SLA zarfıdır.
+
+\begin{figure}[ht]\centering
+\includegraphics[width=0.55\textwidth]{fig_fps.png}
+\caption{İşleme hızı: MPS geliştirme alt-sınırı vs gerçek CUDA ölçümü (RTX 5070 Laptop GPU, 4.608 çekirdek, Compute 12.0).}
 \label{fig:fps}
 \end{figure}
 
@@ -368,6 +374,7 @@ açıkça belirtilmiş olup komite verisiyle daha da güçlendirilecektir.
 \item \textit{CigDet — Cigarette Detection}, Mendeley Data, 2021. DOI:10.17632/6hyrr8typ7.1. (CC BY 4.0) --- \tcode{smoking} 557 görsel.
 \item anywaylabs, \textit{Synthetic Driver Monitoring}, Hugging Face, 2024. (CC BY 4.0) --- \tcode{phone} 659 görsel.
 \item M. Everingham vd., \textit{The PASCAL VOC Challenge} (mAP metodolojisi), IJCV, 2010.
+\item Yapay zekâ desteği: bu raporun yazım ve düzenlenmesinde büyük dil modelinden (Anthropic Claude) destek alınmıştır. Tüm teknik içerik, mimari, ölçüm ve sayılar takım tarafından üretilmiş olup depo artefaktlarından (\tcode{eval\_results/}, \tcode{weights/}) doğrulanmıştır.
 \end{enumerate}
 \normalsize
 

@@ -335,6 +335,11 @@ problem tanımı, FTR formatı, değerlendirme kriterleri, açık-veri kullanım
 
 ---
 
+> **Yapay zekâ desteği:** Bu rapor ve depo dokümantasyonunun yazım/düzenlenmesinde büyük dil
+> modelinden (Anthropic Claude) destek alınmıştır. Tüm teknik içerik, mimari kararlar, ölçümler ve
+> sayılar takım tarafından üretilmiş; depo artefaktlarından (`eval_results/`, `weights/custom_*_s.metrics.json`)
+> doğrulanmıştır (K-004). Yapay zekâ yalnızca yazım/derleme/düzen aracı olarak kullanılmıştır.
+
 *Hazırlık: ULTRAPLAN W2 (rapor + cila), erişim tarihi 23.06.2026. Sürümler `.venv`/`pyproject.toml`,
 veri setleri `docs/veri_seti.md` ile çapraz doğrulandı. Onur zırhı (K-004): uydurma kaynak yok;
 "kullanılan" ve "ilgili/alternatif" ayrımı korunmuştur. Rapora konmadan önce tüm bağlantılar son kez
