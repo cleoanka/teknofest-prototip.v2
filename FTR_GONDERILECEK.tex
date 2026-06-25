@@ -99,7 +99,7 @@ kimlik-doğrulaması gerektirmeyen \textbf{dört gerçek açık-kaynak bbox seti
 PIL ile doğrulanmıştır (hepsi CC BY 4.0): \tcode{license\_plate} (8.823 görsel), \tcode{seatbelt}
 (3.104), \tcode{smoking} (557) ve \tcode{phone} (659, sentetik render). Tüm kaynaklar, hedef sınıf
 başına kaynak, lisans, görüntü sayısı ve AURA taksonomisine sınıf-eşlemesini tek noktada tutan
-bildirimsel bir manifestte (\tcode{train/datasets.yaml}) toplanmıştır; lisanslar \S5'te listelidir.
+bildirimsel bir manifestte (\tcode{train/datasets.yaml}) toplanmıştır; lisanslar Bölüm 5'te listelidir.
 
 \subsection{Etiketleme ve Sınıf Şeması}
 Etiketler YOLO formatındadır (\tcode{<class> <cx> <cy> <w> <h>}, normalize). Model-uzayı sınıf
@@ -228,18 +228,18 @@ edilir.
 OpenCV, Shapely, FastAPI/Uvicorn. Cihaz otomatik seçilir (CUDA $\rightarrow$ MPS $\rightarrow$ CPU).
 Geliştirme Apple Silicon/MPS; hedef sunucu dağıtımı NVIDIA CUDA üzerindedir — gerçek ölçüm donanımı
 RTX 5070 Laptop GPU (4.608 CUDA çekirdeği, 8 GB VRAM, Compute 12.0/Blackwell, torch 2.8.0+cu128;
-bkz. \S4.6).
+bkz. Bölüm 4.6).
 
 % ========================== 4. SINAMA ================================
 \section{Çözümün Sınanması}
 
 \subsection{Sınama Protokolü}
 Çözüm üç tamamlayıcı düzeyde sınanmıştır: (i) etiketli \textbf{held-out doğrulama setleri} üzerinde
-istatistiksel tespit doğruluğu (mAP/P/R; \S4.2); (ii) üç gerçek test videosu (kapalı otopark, TOGG;
-GT plaka \tcode{34TC8532}) üzerinde davranış P/R/F1, plaka exact-match (CER ile), FPS (\S4.3--\S4.6);
-(iii) QoD'nin başarım katkısı (A/B), kare-düzeyi GT içeren kontrollü sentetik set üzerinde (\S4.5).
+istatistiksel tespit doğruluğu (mAP/P/R; Bölüm 4.2); (ii) üç gerçek test videosu (kapalı otopark, TOGG;
+GT plaka \tcode{34TC8532}) üzerinde davranış P/R/F1, plaka exact-match (CER ile), FPS (Bölüm 4.3--4.6);
+(iii) QoD'nin başarım katkısı (A/B), kare-düzeyi GT içeren kontrollü sentetik set üzerinde (Bölüm 4.5).
 Şartnamenin 4.5 maddesi gereği (``kanıtlanamayan hedef puanlanmaz''), rapordaki her sayı bir komuta ve
-artefakta bağlıdır (\S4.8).
+artefakta bağlıdır (Bölüm 4.8).
 
 \subsection{Tespit Doğruluğu (held-out mAP / P / R / F1)}
 Özel sınıfların YOLO26s fine-tune eğitimi \textbf{tamamlanmıştır}; ayrılmış test bölmesinde ölçülen
@@ -309,7 +309,7 @@ Baseline (EasyOCR · stok/v4) & 2/3 (66,7\%) & 0,083 & 2 & 1 & \textbf{0} \\
 
 En kritik tasarım garantisi: sistem belirsiz/uzak/bulanık bir okumayı \textbf{asla yanlış plaka olarak
 kesinleştirmez}; yakın-net video doğru plakayı CONFIRMED verirken belirsiz okuma onurlu bir
-\tcode{pending}'tir. Bu davranış \S3.3'teki onay marjı, pozisyon-veto ve zemin koşulu zırhlarının
+\tcode{pending}'tir. Bu davranış Bölüm 3.3'teki onay marjı, pozisyon-veto ve zemin koşulu zırhlarının
 ölçülen sonucudur.
 
 \subsection{QoD Başarım Katkısı (A/B)}
@@ -339,18 +339,18 @@ SLA zarfıdır.
 
 \subsection{Hız, Kanıt İzi ve Çözüme Neden Güveniyoruz}
 \textbf{Hız/swerving.} Swerving üç videodan \tcode{video\_3}'te gerçekten tespit edilmiş ve davranış
-makro-F1'ine dahildir (\S4.3). Mutlak hız için MAE/MAPE harness'ı hazırdır; kalibrasyon ve gerçek-hız
+makro-F1'ine dahildir (Bölüm 4.3). Mutlak hız için MAE/MAPE harness'ı hazırdır; kalibrasyon ve gerçek-hız
 GT geldiğinde tek koşuyla nicel hata üretir (yoksa dürüstçe mutlak hız iddia edilmez).
 
 \textbf{Kanıt izi (şartname 4.5).} Her çıktının makineyle üretildiği üç artefaktla kanıtlanır:
 (1) zaman-damgalı JSONL olay izi (\tcode{--save-events}); (2) annotated mp4 + JSON oy dökümü
 (\tcode{tools/test\_video.py}); (3) türetilebilir metrik raporu (\tcode{aura.eval --metrics-report})
-ki \S4 tablolarını bu özetlerden yeniden üretir — yani rapordaki hiçbir sayı elle girilmemiştir.
+ki Bölüm 4 tablolarını bu özetlerden yeniden üretir — yani rapordaki hiçbir sayı elle girilmemiştir.
 
 \textbf{Çözüme neden güveniyoruz?} Beş nicel gerekçe: (1) davranış tespiti her iki dedektörde de
 çapraz yanlış-pozitif üretmiyor (makro-F1 1,0; araç \%100); (2) sistem belirsizlikte yanlış üretmek
 yerine dürüstçe çekimser kalıyor — plakada \textbf{sıfır yanlış-onay}, production hattı 3/3 exact
-(CER 0,0); (3) bu güvenceler somut config-driven zırhlara dayanır (\S3.3) ve gerçek videolarda
+(CER 0,0); (3) bu güvenceler somut config-driven zırhlara dayanır (Bölüm 3.3) ve gerçek videolarda
 doğrulanmıştır; (4) tüm eşikler oran-bazlı/ölçek-bağımsızdır (videoya-özel sabit yok, K-004) — sonuçlar
 tek çekime aşırı-uyumlanmamıştır; (5) QoD entegrasyonu yeniden-üretilebilir bir A/B harness'a sahiptir.
 Sınama kümesinin sınırı (üç-videoluk küçük set; istatistiksel mAP held-out sette ayrıca ölçülmüştür)
