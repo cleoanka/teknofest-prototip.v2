@@ -54,6 +54,10 @@
   derlemesine düşer. Backend'i `.env` içindeki `AURA_DEVICE=cuda|cpu` ile elle de zorlayabilirsiniz.
 - Kurulum sonrası `.\dev.ps1 doctor` çıktısında **"Cihaz (auto → cuda:0)  CUDA: <GPU adı>"**
   satırını görmelisiniz. Sadece CPU görünüyorsa GPU yok ya da sürücü eksik demektir.
+- **Geliştirme donanımı (AURA):** NVIDIA GeForce RTX 5070 Laptop GPU — **4.608 CUDA çekirdeği**
+  (36 SM × 128), 8 GB VRAM, Compute Capability 12.0 (Blackwell), torch 2.8.0+cu128.
+  Server profili CUDA FPS: **12,31** (yolo26l, imgsz 960), laptop profili: **14,72** (yolo26s, imgsz 640).
+  Benchmark: `.\dev.ps1 video-test <video.mp4>` veya `python tools/bench.py --device cuda --profile server`.
 
 ```mermaid
 flowchart TD
@@ -224,6 +228,7 @@ Cihaz otomatik seçilir (`--device auto`).
 | `python` Microsoft Store'u açıyor (9009) | Boş Store stub'ı. `py -3 --version` deneyin; betikler otomatik `py -3`'e düşer. Kalıcı çözüm: Store stub'ını kapatın (Ayarlar → Uygulama takma adları) ve python.org Python'ını PATH'e ekleyin |
 | `Python 3.10+ bulunamadı` | python.org'dan 3.10+ kurun, **"Add to PATH"** işaretli; yeni pencere açın |
 | Türkçe karakter bozuk / `UnicodeDecodeError` / `cp1254` | Betikler `PYTHONUTF8=1` + UTF-8 konsol ayarlar. Elle çağırıyorsanız: `$env:PYTHONUTF8 = "1"` ve `chcp 65001` |
+| `.ps1` betik parse hatası (`Unexpected token 'veya'` vb.) | PS1 dosyaları UTF-8 BOM'suz kaydedilmişse PS 5.1 CP1252 olarak okur ve Türkçe karakterleri bozar. `.ps1` dosyalarını UTF-8 BOM'lu kaydet: `[System.IO.File]::WriteAllText($p, [System.IO.File]::ReadAllText($p,[Text.Encoding]::UTF8), (New-Object Text.UTF8Encoding($true)))` |
 | Port dolu (`[10048]`) | `run.ps1` portu otomatik boşaltır; yine de çakışırsa `$env:AURA_INFERENCE_PORT="9090"; .\run.ps1` |
 | Güvenlik duvarı izin penceresi | `0.0.0.0` bind'i için normaldir (servis başına bir kez) — izin verin |
 | `.venv bulunamadı` (dev.ps1) | Önce `.\setup.ps1 --dev` çalıştırın |

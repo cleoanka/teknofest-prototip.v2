@@ -155,16 +155,32 @@ flowchart LR
 
 ## 📈 5. Performans / ölçeklenme
 
-- **FPS:** sunucu CUDA'da MPS'e göre belirgin yüksektir. Büyük `imgsz` (960) doğruluk için;
-  daha yüksek throughput gerekiyorsa `imgsz` 768/640'a düşürün veya `yolo26s` profiline geçin.
-- **Gerçek FPS ölçümü (CUDA sunucuda):**
+### Ölçülen FPS (RTX 5070 Laptop GPU, 4.608 CUDA çekirdeği, 8 GB VRAM, Compute 12.0)
+
+| Profil | Dedektör | imgsz | FPS (kararlı-hal) | p50 kare | p95 kare |
+|---|---|---|---|---|---|
+| `server` | yolo26l | 960 | **12,31** | 80 ms | 93 ms |
+| `laptop` | yolo26s | 640 | **14,72** | 65 ms | 88 ms |
+
+Artefakt: `eval_results/bench_cuda0_server.md`, `eval_results/bench_cuda0_laptop.md`
+(ölçüm: 2026-06-26, torch 2.8.0+cu128, 150 kare, ısınma 5).
+
+`p95 = 93 ms` (server profili) → gerçek zamanlı trafik kamerası akışı (25–30 fps kayıt)
+için yeterli SLA zarfı. MPS (Apple Silicon M4 Pro) geliştirme değerleri alt-sınırdır:
+yolo26l ≈ 5,9 fps, CUDA ≈ **2× artış** sağlar.
+
+- **Büyük `imgsz` (960)** doğruluk için; daha yüksek throughput gerekiyorsa
+  `imgsz` 768/640'a düşürün veya `yolo26s` profiline geçin.
+- **Gerçek FPS ölçümü (güncel CUDA sunucuda):**
   ```bash
   python tools/bench.py --source <video.mp4> --device cuda --profile server
-  #   → ortalama FPS + p50/p95 kare-süresi; eval_results/bench_cuda0.md
+  #   → eval_results/bench_cuda0.md  (ortalama FPS + p50/p95)
   ```
-  Apple Silicon (MPS) üzerindeki sayılar **alt sınırdır** — gerçek dağıtım FPS'i için
-  benchmark'ı hedef CUDA sunucuda koşun. `p95` kare-süresi (kuyruk gecikmesi) tek-kare
-  ortalamadan daha bilgilendiricidir; akış SLA'sını ona göre belirleyin.
+  ```powershell
+  .\.venv\Scripts\python.exe tools\bench.py --source <video.mp4> --device cuda --profile server
+  ```
+  `p95` kare-süresi (kuyruk gecikmesi) tek-kare ortalamadan daha bilgilendiricidir;
+  akış SLA'sını ona göre belirleyin.
 - **Batch akış:** birden çok kamera için her akışa ayrı pipeline örneği (process) verin; QoD
   yalnız kritik anda kalite yükselttiği için 5G kaynak kullanımı verimlidir.
 - **OCR maliyeti:** plaka OCR yalnız `min_track_frames` geçen ve sweet-spot'taki araçlarda

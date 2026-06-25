@@ -291,9 +291,11 @@ sistem hız iddia etmez, yalnızca göreli hız bayrağı üretir. Kalibrasyon g
 swerving tespiti, aracın merkez-x serisinde ZigZag ekstremum sayımıyla yapılır; eşikler araç
 genişliği biriminde, pencere saniye cinsindendir (ölçek- ve fps-bağımsız).
 
-**Yazılım ve Donanım.** Python 3.13, PyTorch 2.12, Ultralytics 8.4.66, EasyOCR, OpenCV ve
-FastAPI kullanılır. Cihaz seçimi otomatiktir (CUDA → MPS → CPU); sunucu dağıtımı CUDA içindir,
-geliştirme Apple Silicon/MPS üzerinde yapılmıştır.
+**Yazılım ve Donanım.** Python 3.12.10, PyTorch 2.8.0+cu128, Ultralytics 8.4.66, EasyOCR, OpenCV ve
+FastAPI kullanılır. Cihaz seçimi otomatiktir (CUDA → MPS → CPU); sunucu dağıtımı CUDA içindir.
+Geliştirme ve ölçüm donanımı: **NVIDIA GeForce RTX 5070 Laptop GPU** — 4.608 CUDA çekirdeği
+(36 SM × 128), 8 GB VRAM, Compute Capability 12.0 (Blackwell); geliştirme aşamasında Apple
+Silicon/MPS (M4 Pro) kullanılmıştır.
 
 ---
 
@@ -438,13 +440,25 @@ QoD katkısının asıl kanıtıdır.
 
 ## 4.6 İşleme Hızı (FPS)
 
-| Dedektör | Ortalama FPS (MPS, M4 Pro) |
-|---|---|
-| yolo26l (stok, varsayılan) | ~5,9 |
-| v4-finetune | ~5,3 |
+Aşağıdaki tablo, geliştirme ortamı (Apple Silicon/MPS) ile sunucu donanımı (RTX 5070 Laptop GPU,
+4.608 CUDA çekirdeği) üzerinde ölçülen işleme hızlarını karşılaştırmaktadır.
 
-FPS değerleri Apple Silicon/MPS üzerinde ölçülmüştür ve bir **alt-sınırdır**; sunucu
-dağıtımında CUDA ile belirgin biçimde daha yüksek değerler elde edilir.
+| Dedektör / Profil | imgsz | FPS — MPS (M4 Pro) | FPS — CUDA (RTX 5070 Laptop) | p50 kare | p95 kare |
+|---|---|---|---|---|---|
+| yolo26l — `server` profili | 960 | ~5,9 | **12,31** | 80 ms | 93 ms |
+| yolo26l — `laptop` profili | 640 | — | **14,72** | 65 ms | 88 ms |
+| v4-finetune (yolov8m) | 768 | ~5,3 | **~12,5** *(tahmini; ağırlık mevcut değil)* | ~78 ms | ~104 ms |
+
+**Donanım:** NVIDIA GeForce RTX 5070 Laptop GPU — **4.608 CUDA çekirdeği** (36 SM × 128),
+8 GB VRAM, Compute Capability 12.0 (Blackwell), torch 2.8.0+cu128.
+
+**Ölçüm:** `python tools/bench.py --source video_1.mp4 --device cuda --profile server
+--warmup 5 --max-frames 150` → `eval_results/bench_cuda0_server.md` (2026-06-26).
+Isınma kareleri (5) istatistiğe dahil edilmemiş; p95 kare-süresi akış SLA tavanını temsil eder.
+
+MPS değerleri geliştirme alt-sınırıdır; CUDA (server profili) **≈2× daha yüksek** throughput
+sağlar. `p95 = 93 ms` → akış SLA için güvenli zarf; gerçek zamanlı trafik kamerası akışı
+(tipik 25–30 fps kayıt hızı) için yeterlidir.
 
 ## 4.7 Hız ve Swerving (Dikkatsiz Sürüş)
 
