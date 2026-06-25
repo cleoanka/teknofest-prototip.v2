@@ -1,0 +1,379 @@
+% =====================================================================
+% AURA — Final Tasarım Raporu (FTR) — GÖNDERİLECEK SÜRÜM
+% Derleme:  xelatex FTR_GONDERILECEK.tex   (TOC için iki kez çalıştırın)
+% Önce:     python tools/make_ftr_figures.py   (docs/figures/*.png üretir)
+% Format: Arial 12 / başlık 14 bold / 1.15 satır / iki yana yaslı /
+%         kenar üst 2.8 cm, diğer 2.5 cm / Kapak + İçindekiler ayrı sayfa.
+% Sayılar GERÇEK ölçümlerden (eval_results/, weights/custom_*_s.metrics.json).
+% =====================================================================
+\documentclass[12pt,a4paper]{article}
+\usepackage{fontspec}
+\setmainfont{Arial}
+\usepackage[a4paper,top=2.8cm,bottom=2.5cm,left=2.5cm,right=2.5cm]{geometry}
+\usepackage{graphicx}
+\graphicspath{{docs/figures/}}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{float}
+\usepackage{setspace}
+\setstretch{1.15}
+\usepackage{xcolor}
+\definecolor{aura}{HTML}{1b5e20}
+\definecolor{aurab}{HTML}{0d47a1}
+\usepackage{titlesec}
+\titleformat{\section}{\fontsize{14}{16}\bfseries\color{aura}}{\thesection.}{0.5em}{}
+\titleformat{\subsection}{\fontsize{12}{14}\bfseries\color{aurab}}{\thesubsection}{0.5em}{}
+\titlespacing{\section}{0pt}{10pt}{4pt}
+\titlespacing{\subsection}{0pt}{6pt}{2pt}
+\usepackage[hidelinks]{hyperref}
+\usepackage{caption}
+\captionsetup{font=small,labelfont=bf,skip=3pt}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{1.5pt}
+\setlength{\emergencystretch}{3em}
+\newcommand{\tcode}[1]{\texttt{\small #1}}
+
+\begin{document}
+
+% ========================= KAPAK (ayrı sayfa) =========================
+\thispagestyle{empty}
+\begin{center}
+\vspace*{1.2cm}
+{\fontsize{12}{14}\bfseries TEKNOFEST 2026}\\[2pt]
+{\fontsize{12}{14}\selectfont 5G ve Yapay Zekâ ile Akıllı Yol Güvenliği Yarışması}\\[2.4cm]
+
+{\fontsize{22}{26}\bfseries\color{aura} AURA}\\[6pt]
+{\fontsize{14}{18}\bfseries 5G ve Yapay Zekâ ile Akıllı Yol Güvenliği Sistemi}\\[4pt]
+{\fontsize{16}{20}\bfseries FİNAL TASARIM RAPORU}\\[3cm]
+
+\begin{tabular}{rl}
+\textbf{Takım Adı:} & \underline{\hspace{6.5cm}} \\[10pt]
+\textbf{Takım ID:} & \underline{\hspace{6.5cm}} \\[10pt]
+\textbf{Başvuru ID:} & \underline{\hspace{6.5cm}} \\[10pt]
+\textbf{Tarih:} & \underline{\hspace{6.5cm}} \\
+\end{tabular}
+
+\vfill
+{\small Bu rapordaki tüm doğruluk sayıları, depo içindeki ölçüm artefaktlarından
+(\tcode{eval\_results/}, \tcode{weights/custom\_*\_s.metrics.json}) otomatik türetilmiştir;
+grafikler \tcode{python tools/make\_ftr\_figures.py} ile yeniden üretilebilir.}
+\end{center}
+\newpage
+
+% ===================== İÇİNDEKİLER (ayrı sayfa) =======================
+\thispagestyle{empty}
+\renewcommand{\contentsname}{İçindekiler}
+\tableofcontents
+\newpage
+
+% ============================ 1. ÖZET =================================
+\section{Proje Özeti}
+AURA, yol kenarı trafik kamerası akışından \textbf{araç, plaka, hız ve riskli sürücü
+davranışı} tespiti yapan gerçek bir yapay zekâ çekirdeğini; bu çekirdeği \textbf{5G CAMARA
+Quality-on-Demand (QoD)} ve \textbf{Number Verification (NV)} telekom yetenekleriyle birleştiren
+uçtan uca bir sistemdir. Amaç, yol güvenliğini tehdit eden olayları (dikkatsiz sürüş, araç-içi
+telefon/sigara kullanımı, hız ihlali) gerçek zamanlı tespit etmek ve \textbf{yalnızca kritik
+anlarda} 5G şebeke kalitesini talep ederek bant genişliğini verimli kullanmaktır.
+
+Proje kapsamında yürütülen başlıca faaliyetler: (i) YOLO26 tabanlı çok-aşamalı bir tespit/takip
+hattının tasarımı; (ii) sürücü davranışı için landmark kütüphanesi gerektirmeyen, poz-geometrisi
+ve nesne kanıtını birleştiren hibrit bir motor; (iii) Türk plaka formatına özgü, dürüstlük
+zırhlarıyla donatılmış bir plaka okuma konsensüs döngüsü; (iv) CAMARA QoD ve NV sözleşmelerini
+birebir taklit eden mock servisler; (v) çözümün üç gerçek test videosu ve held-out doğrulama
+setleri üzerinde nicel sınanması. Yapay zekâ çekirdeği (tespit, takip, kararlılık, OCR, hız,
+risk) \textbf{gerçektir}; telekom katmanları gerçek API sözleşmesini taklit eden \textbf{mock}'lardır
+— final ortamında yalnızca uç nokta ve kimlik bilgisi değişir. Kalite güvencesi olarak ${\sim}780$
+birim/perf testi, statik denetim (\tcode{ruff}+\tcode{black}) ve sürekli entegrasyon (GitHub
+Actions) mevcuttur.
+
+% ========================== 2. VERİ SETİ ==============================
+\section{Veri Seti Oluşturulması}
+
+\subsection{Veri Toplama Stratejisi}
+Veri seti, açık-kaynak veri kullanımının serbest olduğu kural çerçevesinde katmanlı bir köprü
+stratejisiyle oluşturulmuştur. Genel araç/kişi sınıfları (\tcode{car, bus, truck, motorcycle,
+person}) COCO veri setinden temin edilir. Araç-içi davranış ve plaka sınıfları için
+kimlik-doğrulaması gerektirmeyen \textbf{dört gerçek açık-kaynak bbox seti} indirilip toplanmış ve
+PIL ile doğrulanmıştır (hepsi CC BY 4.0): \tcode{license\_plate} (8.823 görsel), \tcode{seatbelt}
+(3.104), \tcode{smoking} (557) ve \tcode{phone} (659, sentetik render). Tüm kaynaklar, hedef sınıf
+başına kaynak, lisans, görüntü sayısı ve AURA taksonomisine sınıf-eşlemesini tek noktada tutan
+bildirimsel bir manifestte (\tcode{train/datasets.yaml}) toplanmıştır; lisanslar \S5'te listelidir.
+
+\subsection{Etiketleme ve Sınıf Şeması}
+Etiketler YOLO formatındadır (\tcode{<class> <cx> <cy> <w> <h>}, normalize). Model-uzayı sınıf
+adları AURA kanonik taksonomisine eşlenir (ör. \tcode{cell phone}\,$\rightarrow$\,\tcode{phone},
+\tcode{cigarette}\,$\rightarrow$\,\tcode{smoking}) — böylece model değişse de iç sözleşme sabit kalır.
+
+\subsection{Veri Dengeleme (Data Balancing)}
+Sınıf dengesizliği, her bölüm için görüntü sayısı, sınıf-örnek dağılımı ve dengesizlik oranını
+(en kalabalık/en seyrek sınıf) raporlayan \tcode{python -m train dataset --report} aracıyla nicel
+ölçülür; oran 3'ü aşarsa araç uyarı üretir. Toplanan \tcode{seatbelt} seti için ölçülen dengesizlik
+oranı \textbf{1,27}'dir (dengeli). Toplanan açık-kaynak setlerin görüntü dağılımı Şekil~\ref{fig:denge}'de
+verilmiştir. Dengeleme için üç tamamlayıcı strateji uygulanır: (i) seyrek sınıflara hedeflenmiş ek
+toplama; (ii) az temsil edilen sınıfların oversampling ile çoğaltılması; (iii) seyrek sınıf
+sahnelerinde augmentasyonun sınıf lehine güçlendirilmesi.
+
+\begin{figure}[H]\centering
+\includegraphics[width=0.50\textwidth]{fig_veri_dengesi.png}
+\caption{Toplanan açık-kaynak veri setlerinin görüntü dağılımı (tümü CC BY 4.0).}
+\label{fig:denge}
+\end{figure}
+
+\subsection{Veri Artırma (Augmentation)}
+Augmentasyon, Ultralytics eğitim hattının yerleşik teknikleriyle uygulanır: \textbf{mozaik}
+(bağlam çeşitliliği ve küçük nesne öğrenimi), \textbf{yatay flip} (yön bağımsızlığı), \textbf{HSV
+jitter} (ışık/renk sıcaklığı), \textbf{karartma/gamma} (gece ve far-patlaması senaryoları) ve
+\textbf{motion blur} (yüksek hızlı araç bulanıklığı). Ablasyon için \tcode{--no-augment} ile
+kapatılabilir. Ek olarak, karanlık kabin görüntülerinde sürücü ROI'sine çalışma anında CLAHE+gamma
+parlatma uygulanır.
+
+\subsection{Train / Val / Test Dağılımı}
+Veri varsayılan olarak \textbf{\%80 train / \%10 val / \%10 test} oranında bölünür (seed 42;
+Şekil~\ref{fig:split}). Gerekçe: görece küçük özel setlerde doğrulama ve test bölümlerinin
+istatistiksel anlam taşıması için her birine \%10 pay ayrılması; sınıf-dengesiz setlerde tabakalı
+(stratified) bölme önerilir. Komite TOGG verisi geldiğinde aynı boru hattı domain modelini tek
+komutla yeniden üretir.
+
+\begin{figure}[H]\centering
+\includegraphics[width=0.56\textwidth]{fig_split.png}
+\caption{\tcode{license\_plate} setinin \%80/\%10/\%10 train/val/test dağılımı (8.823 görsel).}
+\label{fig:split}
+\end{figure}
+
+% ========================== 3. YZ ÇÖZÜMÜ ==============================
+\section{Yapay Zekâ Çözümü}
+
+\subsection{Problemin Analizi}
+Trafik kamerası görüntüsünden tespit, kontrollü laboratuvar koşullarından farklı yapısal zorluklar
+içerir. AURA, bu zorlukları gerçek footage üzerinde ölçerek tanımlamış ve her birine hedefli bir
+tasarım kararıyla yanıt vermiştir (Tablo~\ref{tab:problem}). Bu problemlerin ortak noktası, kamera
+gürültüsünün ve değişken görüş koşullarının kare-bazlı kararları kararsız kılmasıdır; bu nedenle
+AURA'nın temel tercihi \textbf{kare-merkezli değil ID-merkezli} karar üretmektir — her araç bir
+takip kimliği (\tcode{track\_id}) altında izlenir ve tüm kararlar bu kimlik üzerinde zaman içinde
+biriktirilerek istikrara kavuşturulur.
+
+\begin{table}[H]\centering\small
+\caption{Temel problemler ve izlenen çözüm yolları.}\label{tab:problem}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{4.1cm} >{\raggedright\arraybackslash}X}
+\toprule
+\textbf{Problem} & \textbf{İzlenen çözüm} \\ \midrule
+Karanlık kabin (cam-ardı sürücü) & ROI'de CLAHE + gamma parlatma \\
+Araç tipi titremesi (car$\leftrightarrow$truck) & Alan-ağırlıklı, track-bazlı sınıf oylaması \\
+Hayalet (phantom) track'ler & \tcode{min\_track\_frames} çıktı kapısı + IoU dedup \\
+Işık değişimi / hareket bulanıklığı & Ön-işleme (far-glare maske, blur düzeltme) + augmentasyon \\
+Oklüzyon & ID-merkezli birikim (kısa kayıpta kimlik korunur) \\
+Karanlık plaka il-kodu hatası (3$\rightarrow$0/2) & Pozisyon-veto + zemin koşulu $\rightarrow$ yanlış onay yerine \tcode{pending} \\
+Tek-kare yanlış-pozitif (flicker) & ID-merkezli 16/8 zaman-oylaması \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Çözüm Mimarisi}
+Sistem, ham video akışını etiketli olay/annotation çıktısına dönüştüren bir \textbf{kaskad boru
+hattıdır} (Şekil~\ref{fig:mimari}). Ham kare önce ön-işlemeden geçer; Aşama~1 dedektörü (YOLO26 +
+ByteTrack + alan-ağırlıklı sınıf oyu) araçları tespit/takip eder ve yalnızca \textbf{iki ROI}
+üretir: sürücü kabini ve plaka bölgesi. Bu ROI'ler paralel iki Aşama~2 motoruna gider — sürücü
+davranışı motoru (Katman~A model + Katman~B per-ID zaman-oylaması) ve plaka okuma konsensüs döngüsü.
+Hız/swerving kestirimi ID-merkezli birikim katmanını besler; nihai çıktı olay/annotation akışı
+olarak dashboard, mobil ve JSONL kanıt izine yayılır. QoD tetikleri (yaklaşma, kalite, anomali) bu
+akıştan türetilir. \textbf{Gerçek$\leftrightarrow$mock sınırı:} YZ çekirdeği gerçek, telekom katmanı
+CAMARA sözleşmesini taklit eden mock'tur (finalde yalnız uç nokta/kimlik değişir).
+
+\begin{figure}[H]\centering
+\includegraphics[width=0.66\textwidth]{fig_mimari.png}
+\caption{AURA kuşbakışı kaskad boru hattı (kaynak: \tcode{aura/pipeline/pipeline.py}, \tcode{docs/diagrams/}).}
+\label{fig:mimari}
+\end{figure}
+
+\subsection{Çözüm Detayları}
+\textbf{Ön-işleme.} Görüntü modele girmeden far-patlaması maskeleme, motion-blur düzeltme, yansıma
+süpürme ve occlusion yönetimi filtrelerinden geçer (config'ten aç/kapa).
+
+\textbf{Aşama 1 — Tespit ve Takip.} Ana dedektör varsayılan olarak doğruluk-önce stok \tcode{yolo26l}
+(Ultralytics 8.4, en güncel YOLO ailesi); \tcode{ByteTrack} her araca benzersiz kimlik atar. Aynı
+aracın kareler arası sınıf salınımı (uzaktan \tcode{truck}, yakından \tcode{car}), track başına
+\textbf{alan-ağırlıklı sınıf oylaması} (\tcode{güven $\times$ bbox\_alan/kare\_alan}) ile çözülür.
+
+\textbf{Aşama 2a — Sürücü Davranışı (iki katman).} Sürücü ROI'si önce kişi kutusuna daraltılır.
+Katman~A iki backend'den birini kullanır: fine-tune YOLO26 detection veya — fine-tune gerektirmeyen —
+\textbf{YOLO26-pose} keypoint geometrisi (bilek$\leftrightarrow$ağız/kulak göreli yakınlığı,
+yüz-genişliği biriminde, ölçek-bağımsız), nesne kanıtıyla hibrit güçlendirilir; landmark/MediaPipe
+kütüphanesi \textbf{kullanılmaz}. Katman~B (\tcode{DriverStateEngine}) her track için zaman-oylaması
+yürütür: bir bayrak son 16 karenin en az 8'inde doğruysa aktif sayılır (tek-kare yanlış-pozitif elenir).
+
+\textbf{Aşama 2b — Plaka Okuma ve Konsensüs.} Araç sweet-spot'a girince OCR etkinleşir; \textbf{özel
+eğitimli YOLO26s LP dedektörü} (\tcode{custom\_license\_plate}, held-out mAP50 0,983) plakayı sıkı
+kırpar. Plakaya-özel hafif ONNX motoru \textbf{fast-plate-ocr} (varsayılan; kurulu değilse
+\tcode{EasyOCR} fallback) okur. Her okuma, OCR güveni $\times$ kaynak kalitesi (LP kırpık yüksekliği)
+ile ağırlıklanıp track ömrü boyunca \textbf{kalıcı oy havuzunda} biriktirilir. Türk plaka formatına
+(\tcode{\^{}\textbackslash d\{2\}[A-Z]\{1,3\}\textbackslash d\{2,4\}\$}) normalize edilen okumalar
+pozisyon-hizalı karakter füzyonuyla birleştirilir; onay için her pozisyonda kazanan karakter ikinciyi
+mutlak bir marjla geçmek zorundadır, aksi halde karar dürüstçe \tcode{pending}'e çevrilir — \textbf{yanlış
+plaka asla kesinleştirilmez}.
+
+\textbf{Stabilite/Doğruluk Zırhları (K-004, config-driven).} (i) Kayan-karakter onay marjı
+(\tcode{confirm\_min\_char\_margin=2.0}): pozisyon belirsizse plaka onaylanmaz, \tcode{pending} denir.
+(ii) Takip/phantom çıktı kapısı (\tcode{track\_id=-1}, \tcode{min\_output\_frames}): kimliğe bağlanmamış
+hayalet tespitler olay üretmez. (iii) ROI alan tavanı (\tcode{max\_roi\_area\_ratio=0.10}): anormal
+büyük ROI'ler kırpılır. Hiçbir eşik videoya-özel sabit içermez (oran-bazlı, ölçek-bağımsız).
+
+\textbf{Hız ve Swerving.} Hız kalibrasyon-bağımlıdır (tripwire/ipm/metric, Kalman+EMA); kalibrasyon
+yoksa sistem mutlak hız iddia etmez, yalnız göreli-hız bayrağı üretir. Swerving, aracın merkez-x
+serisindeki ZigZag ekstremum sayımıyla (araç-genişliği birimi, saniye penceresi) kalibrasyonsuz tespit
+edilir.
+
+\textbf{Yazılım ve Donanım.} Python 3.13, PyTorch 2.12, Ultralytics 8.4.66, fast-plate-ocr/EasyOCR,
+OpenCV 4.13, Shapely, FastAPI/Uvicorn. Cihaz otomatik seçilir (CUDA $\rightarrow$ MPS $\rightarrow$ CPU);
+sunucu dağıtımı CUDA, geliştirme Apple Silicon/MPS üzerindedir.
+
+% ========================== 4. SINAMA ================================
+\section{Çözümün Sınanması}
+
+\subsection{Sınama Protokolü}
+Çözüm üç tamamlayıcı düzeyde sınanmıştır: (i) etiketli \textbf{held-out doğrulama setleri} üzerinde
+istatistiksel tespit doğruluğu (mAP/P/R; \S4.2); (ii) üç gerçek test videosu (kapalı otopark, TOGG;
+GT plaka \tcode{34TC8532}) üzerinde davranış P/R/F1, plaka exact-match (CER ile), FPS (\S4.3--\S4.6);
+(iii) QoD'nin başarım katkısı (A/B), kare-düzeyi GT içeren kontrollü sentetik set üzerinde (\S4.5).
+Şartnamenin 4.5 maddesi gereği (``kanıtlanamayan hedef puanlanmaz''), rapordaki her sayı bir komuta ve
+artefakta bağlıdır (\S4.8).
+
+\subsection{Tespit Doğruluğu (held-out mAP / P / R / F1)}
+Özel sınıfların YOLO26s fine-tune eğitimi \textbf{tamamlanmıştır}; ayrılmış test bölmesinde ölçülen
+held-out doğrulukları Tablo~\ref{tab:map} ile Şekil~\ref{fig:map}'de verilmiştir.
+Varsayılan stok \tcode{yolo26l} ayrıca COCO val2017 (5.000 görsel) held-out üzerinde değerlendirilmiştir
+(genel doğruluk göstergesi).
+
+\begin{table}[H]\centering\small
+\caption{Held-out tespit doğruluğu (özel modeller: \tcode{weights/custom\_*\_s.metrics.json}; stok: COCO val2017).}\label{tab:map}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X cccccc}
+\toprule
+\textbf{Model / set} & \textbf{mAP50} & \textbf{mAP50-95} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} \\ \midrule
+\tcode{license\_plate} (YOLO26s) & \textbf{0,983} & 0,706 & 0,983 & 0,963 & 0,973 \\
+\tcode{seatbelt} (YOLO26s) & 0,895 & 0,546 & 0,844 & 0,795 & 0,818 \\
+\tcode{smoking} (YOLO26s) & 0,856 & 0,457 & 0,855 & 0,820 & 0,837 \\
+\tcode{yolo26l} — COCO val2017 (genel) & 0,709 & 0,537 & 0,740 & 0,641 & -- \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{figure}[H]\centering
+\begin{minipage}{0.49\textwidth}\centering\includegraphics[width=\textwidth]{fig_tespit_map.png}\end{minipage}\hfill
+\begin{minipage}{0.49\textwidth}\centering\includegraphics[width=\textwidth]{fig_custom_prf1.png}\end{minipage}
+\caption{Sol: held-out mAP@0.50 / mAP@0.50:0.95 (özel modeller domain held-out; \tcode{yolo26l} COCO genel). Sağ: özel modellerin held-out P/R/F1 (YOLO26s).}
+\label{fig:map}
+\end{figure}
+
+\subsection{Davranış Tespiti (P / R / F1)}
+Üç gerçek video üzerinde video-düzeyi davranış tespiti iki dedektör profiliyle ölçülmüştür
+(Tablo~\ref{tab:beh}). \textbf{Her iki dedektör de} çapraz yanlış-pozitif üretmez (makro-F1 1,0;
+\tcode{phone}/\tcode{smoking}/\tcode{swerving} için P=R=F1=1,0); araç sınıfı doğruluğu \textbf{\%100}'dür.
+
+\begin{table}[H]\centering\small
+\caption{Davranış tespiti video-düzeyi P/R/F1 (kaynak: \tcode{eval\_results/metrics\_report.md}).}\label{tab:beh}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X cccc}
+\toprule
+\textbf{Dedektör} & \textbf{phone} & \textbf{smoking} & \textbf{swerving} & \textbf{Makro F1} \\ \midrule
+\tcode{yolo26l} (stok, varsayılan) & 1,0/1,0/1,0 & 1,0/1,0/1,0 & 1,0/1,0/1,0 & \textbf{1,00} \\
+\tcode{v4-finetune} (A/B kıyas tabanı) & 1,0/1,0/1,0 & 1,0/1,0/1,0 & 1,0/1,0/1,0 & \textbf{1,00} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Plaka Okuma — A/B}
+Plaka okuma, footage'ın zorlu (karanlık otopark) koşulları nedeniyle en kritik dürüstlük sınamasıdır.
+Baseline OCR (EasyOCR) ile production hattı (özel YOLO26s LP + fast-plate-ocr) arasındaki A/B
+Tablo~\ref{tab:plate} ve Şekil~\ref{fig:plate}'te verilmiştir. fast-plate-ocr, baseline'ın
+\tcode{video\_3}'teki sistematik il-kodu misread'ini (\tcode{24IC8532}) düzelterek sonucu
+\textbf{3/3 exact-match, CER 0,0}'a çekmiş ve \tcode{video\_1}/\tcode{video\_2}'yi korumuştur; her iki
+hatta da \textbf{yanlış-onay sıfırdır}.
+
+\begin{table}[H]\centering\small
+\caption{Plaka okuma A/B — 3 gerçek video, GT=\tcode{34TC8532} (kaynak: \tcode{docs/degerlendirme.md}).}\label{tab:plate}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X ccccc}
+\toprule
+\textbf{Hat} & \textbf{Exact-match} & \textbf{CER} & \textbf{Confirmed} & \textbf{Partial} & \textbf{Yanlış-onay} \\ \midrule
+Baseline (EasyOCR · stok/v4) & 2/3 (66,7\%) & 0,083 & 2 & 1 & \textbf{0} \\
+\textbf{Production} (custom\_LP + fast-plate-ocr) & \textbf{3/3 (100\%)} & \textbf{0,0} & 3 & 0 & \textbf{0} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{figure}[H]\centering
+\includegraphics[width=0.48\textwidth]{fig_plaka_ab.png}
+\caption{Plaka exact-match A/B: baseline 2/3 (CER 0,083) $\rightarrow$ production 3/3 (CER 0,0).}
+\label{fig:plate}
+\end{figure}
+
+En kritik tasarım garantisi: sistem belirsiz/uzak/bulanık bir okumayı \textbf{asla yanlış plaka olarak
+kesinleştirmez}; yakın-net video doğru plakayı CONFIRMED verirken belirsiz okuma onurlu bir
+\tcode{pending}'tir. Bu davranış \S3.3'teki onay marjı, pozisyon-veto ve zemin koşulu zırhlarının
+ölçülen sonucudur.
+
+\subsection{QoD Başarım Katkısı (A/B)}
+QoD entegrasyonu, A/B harness ile nicel ve \textbf{yeniden-üretilebilir} olarak kanıtlanır
+(\tcode{eval\_results/report.json}). QoD A/B kare-düzeyi GT gerektirdiğinden üç gerçek videoda değil,
+kare-düzeyi GT içeren kontrollü sentetik set üzerinde, QoD OFF (düşük çözünürlük/bant simülasyonu) ve
+QoD ON (tam çözünürlük) senaryolarıyla ölçülür. \textbf{Yöntemsel dürüst not:} ölçülen delta, OFF
+baseline simülasyonunun saldırganlığına bağlıdır; sabit bir sayı değildir, daima güncel
+\tcode{--qod-comparison} çıktısından okunur. Mekanizmanın yönlülüğü (kritik anda kalite talebiyle
+küçük/uzak plaka ROI'sinin yeterli piksele ulaşması) QoD katkısının asıl kanıtıdır;
+\tcode{vehicle\_approach} tetiği şartnamenin ``TOGG yaklaşınca QoD'' senaryosunu birebir karşılar.
+
+\subsection{İşleme Hızı (FPS)}
+Ortalama işleme hızı Apple Silicon/MPS (M4 Pro) üzerinde ölçülmüştür (Tablo~\ref{tab:fps}) ve bir
+\textbf{alt-sınırdır}; sunucu dağıtımında CUDA ile belirgin biçimde daha yüksek değerler elde edilir
+(grafik karşılığı: \tcode{docs/figures/fig\_fps.png}).
+\begin{table}[H]\centering\small
+\caption{Ortalama işleme hızı (MPS, M4 Pro) — alt-sınır. Kaynak: \tcode{eval\_results/metrics\_report.md}.}\label{tab:fps}
+\begin{tabular}{lc}\toprule
+\textbf{Dedektör} & \textbf{Ortalama FPS} \\ \midrule
+\tcode{yolo26l} (stok, varsayılan) & 5,9 \\
+\tcode{v4-finetune} (A/B kıyas tabanı) & 5,3 \\
+\bottomrule\end{tabular}
+\end{table}
+
+\subsection{Hız, Kanıt İzi ve Çözüme Neden Güveniyoruz}
+\textbf{Hız/swerving.} Swerving üç videodan \tcode{video\_3}'te gerçekten tespit edilmiş ve davranış
+makro-F1'ine dahildir (\S4.3). Mutlak hız için MAE/MAPE harness'ı hazırdır; kalibrasyon ve gerçek-hız
+GT geldiğinde tek koşuyla nicel hata üretir (yoksa dürüstçe mutlak hız iddia edilmez).
+
+\textbf{Kanıt izi (şartname 4.5).} Her çıktının makineyle üretildiği üç artefaktla kanıtlanır:
+(1) zaman-damgalı JSONL olay izi (\tcode{--save-events}); (2) annotated mp4 + JSON oy dökümü
+(\tcode{tools/test\_video.py}); (3) türetilebilir metrik raporu (\tcode{aura.eval --metrics-report})
+ki \S4 tablolarını bu özetlerden yeniden üretir — yani rapordaki hiçbir sayı elle girilmemiştir.
+
+\textbf{Çözüme neden güveniyoruz?} Beş nicel gerekçe: (1) davranış tespiti her iki dedektörde de
+çapraz yanlış-pozitif üretmiyor (makro-F1 1,0; araç \%100); (2) sistem belirsizlikte yanlış üretmek
+yerine dürüstçe çekimser kalıyor — plakada \textbf{sıfır yanlış-onay}, production hattı 3/3 exact
+(CER 0,0); (3) bu güvenceler somut config-driven zırhlara dayanır (\S3.3) ve gerçek videolarda
+doğrulanmıştır; (4) tüm eşikler oran-bazlı/ölçek-bağımsızdır (videoya-özel sabit yok, K-004) — sonuçlar
+tek çekime aşırı-uyumlanmamıştır; (5) QoD entegrasyonu yeniden-üretilebilir bir A/B harness'a sahiptir.
+Sınama kümesinin sınırı (üç-videoluk küçük set; istatistiksel mAP held-out sette ayrıca ölçülmüştür)
+açıkça belirtilmiştir; komite verisiyle istatistiksel doğruluk daha da güçlendirilecektir.
+
+% ========================== 5. KAYNAKÇA ==============================
+\section{Kaynakça}
+\footnotesize\sloppy
+\begin{enumerate}\setlength{\itemsep}{0.4pt}\setlength{\parskip}{0pt}
+\item Ultralytics, \textit{Ultralytics YOLO Documentation} (v8.4.66, YOLO26), 2026. \url{https://docs.ultralytics.com} (erişim 2026).
+\item Y. Zhang vd., \textit{ByteTrack: Multi-Object Tracking by Associating Every Detection Box}, ECCV, 2022. arXiv:2110.06864.
+\item T.-Y. Lin vd., \textit{Microsoft COCO: Common Objects in Context}, ECCV, 2014. arXiv:1405.0312. (CC BY 4.0)
+\item ankandrew, \textit{fast-plate-ocr}, 2024--2026. \url{https://github.com/ankandrew/fast-plate-ocr}.
+\item JaidedAI, \textit{EasyOCR}, 2020--2026. \url{https://github.com/JaidedAI/EasyOCR}. (Apache-2.0)
+\item K. Zuiderveld, \textit{Contrast Limited Adaptive Histogram Equalization}, Graphics Gems IV, 1994, s.\,474--485.
+\item R. E. Kalman, \textit{A New Approach to Linear Filtering and Prediction Problems}, ASME J. Basic Eng., c.\,82, 1960, s.\,35--45.
+\item CAMARA Project (Linux Foundation), \textit{Quality-on-Demand API} \& \textit{Number Verification API}, 2023--2026. \url{https://github.com/camaraproject}.
+\item 3GPP, \textit{System Architecture for the 5G System}, TS 23.501, Rel-18. \url{https://www.3gpp.org}.
+\item keremberke, \textit{License Plate Object Detection}, Hugging Face, 2023. (CC BY 4.0) --- \tcode{license\_plate} 8.823 görsel.
+\item ramankamran, \textit{Seatbelt Detection (YOLOv11)}, Hugging Face, 2024. (CC BY 4.0) --- \tcode{seatbelt} 3.104 görsel.
+\item \textit{CigDet — Cigarette Detection}, Mendeley Data, 2021. DOI:10.17632/6hyrr8typ7.1. (CC BY 4.0) --- \tcode{smoking} 557 görsel.
+\item anywaylabs, \textit{Synthetic Driver Monitoring}, Hugging Face, 2024. (CC BY 4.0) --- \tcode{phone} 659 görsel.
+\item M. Everingham vd., \textit{The PASCAL VOC Challenge}, IJCV, c.\,88, 2010, s.\,303--338. (mAP metodolojisi)
+\end{enumerate}
+\normalsize
+\vspace{4pt}
+{\footnotesize Tam ve genişletilmiş kaynakça (47 kaynak, izlenebilirlik tablosu ve lisans envanteri):
+depo içinde \tcode{kaynakca.md}.}
+
+\end{document}

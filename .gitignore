@@ -57,3 +57,11 @@ mobile/dist/
 .vscode/
 *.log
 .server.pid
+
+# LaTeX derleme artefaktları (FTR PDF üretimi — kaynak .tex + çıktı .pdf tutulur)
+*.aux
+*.toc
+*.out
+*.fls
+*.fdb_latexmk
+*.synctex.gz
