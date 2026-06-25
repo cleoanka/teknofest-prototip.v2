@@ -4,16 +4,19 @@
 **Proje:** AURA — 5G & Yapay Zekâ ile Akıllı Yol Güvenliği (TEKNOFEST 2026 prototipi)
 **Lisans:** MIT · **Diller:** Python %81 · JavaScript %7 · TypeScript %4 · CSS/HTML/PowerShell
 
-> **v2.3 + W1 güncel durum (2026-06-18):** dedektör omurgası varsayılan **stok YOLO26l**
+> **v2.3 + W1 güncel durum (2026-06-26):** dedektör omurgası varsayılan **stok YOLO26l**
 > (sunucu, `conf 0.10`), seçilebilir config **profilleri** (`--profile server|laptop|v4-finetune`,
 > `default.yaml` üzerine derin-merge); sürücü durumu **iki katmanlı** (`DriverStateEngine`);
 > hız varsayılanı **`metric` oto-kalibrasyon** (plaka/araç-genişliği → ppm, Kalman+EMA) +
 > **swerving** (yanal yörünge); FTR metrik harness'ı (`aura.eval --metrics-report` / `--map`);
 > plaka OCR varsayılanı **`fast-plate-ocr`** (3 gerçek videoda 3/3 exact, CER 0.0) + W1
 > dewarp/enhance + opsiyonel PaddleOCR; eğitim tool'u doğrulama+metrik export ile
-> mükemmelleştirildi; `tools/doctor.py` + `tools/bench.py`. **Süren:** açık veriyle YOLO26s
-> domain fine-tune (license_plate mAP50 ≈ 0.97, epoch ~12/35; final mAP'ler henüz kesin değil).
-> Güncel ayrıntı için: `README.md`, `CHANGELOG.md` (2.3.0), `docs/`, ve FTR rehberi `ftr.md`.
+> mükemmelleştirildi; `tools/doctor.py` + `tools/bench.py`. **CUDA FPS (RTX 5070 Laptop,
+> 4.608 çekirdek, 8 GB, Compute 12.0, ölçüldü 26 Haz 2026):** server profili yolo26l imgsz 960
+> → **12,31 FPS** (p50=80 ms, p95=93 ms); laptop profili yolo26s imgsz 640 → **14,72 FPS**.
+> **Süren:** açık veriyle YOLO26s domain fine-tune (license_plate mAP50 ≈ 0.97, epoch ~12/35;
+> final mAP'ler henüz kesin değil). Güncel ayrıntı: `README.md`, `CHANGELOG.md` (2.3.0),
+> `docs/`, `ftr.md`, `eval_results/bench_cuda0_server.md`.
 
 ---
 
@@ -237,6 +240,10 @@ Bu sayılar `python -m aura.eval` veya `POST /eval/run` ile üretilir, dashboard
 | Davranış makro-F1 | **1.0** | 3 video held-out, `eval_results/metrics_report.md` |
 | Araç sınıfı doğruluğu | **%100** | aynı set |
 | Stok `yolo26l` mAP50-95 / mAP50 | **0.537 / 0.709** | COCO-val2017 held-out (5000 görsel), `eval_results/map_yolo26l.json` |
+| **FPS — server profili** (yolo26l, imgsz 960, CUDA) | **12,31** kararlı-hal · p50=80 ms · p95=93 ms | RTX 5070 Laptop · 4.608 CUDA çekirdeği · `eval_results/bench_cuda0_server.md` |
+| **FPS — laptop profili** (yolo26s, imgsz 640, CUDA) | **14,72** kararlı-hal · p50=65 ms · p95=88 ms | aynı donanım · `eval_results/bench_cuda0_laptop.md` |
+| FPS — server profili (MPS, M4 Pro, alt-sınır) | ~5,9 | `eval_results/metrics_report.md` |
+| FPS — v4-finetune (yolov8m, imgsz 768, MPS, alt-sınır) | ~5,3 | aynı set |
 
 > **Süren çalışma (dürüst ayrım):** Yukarıdaki mAP **stok** `yolo26l`'in genel başarımıdır. Açık veriyle (CC BY 4.0; license_plate 9123, seatbelt 3104, phone 659, smoking 557) **YOLO26s domain fine-tune'u sürüyor** (license_plate mAP50 ≈ 0.97 @ epoch ~12/35; smoking + seatbelt sırada). Domain-spesifik final mAP'ler henüz kesinleşmedi. Davranış makro-F1 küçük (3-videoluk) held-out sette çalıştığının kanıtıdır; istatistiksel mAP için geniş etiketli set gerekir.
 
@@ -295,7 +302,7 @@ M1–M16'dan sonra gerçek-video geri bildirimi ve FTR hazırlığıyla sürüm-
 - **v2.1** (gece bakım/yenileme) — pose-tabanlı sürücü davranışı (`driver_state/pose.py`, MediaPipe geometrisinin saf-YOLO portu); **swerving** tespiti; TR plaka normalizasyonu + format-öncelikli kalıcı oy havuzu; Stage-1 kanıt füzyonu; **QoD yaklaşma tetiği** (`vehicle_approach`); fine-tune v4 dedektör birincil; araç-kutusu dedup + ağır-aşama kapısı; `tools/test_video.py` (annotated mp4 + JSON kanıt) + `--save-events` JSONL.
 - **v2.2** (geri bildirim turu) — sürücü-içi sıkı kırpma (yalnız sürücü kişi kutusu); l-pose yükseltmesi; per-track araç-sınıfı oylaması (car↔truck titremesi giderildi); pozisyon-hizalı plaka karakter füzyonu (yanlış plaka asla onaylanmaz, aksi halde `pending`); boyut-farkında plaka kanıtı + QoD erken bırakma; Windows araç paritesi (`dev.ps1`); **metric hız** (oto-kalibrasyon: Kalman+EMA) + ölü bölge.
 - **v2.3** (YOLO26 sunucu sürümü) — varsayılan dedektör stok **`yolo26l`**; **config profil katmanı** (`server/laptop/v4-finetune`, derin-merge); **iki katmanlı sürücü motoru** (`DriverStateEngine` + `TrackVoter`); FTR §4 **metrik harness'ı** (`--metrics-report`); eğitim tool'u doğrulama+metrik export ile mükemmelleştirildi; plaka CONFIRM dürüstlük zırhları (pozisyon-veto + zemin koşulu); sürücü/yolcu pozisyonel kilidi; plaka→hız oto-kalibrasyonu; kemer iki-katman tasarımı; `tools/doctor.py`; hız-limiti tabelası (`SignTracker`).
-- **W1** (FTR ön-hazırlık, `feat/ultraplan-w1`) — plaka OCR varsayılanı **`fast-plate-ocr`** (3 gerçek videoda 3/3 exact, CER 0.0; EasyOCR'ın video_3 il-kodu misread'ini kapatır) + opsiyonel **PaddleOCR**; OCR-öncesi **dewarp + enhance**; `aura.eval --map` (mAP harness, stok yolo26l COCO-val2017 0.537/0.709 ölçüldü); hız mutlak-GT MAE/MAPE doğrulaması; **açık veri toplama** (license_plate/seatbelt/phone/smoking, CC BY 4.0) + YOLO26s domain fine-tune (sürüyor); `tools/bench.py` (FPS + p50/p95 kare-süresi profilleme).
+- **W1** (FTR ön-hazırlık + CUDA FPS, `feat/ultraplan-w1`) — plaka OCR varsayılanı **`fast-plate-ocr`** (3 gerçek videoda 3/3 exact, CER 0.0; EasyOCR'ın video_3 il-kodu misread'ini kapatır) + opsiyonel **PaddleOCR**; OCR-öncesi **dewarp + enhance**; `aura.eval --map` (mAP harness, stok yolo26l COCO-val2017 0.537/0.709 ölçüldü); hız mutlak-GT MAE/MAPE doğrulaması; **açık veri toplama** (license_plate/seatbelt/phone/smoking, CC BY 4.0) + YOLO26s domain fine-tune (sürüyor); `tools/bench.py` (FPS + p50/p95 kare-süresi profilleme); **gerçek CUDA FPS ölçümü** (RTX 5070 Laptop GPU, 36 SM × 128 = **4.608 CUDA çekirdeği**, 8 GB VRAM, Compute 12.0 Blackwell, torch 2.8.0+cu128) — server yolo26l/imgsz 960 → **12,31 FPS** (p95=93 ms); laptop yolo26s/imgsz 640 → **14,72 FPS** — MPS alt-sınırının (~5,9/~5,3) ≈2×'i; Windows PS1 betikleri UTF-8 BOM düzeltmesi (`dev.ps1`).
 
 ---
 
@@ -307,7 +314,7 @@ M1–M16'dan sonra gerçek-video geri bildirimi ve FTR hazırlığıyla sürüm-
 ./run.sh     # inference :8080, QoD mock :8081, NV mock :8082
 ```
 
-**Windows (PowerShell 7+):**
+**Windows (PowerShell 5.1+):**
 ```powershell
 .\setup.ps1
 .\run.ps1
