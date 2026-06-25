@@ -37,7 +37,7 @@ def _load(p: str) -> dict:
 
 def _bars(ax, labels, values, colors, fmt="{:.3f}", rot=0):
     bars = ax.bar(labels, values, color=colors, edgecolor="black", linewidth=0.5)
-    for b, v in zip(bars, values):
+    for b, v in zip(bars, values, strict=True):
         ax.text(b.get_x() + b.get_width() / 2, b.get_height(),
                 fmt.format(v), ha="center", va="bottom", fontsize=10, fontweight="bold")
     if rot:
@@ -86,7 +86,7 @@ parts = list(LP_SPLIT)
 vals = [LP_SPLIT[p] for p in parts]
 left = 0
 colors = [C_OK, C_ACCENT, C_WARN]
-for p, v, c in zip(parts, vals, colors):
+for p, v, c in zip(parts, vals, colors, strict=True):
     ax.barh(0, v, left=left, color=c, edgecolor="black", linewidth=0.5,
             label=f"{p} ({v:,} · {v/sum(vals)*100:.0f}%)")
     ax.text(left + v / 2, 0, f"{v:,}", ha="center", va="center", color="white", fontweight="bold")
@@ -148,7 +148,7 @@ labels = list(PLATE_AB)
 acc = [PLATE_AB[k][0] for k in labels]
 cer = [PLATE_AB[k][1] for k in labels]
 bars = _bars(ax, labels, acc, [C_BASE, C_PRIMARY], fmt="{:.1f}%")
-for b, c in zip(bars, cer):
+for b, c in zip(bars, cer, strict=True):
     ax.text(b.get_x() + b.get_width() / 2, b.get_height() - 8, f"CER {c:.3f}",
             ha="center", va="top", fontsize=9, color="white", fontweight="bold")
 ax.set_ylim(0, 112)
@@ -164,49 +164,17 @@ ax.set_ylabel("Ortalama FPS")
 ax.set_title("§4.6 İşleme hızı — MPS (Apple M4 Pro), alt-sınır")
 _save(fig, "fig_fps.png", "MPS alt-sınırdır; CUDA sunucuda belirgin daha yüksektir. Kaynak: eval_results/metrics_report.md.")
 
-# --- §3.2 Çözüm mimarisi (kuşbakışı boru hattı) ---
-from matplotlib.patches import FancyBboxPatch, FancyArrowPatch  # noqa: E402
+# --- §3.2 Çözüm mimarisi (graphviz dot → profesyonel diyagram) ---
+import shutil  # noqa: E402
+import subprocess  # noqa: E402
 
-fig, ax = plt.subplots(figsize=(9.5, 6.4))
-ax.set_xlim(0, 10)
-ax.set_ylim(0, 10)
-ax.axis("off")
-ax.set_title("§3.2 Çözüm Mimarisi — kuşbakışı kaskad boru hattı", fontsize=13, fontweight="bold")
-
-
-def box(x, y, w, h, text, color, fc="white"):
-    ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0.04,rounding_size=0.12",
-                                linewidth=1.4, edgecolor=color, facecolor=fc))
-    ax.text(x + w / 2, y + h / 2, text, ha="center", va="center", fontsize=8.6, color="#111", wrap=True)
-
-
-def arrow(x1, y1, x2, y2, color="#444"):
-    ax.add_patch(FancyArrowPatch((x1, y1), (x2, y2), arrowstyle="-|>", mutation_scale=14,
-                                 linewidth=1.3, color=color))
-
-
-box(3.2, 9.0, 3.6, 0.8, "Kamera / Video / RTSP", C_ACCENT, "#e3f2fd")
-box(3.2, 7.9, 3.6, 0.8, "Ön-İşleme\n(far-glare · blur · occlusion)", C_PRIMARY, "#e8f5e9")
-box(2.7, 6.8, 4.6, 0.8, "YOLO26l + ByteTrack\n+ alan-ağırlıklı sınıf-oyu", C_PRIMARY, "#e8f5e9")
-box(0.3, 5.0, 4.3, 1.3, "Sürücü ROI (Aşama 2a)\nKatman A: pose-hibrit / YOLO26\nKatman B: per-ID 16/8 oylama", C_PRIMARY, "#e8f5e9")
-box(5.4, 5.0, 4.3, 1.3, "Plaka ROI (Aşama 2b)\ncustom YOLO26s LP + oy havuzu\n+ fast-plate-ocr (+ veto/zemin)", C_PRIMARY, "#e8f5e9")
-box(3.2, 3.4, 3.6, 0.85, "Hız + Swerving\n(Kalman+EMA · ZigZag)", C_PRIMARY, "#e8f5e9")
-box(2.7, 2.1, 4.6, 0.85, "ID-merkezli Accumulator\n+ risk kuralları", C_PRIMARY, "#e8f5e9")
-box(2.4, 0.7, 5.2, 0.85, "Event / Annotation → Dashboard · Mobil · JSONL kanıt", "#4a148c", "#f3e5f5")
-box(7.7, 7.6, 2.1, 1.4, "QoD tetik\nyaklaşma /\nkalite / anomali\n→ CAMARA QoD", C_WARN, "#fff3e0")
-
-arrow(5.0, 9.0, 5.0, 8.7)
-arrow(5.0, 7.9, 5.0, 7.6)
-arrow(4.6, 6.8, 2.6, 6.3)
-arrow(5.4, 6.8, 7.4, 6.3)
-arrow(2.4, 5.0, 4.0, 4.25)
-arrow(7.6, 5.0, 6.0, 4.25)
-arrow(5.0, 3.4, 5.0, 2.95)
-arrow(5.0, 2.1, 5.0, 1.55)
-arrow(7.6, 7.6, 7.3, 6.0, C_WARN)
-ax.text(0.2, 4.6, "Kaskad: ağır model yalnız 2 ROI'de çalışır (kabin + plaka)", ha="left",
-        fontsize=7.2, style="italic", color="#666")
-_save(fig, "fig_mimari.png",
-      "Gerçek↔mock sınırı: YZ çekirdeği gerçek; QoD/NV telekom katmanı CAMARA sözleşmesini taklit eder. Kaynak: docs/diagrams/.")
+dot_src = ROOT / "docs" / "diagrams" / "pipeline_mimari.dot"
+if shutil.which("dot") and dot_src.exists():
+    subprocess.run(["dot", "-Tpng", "-Gdpi=200", str(dot_src), "-o", str(FIG / "fig_mimari.png")],
+                   check=True)
+    print(f"  ✓ {(FIG / 'fig_mimari.png').relative_to(ROOT)} (graphviz)")
+else:
+    print("  ⚠ graphviz 'dot' bulunamadı — fig_mimari.png atlandı "
+          "(docs/diagrams/pipeline_mimari.dot'tan elle render edin)")
 
 print("Tamamlandı.")
