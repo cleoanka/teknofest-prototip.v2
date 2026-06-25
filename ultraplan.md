@@ -303,8 +303,12 @@ codex exec -s workspace-write -C ~/teknofest-prototip.v2 "mobile: (D3) QOD_TRIGG
 codex exec -s workspace-write -C ~/teknofest-prototip.v2 "dashboard/assets: sürücü/yolcu rolü (yeşil/turuncu) ve LİMİT banner zaten var — plaka 'pending/partial' rozetini, QoD ON/OFF delta panelini ve swerving uyarısını görsel olarak netleştir. Saf vanilla JS, build yok. Kırık yok."
 # E2 docs refresh (eski sayıları düzelt)
 codex exec -s workspace-write -C ~/teknofest-prototip.v2 "AURA_Repo_Detayli_Anlatim.md gövdesindeki ESKİ bilgileri güncelle: '58 unit test'→güncel sayı, dedektör 'yolo26s conf 0.35'→'varsayılan yolo26l conf 0.10 + profiller', hız 'disabled'→'metric oto-kalibrasyon', M1-M16'ya v2.1-2.3'ü ekle. README test rozetini doğrula. CHANGELOG ile tutarlı yap. Sadece doküman, kod değişmez."
-# E3 CUDA FPS ölçümü (rapor için gerçek sunucu sayıları)
-codex exec -s workspace-write -C ~/teknofest-prototip.v2 "tools/bench.py ekle: bir video + profil alıp ortalama FPS + p50/p95 kare süresi ölçer, eval_results/bench_<device>.md yazar; --device auto. docs/dagitim.md'ye 'CUDA sunucuda gerçek FPS ölç' notu (MPS sayıları alt-sınır). tests gerektirmez ama --help'li ve import-temiz."
+# E3 CUDA FPS ölçümü ✅ TAMAMLANDI (26 Haz 2026)
+# RTX 5070 Laptop GPU — 36 SM × 128 = 4.608 CUDA çekirdeği, 8 GB VRAM, Compute 12.0
+# server  (yolo26l, imgsz 960): 12.31 FPS kararlı-hal, p50=80ms, p95=93ms
+# laptop  (yolo26s, imgsz 640): 14.72 FPS kararlı-hal, p50=65ms, p95=88ms
+# Artefaktlar: eval_results/bench_cuda0_server.md, eval_results/bench_cuda0_laptop.md
+# ftr_rapor_taslak.md §4.6, ftr.md §4, docs/dagitim.md §5 güncellendi.
 # E4 test coverage + E5 paketleme (ihtiyaç oldukça)
 codex exec -s workspace-write -C ~/teknofest-prototip.v2 "pytest-cov ekle (opsiyonel), make test-cov hedefi; en düşük kapsamlı modülleri raporla. Yeni zorunlu bağımlılık yok."
 ```
@@ -343,7 +347,7 @@ flowchart TD
     end
     subgraph FIN["🗓️ FINAL (Ağu–Eyl)"]
         Mobil["D1→D2→D3→D4<br/>(mobil)"]
-        E3["E3<br/>CUDA FPS"]
+        E3["E3<br/>CUDA FPS ✅"]
         Prova["canlı 5G/QoD/NV<br/>provası + sunum"]
     end
     B4w1 -.-> B4done

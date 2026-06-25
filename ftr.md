@@ -180,9 +180,10 @@ ve `docs/mimari.md`'deki ayrıntılı şemayı rapora alın.
   **`track_id=-1` / phantom çıktı kapısı (`min_output_frames`)** — takipsiz veya hayalet
   tespitler event/annotation üretmez. (c) **`max_roi_area_ratio=0.10`** — kare alanının
   %10'unu aşan devasa sürücü-ROI'leri kırpılır (eski bir FP kaynağı kapatıldı).
-- **Yazılım:** Python 3.13, PyTorch 2.12, Ultralytics 8.4.66, EasyOCR, OpenCV, FastAPI.
-- **Donanım:** sunucu dağıtımı (CUDA otomatik); geliştirme Apple Silicon/MPS. Cihaz `auto`
-  (CUDA→MPS→CPU). Tüm `--help` çıktıları: `docs/cli_referans.md`.
+- **Yazılım:** Python 3.12.10, PyTorch 2.8.0+cu128, Ultralytics 8.4.66, EasyOCR, OpenCV, FastAPI.
+- **Donanım:** Sunucu/ölçüm: **NVIDIA GeForce RTX 5070 Laptop GPU** — 4.608 CUDA çekirdeği
+  (36 SM × 128), 8 GB VRAM, Compute Capability 12.0 (Blackwell). Geliştirme: Apple Silicon/MPS.
+  Cihaz `auto` (CUDA→MPS→CPU). Tüm `--help` çıktıları: `docs/cli_referans.md`.
 
 ---
 
@@ -204,12 +205,13 @@ python -m aura.eval --source <video> --ground-truth <gt.json> --qod-comparison
 ```
 
 **ÖLÇÜLEN SONUÇLAR (3 gerçek video, kapalı otopark, TOGG; AURA v2.3, MPS/M4 Pro;
-ölçüldü 17 Haz 2026, dewarp/enhance OFF; `eval_results/metrics_report.md`):**
+ölçüldü 17 Haz 2026, dewarp/enhance OFF; `eval_results/metrics_report.md`).**
+**FPS sütunlarına 26 Haz 2026 tarihli CUDA ölçümleri (RTX 5070 Laptop, `bench.py`) eklendi:**
 
-| Dedektör | Davranış makro-F1 | Plaka exact | Plaka CER | Yanlış plaka onayı | Araç sınıfı | FPS (MPS) |
-|---|---|---|---|---|---|---|
-| **yolo26l** (stok, varsayılan dedektör) | **1.00** | **2/3** (66.7%) | **0.083** | **0** | 100% | ~5.9 |
-| **v4-finetune** (yolov8m) | **1.00** | **2/3** (66.7%) | **0.083** | **0** | 100% | ~5.3 |
+| Dedektör | Davranış makro-F1 | Plaka exact | Plaka CER | Yanlış plaka onayı | Araç sınıfı | FPS (MPS) | FPS (CUDA — RTX 5070 Laptop) |
+|---|---|---|---|---|---|---|---|
+| **yolo26l** (stok, varsayılan, server profili 960) | **1.00** | **2/3** (66.7%) | **0.083** | **0** | 100% | ~5,9 | **12,31** (p50=80ms, p95=93ms) |
+| **v4-finetune** (yolov8m, 768) | **1.00** | **2/3** (66.7%) | **0.083** | **0** | 100% | ~5,3 | **~12,5** *(ağırlık yok; yolo26s fallback: 12,80)* |
 
 Davranış sınıf-bazlı (**her iki dedektörde de**) — phone / smoking / swerving:
 P = R = F1 = **1.0**, makro-F1 **1.0**. (Stabilite fixleri öncesi eski yolo26l, video_2'de
@@ -351,7 +353,9 @@ Finalde mobil uygulamada **canlı 5G + NV + QoD**:
   (manifestte listeli).
 - **minibus / fatigue sınıfları:** no-auth açık bbox seti bulunamadı (Roboflow/Kaggle anahtarı
   veya komite verisi gerekir) → küçük özel etiketleme + `driver-state` fine-tune.
-- **FPS:** CUDA sunucuda ölçüp rapora gerçek değerleri yazın (MPS sayıları alt-sınırdır).
+- **FPS:** ✅ CUDA ölçüldü (26 Haz 2026, RTX 5070 Laptop 4.608 CUDA çekirdeği): yolo26l server
+  profili **12,31 FPS** (p50=80 ms, p95=93 ms); laptop profili (yolo26s 640) **14,72 FPS**.
+  Gerçek değerler rapora §4.6'ya yazıldı; `eval_results/bench_cuda0_server.md` artefakt.
 
 > **Özet:** AURA, FTR'nin **tüm bölümlerine somut kanıt + tek-komut üretim** sağlar. En yüksek
 > puanlı Veri Seti (20) ve Sınama (20) bölümleri için sırasıyla `train dataset --report` ve
