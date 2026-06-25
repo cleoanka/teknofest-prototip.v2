@@ -98,7 +98,7 @@ fig, ax = plt.subplots(figsize=(7, 4))
 ks = list(DATASETS)
 _bars(ax, ks, [DATASETS[k] for k in ks], [C_PRIMARY, C_ACCENT, C_WARN, C_BASE], fmt="{:,}")
 ax.set_ylabel("Görüntü sayısı")
-ax.set_title("§2.3 Açık-kaynak veri seti dağılımı (CC BY 4.0)")
+ax.set_title("Açık-kaynak veri seti dağılımı (CC BY 4.0)")
 _save(
     fig,
     "fig_veri_dengesi.png",
@@ -125,7 +125,7 @@ for p, v, c in zip(parts, vals, colors, strict=True):
     left += v
 ax.set_yticks([])
 ax.set_xlabel("Görüntü sayısı")
-ax.set_title("§2.5 Train/Val/Test dağılımı — %80/%10/%10 (license_plate, 8.823 görsel)")
+ax.set_title("Train/Val/Test dağılımı — %80/%10/%10 (license_plate, 8.823 görsel)")
 ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.25), ncol=3, frameon=False)
 _save(
     fig,
@@ -178,7 +178,7 @@ ax.set_xticks(list(x))
 ax.set_xticklabels(models)
 ax.set_ylim(0, 1.08)
 ax.set_ylabel("mAP")
-ax.set_title("§4.2 Held-out tespit doğruluğu (kesinleşmiş, 19 Haz 2026)")
+ax.set_title("Held-out tespit doğruluğu (YOLO26s fine-tune, 19 Haz 2026)")
 ax.legend(loc="upper right")
 _save(
     fig,
@@ -221,7 +221,7 @@ ax.set_xticks(list(x))
 ax.set_xticklabels(metr)
 ax.set_ylim(0, 1.1)
 ax.set_ylabel("Skor")
-ax.set_title("§4.2 Özel model held-out Precision / Recall / F1 (YOLO26s)")
+ax.set_title("Özel model held-out Precision / Recall / F1 (YOLO26s)")
 ax.legend(loc="lower right")
 _save(
     fig,
@@ -248,7 +248,7 @@ for b, c in zip(bars, cer, strict=True):
     )
 ax.set_ylim(0, 112)
 ax.set_ylabel("Exact-match doğruluğu (%)")
-ax.set_title("§4.4 Plaka okuma A/B — 3 gerçek video (GT=34TC8532)")
+ax.set_title("Plaka okuma A/B — 3 gerçek video (GT=34TC8532)")
 _save(
     fig,
     "fig_plaka_ab.png",
@@ -263,7 +263,7 @@ cols = [c[2] for c in FPS_CMP]
 _bars(ax, labels, vals, cols, fmt="{:.2f}")
 ax.set_ylabel("Ortalama FPS (kararlı-hal)")
 ax.set_ylim(0, 17)
-ax.set_title("§4.6 İşleme hızı — MPS geliştirme alt-sınırı vs gerçek CUDA ölçümü")
+ax.set_title("İşleme hızı — MPS geliştirme alt-sınırı vs gerçek CUDA ölçümü")
 ax.annotate(
     "CUDA ≈ 2× MPS",
     xy=(1, 12.31),
