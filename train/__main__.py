@@ -42,6 +42,12 @@ def _add_common_train_args(sp, default_weights: str, default_imgsz: int, default
         "--lr0", type=float, default=None, help="Başlangıç öğrenme oranı (vars: ultralytics)"
     )
     sp.add_argument("--patience", type=int, default=50, help="Early-stop sabrı (epoch)")
+    sp.add_argument(
+        "--dropout",
+        type=float,
+        default=0.0,
+        help="Dropout regularizasyonu (küçük-set aşırı-uyumu için 0.10-0.15 önerilir; vars: 0.0)",
+    )
     sp.add_argument("--resume", action="store_true", help="Yarım kalan koşumu devam ettir")
     sp.add_argument(
         "--no-augment", action="store_true", help="Augmentasyonu kapat (küçük-veri/ablation)"
