@@ -22,19 +22,24 @@ log = logging.getLogger("aura.device")
 _resolved_cache: dict[str, str] = {}
 
 
-def _cuda_smoke_ok() -> bool:
+def _cuda_smoke_ok(index: int | None = None) -> bool:
     """GPU'da minik bir gerçek op çalıştır; 'no kernel image' vb. hataları yakalar.
 
     `torch.cuda.is_available()` True dönse bile kurulu derleme GPU mimarisini
     desteklemeyebilir; tek kesin test, fiilen bir kernel çalıştırmaktır.
+
+    `index` verilirse (cuda:N) op TAM O CİHAZDA çalıştırılır — aksi halde torch'un
+    "current device"i (daima cuda:0) sınanır ve heterojen çok-GPU makinede bozuk
+    bir ikincil kart (GPU0 çalışırken) yanlışlıkla 'çalışıyor' sanılırdı.
     """
+    dev = "cuda" if index is None else f"cuda:{index}"
     try:
         import torch
 
         if not torch.cuda.is_available():
             return False
-        x = torch.zeros((8, 8), device="cuda")
-        _ = x @ x  # gerçek bir CUDA kernel'i tetikler
+        x = torch.zeros((8, 8), device=dev)
+        _ = x @ x  # gerçek bir CUDA kernel'i tetikler (o cihazda)
         torch.cuda.synchronize()
         return True
     except Exception as e:  # noqa: BLE001 - her türlü CUDA/torch hatası → CPU'ya düş
@@ -95,10 +100,14 @@ def _resolve_uncached(key: str) -> str:
         return "cpu"
 
     # cuda | auto | cuda:N
-    if _cuda_smoke_ok():
-        if key.startswith("cuda:"):
-            return key
-        return "cuda:0"
+    cuda_index: int | None = None
+    if key.startswith("cuda:"):
+        try:
+            cuda_index = int(key.split(":", 1)[1])
+        except ValueError:
+            cuda_index = None
+    if _cuda_smoke_ok(cuda_index):  # cuda:N → o indekste sına (yanlış-GPU doğrulaması önle)
+        return key if key.startswith("cuda:") else "cuda:0"
 
     if key in ("cuda",) or key.startswith("cuda:"):
         # Kullanıcı açıkça CUDA istedi ama çalışmıyor — uyarı _cuda_smoke_ok'ta verildi.

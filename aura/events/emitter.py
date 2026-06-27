@@ -70,3 +70,13 @@ class EventEmitter:
     def latest_annotation(self) -> AnnotationFrame | None:
         with self._lock:
             return self.annotations[-1] if self.annotations else None
+
+    def snapshot_annotations(self) -> list[AnnotationFrame]:
+        """annotations deque'sinin KİLİTLİ, tutarlı kopyası.
+
+        CA-001: deque'i doğrudan (kilitsiz) iterleyen tüketiciler, pipeline thread'i
+        eş-zamanlı `append` yaparken "deque mutated during iteration" (RuntimeError)
+        alır. Tüm tarama gerektiren okuyucular bu metodu kullanmalı.
+        """
+        with self._lock:
+            return list(self.annotations)

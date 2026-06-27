@@ -222,7 +222,7 @@ class Pipeline:
 
         # Sahne-seviyesi tabela bağlamı: aktif hız limitini çıkar ve accumulator'a ver.
         # Araç döngüsünden ÖNCE yapılır — çünkü 'speed.over_limit' risk koşulu bunu kullanır.
-        scene, scene_events = self.sign_tracker.update(signs, idx)
+        scene, scene_events = self.sign_tracker.update(signs, idx, now=now)
         events.extend(scene_events)
         self.acc.set_scene(scene)
 
@@ -378,6 +378,18 @@ class Pipeline:
             ):
                 self.qod.request_optimize(tid, "speed_anomaly")
 
+            # ÇIKTI kapısı (phantom bastırma) — accumulator'dan ÖNCE: track yeterli
+            # KÜMÜLATİF görünürlüğe (min_output_frames) ulaşmadıysa accumulator'a HİÇ
+            # girmez. Böylece bastırılmış karelerde accumulator durumu İLERLEMEZ ve kapı
+            # açılan ilk GÖRÜNÜR karede tüm tek-atış geçişleri (DETECTION_UPDATE new /
+            # PLATE_CONFIRMED / RISK_ALERT / SPEED_LIMIT_VIOLATION) DOĞRU üretilir. (Eski
+            # sıra: acc.update_track state'i ilerletip event'i `continue` ile düşürüyordu
+            # → geçiş kalıcı kayboluyordu.) Vars. min_output=min_track → pencere BOŞ,
+            # davranış birebir korunur; heavy aşamalar (driver/plate/speed) zaten
+            # min_track_frames'te çalışıp kendi kalıcı durumlarını kurmuştur.
+            if age < self.min_output_frames:
+                continue
+
             # Bu track için QoD'un güncel durumunu oku (aktif mi, hangi profil).
             qod_active, qod_profile = self.qod.state(tid)
             # Tüm alt-sonuçları accumulator'a ver: track durumunu günceller,
@@ -394,16 +406,6 @@ class Pipeline:
                 qod_profile=qod_profile,
             )
 
-            # ÇIKTI kapısı (phantom bastırma): accumulator/hız durumu yukarıda OLGUNLAŞTI,
-            # ama track yeterli KÜMÜLATİF görünürlüğe (min_output_frames) ulaşmadıysa
-            # annotation/event ÜRETMEZ — kısa-ömürlü hayalet track'ler (ByteTrack
-            # parçalanması: 1-2 karelik motorcycle/truck) kanıt videosuna/event'e sızmaz.
-            # Vars. = min_track_frames (mevcut davranış birebir korunur); orkestratör
-            # bu eşiği bağımsız yükselterek bastırmayı güçlendirebilir. Uzun-ömürlü
-            # gerçek track (age >= eşik) etkilenmez.
-            if age < self.min_output_frames:
-                continue
-
             events.extend(ev)  # accumulator'ın ürettiği event'leri kare listesine ekle
 
             # Sürücü kimliğini kayda yaz; yeni kilitlendiyse event üret
@@ -415,6 +417,7 @@ class Pipeline:
                         tid,
                         "DRIVER_LOCKED",
                         {"driver_id": assign.driver_id, "confirm_frames": assign.streak},
+                        ts=now,  # deterministik frame-saati (accumulator/qod ile aynı eksen)
                     )
                 )
 
@@ -453,6 +456,7 @@ class Pipeline:
             self._area_hist.pop(tid, None)
             self._track_last_seen.pop(tid, None)
         self.qod.tick()  # QoD zamanlayıcısını bir adım ilerlet (süresi dolan optimizasyonları kapat)
+        self.qod.prune()  # MEM-00x: cooldown'ı geçmiş _last_release girdilerini düşür (sızıntı önle)
         events.extend(self.qod.drain_events())  # QoD'un kendi ürettiği event'leri (aç/kapa) topla
 
         # Sahne tabelalarını dashboard'un çizebileceği düz sözlüklere çevir (km/h çözülü).

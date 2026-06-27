@@ -97,6 +97,21 @@ class QoDController:
                 )
                 log.debug("QoD RELEASE track=%s %s", tid, s["profile"])
 
+    def prune(self) -> None:
+        """Bellek hijyeni (MEM-00x): cooldown'ı geçmiş `_last_release` girdilerini düşür.
+
+        `_last_release[tid]`'in tek tüketicisi `request()`'teki cooldown guard'ıdır
+        (`_now - lr < cooldown`). `_now - lr >= cooldown` olduğunda girdi semantik
+        olarak ÖLÜdür (silmek davranış-eşdeğer: yok=tetikle, süresi-dolmuş=yine tetikle).
+        Aksi halde QoD tetiği almış her benzersiz track_id kalıcı bir girdi bırakır →
+        7/24 akışta monoton büyüme. Saniye-ekseni `self._now` ile çalışır (idx değil).
+        """
+        if not self._last_release:
+            return
+        dead = [tid for tid, lr in self._last_release.items() if self._now - lr >= self.cooldown]
+        for tid in dead:
+            del self._last_release[tid]
+
     def release(self, track_id: int) -> None:
         s = self._sessions.pop(track_id, None)
         if s:

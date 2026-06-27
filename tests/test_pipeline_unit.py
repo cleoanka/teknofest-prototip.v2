@@ -103,7 +103,7 @@ def test_scene_active_limit_injected_into_accumulator(cfg):
     p = _pipe(cfg, stub)
 
     # SignTracker.update'i zorla: sahne bağlamı aktif limit 50 döndürsün.
-    def _fake_update(signs, idx):
+    def _fake_update(signs, idx, now=None):
         from aura.schema import SceneContext
 
         return SceneContext(active_speed_limit_kmh=50), []

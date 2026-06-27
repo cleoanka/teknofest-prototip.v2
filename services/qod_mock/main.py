@@ -17,6 +17,23 @@ from pydantic import BaseModel, Field
 app = FastAPI(title="AURA QoD Mock (CAMARA Quality-on-Demand)", version="2.0.0")
 
 _sessions: dict[str, dict] = {}
+_MAX_SESSIONS = 1000  # auth'suz mock: sınırsız POST /sessions ile bellek tükenmesini önle
+
+
+def _expire_stale() -> None:
+    """duration_seconds geçmiş oturumları lazy-temizle (CAMARA TTL sözleşme sadakati).
+
+    Gerçek gateway oturumu süresi dolunca düşürür; mock'ta yalnız delete vardı →
+    süresi dolan oturum sonsuza dek ACTIVE kalıp active_sessions sayacını şişiriyordu.
+    """
+    now = time.time()
+    dead = [
+        sid
+        for sid, s in _sessions.items()
+        if (s.get("duration_seconds") or 0) > 0 and now - s["created_at"] > s["duration_seconds"]
+    ]
+    for sid in dead:
+        _sessions.pop(sid, None)
 
 
 class SessionRequest(BaseModel):
@@ -45,6 +62,9 @@ def health():
 
 @app.post("/sessions", response_model=SessionResponse, status_code=201)
 def create_session(req: SessionRequest):
+    _expire_stale()  # önce süresi dolanları temizle
+    if len(_sessions) >= _MAX_SESSIONS:
+        raise HTTPException(status_code=429, detail="aktif oturum üst sınırı aşıldı")
     sid = uuid.uuid4().hex
     session = {
         "session_id": sid,
