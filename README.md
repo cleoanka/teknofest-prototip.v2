@@ -41,7 +41,7 @@ gerçek bir YZ çekirdeği ile, bu çekirdeği **5G QoD** (CAMARA Quality-on-Dem
   (sunucu, doğruluk-önce); **config profilleri** (`--profile server|laptop|v4-finetune`)
   `default.yaml` üzerine derin-merge edilir. Sürücü davranışı **YOLO26-pose** geometrisi +
   hibrit nesne kanıtı; plaka artık **eğitilmiş özel LP dedektörü** (`custom_license_plate`,
-  YOLO26s, held-out **mAP50 0.983 / mAP50-95 0.707**) + format-öncelikli güven-ağırlıklı
+  YOLO26s, held-out **mAP50 0.983 / mAP50-95 0.706**) + format-öncelikli güven-ağırlıklı
   oylama (3-video A/B'de plaka 3/3 korundu → varsayılan; ağırlık yoksa loglu stok LP'ye düşer).
 - **Plaka OCR varsayılanı `fast-plate-ocr`:** plakaya-özel hafif ONNX modeli
   (`global-plates-mobile-vit-v2`, ~5MB; ilk koşuda otomatik iner). 3 gerçek videoda
@@ -64,7 +64,7 @@ gerçek bir YZ çekirdeği ile, bu çekirdeği **5G QoD** (CAMARA Quality-on-Dem
   eğit→doğrula→metrik→best; `dataset --report` veri-dengeleme dağılımı (FTR §2). Açık veri
   (CC BY 4.0, PIL-doğrulanmış) toplandı: license_plate 9123 (8823 işlendi), seatbelt 3104,
   phone 659, smoking 557. YOLO26s fine-tune'lar bitti, **gerçek held-out mAP** (`weights/custom_*.metrics.json`):
-  license_plate **0.983/0.707**, smoking **0.856/0.457**, seatbelt **0.895/0.546** (mAP50/mAP50-95).
+  license_plate **0.983/0.706**, smoking **0.856/0.457**, seatbelt **0.895/0.546** (mAP50/mAP50-95).
   `custom_license_plate` A/B regresyonsuz → **varsayılan LP dedektör**; `custom_smoking`
   `pose.py`'da **ikinci-model** (phone kanıtını korur); `seatbelt` opsiyonel (dış-kamera görüş açısı).
 - **Ağırlıksız da çalışır:** ağırlık yoksa pipeline deterministik *mock* modda tüm hattı
@@ -89,7 +89,7 @@ Yalnızca repo ölçümleriyle doğrulanmış, held-out rakamlar:
 | 🧠 Davranış makro-F1 | **1.0** | 3 video held-out |
 | 🚗 Araç sınıfı doğruluğu | **%100** | held-out |
 | 📦 Stok `yolo26l` mAP | **mAP50 0.709 · mAP50-95 0.537** | COCO-val2017 (5000 görsel) |
-| 🚙 `license_plate` fine-tune | **mAP50 0.983 · mAP50-95 0.707** | YOLO26s held-out |
+| 🚙 `license_plate` fine-tune | **mAP50 0.983 · mAP50-95 0.706** | YOLO26s held-out |
 | 🚬 `smoking` fine-tune | **mAP50 0.856 · mAP50-95 0.457** | YOLO26s held-out |
 | 🔒 `seatbelt` fine-tune | **mAP50 0.895 · mAP50-95 0.546** | YOLO26s held-out |
 | 📡 QoD A/B delta | **plaka +33pp · küçük nesne +51pp · tespit +25pp** | sentetik kontrollü set |
@@ -110,7 +110,7 @@ biten ile süren net ayrılır; rakamlar repo ölçümleriyle (`eval_results/`, 
 | QoD A/B kanıtı | ✅ | plaka +33pp · küçük nesne +51pp · tespit +25pp (sentetik kontrollü set) |
 | YZ çekirdeği (CV/track/state/OCR/speed) | ✅ | gerçek kod; ağırlıksız mock modda da uçtan uca koşar |
 | Telekom katmanı (QoD/NV/5G) | ⏳ mock | CAMARA sözleşmesini birebir taklit eder; final'de yalnız endpoint/credential değişir |
-| Domain fine-tune (license_plate / smoking / seatbelt) | ✅ | YOLO26s held-out: lp **0.983/0.707**, smoking **0.856/0.457**, seatbelt **0.895/0.546** (`weights/custom_*.metrics.json`) |
+| Domain fine-tune (license_plate / smoking / seatbelt) | ✅ | YOLO26s held-out: lp **0.983/0.706**, smoking **0.856/0.457**, seatbelt **0.895/0.546** (`weights/custom_*.metrics.json`) |
 | Özel LP dedektörü varsayılan | ✅ | `custom_license_plate` (A/B 3/3 plaka korundu) → `config/default.yaml` `plate.lp_detector.path` |
 | Özel smoking ikinci-model | ✅ | `pose.py`'da roi_objects yanında; phone-kanıtı korunur (drop-in regresyonu A/B ile elendi) |
 | Canlı/telefon kamera plaka okuma (19 Haz fix) | ✅ | sweet_spot neredeyse tam-kadraj (0.03–0.97 / 0.06–0.98); kaliteyi piksel-boyut kapısı sınırlar |
