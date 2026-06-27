@@ -1,4 +1,4 @@
-# AURA — Yenileme ve Sağlamlaştırma Planı (12 Haziran 2026)
+# RoadGuard — Yenileme ve Sağlamlaştırma Planı (12 Haziran 2026)
 
 > ⚠️ **ARŞİV / LEGACY (v2.1, 12.06.2026).** Bu plan v2.1 yenileme oturumunundur ve
 > **tarihsel kayıt** olarak korunur (tüm maddeleri o gün uygulandı). İçeriği o güne aittir:
@@ -13,7 +13,7 @@
 > (M1–M16 milestone'ları orada). Bu plan üç kaynaktan damıtıldı:
 > **v1 prototip** (`teknofest-prototip` — 343 testli, gerçek videolarla ölçülmüş),
 > **hidden_prototip** (YOLO26 cascade + gerçek video test dersleri) ve
-> **v2/AURA**'nın kendisi. Uygulanan her madde işaretlendi; sonuçların tam dökümü
+> **v2/RoadGuard**'nın kendisi. Uygulanan her madde işaretlendi; sonuçların tam dökümü
 > için `CHANGELOG.md`'ye bakın.
 
 ---

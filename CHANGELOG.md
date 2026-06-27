@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Proje](https://img.shields.io/badge/AURA-değişiklik_günlüğü-2C3E50?style=flat-square)
+![Proje](https://img.shields.io/badge/RoadGuard-değişiklik_günlüğü-2C3E50?style=flat-square)
 ![Sürüm](https://img.shields.io/badge/güncel-v2.3.0-success?style=flat-square)
 ![Format](https://img.shields.io/badge/Keep_a_Changelog-1.0.0-blue?style=flat-square)
 ![Lisans](https://img.shields.io/badge/lisans-MIT-green?style=flat-square)

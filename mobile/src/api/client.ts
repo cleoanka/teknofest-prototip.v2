@@ -1,4 +1,4 @@
-// AURA mobil API istemcisi — NV doğrulama + event/annotation WS + QoD config + status.
+// RoadGuard mobil API istemcisi — NV doğrulama + event/annotation WS + QoD config + status.
 // Sözleşme tipleri ./types.ts'tedir (aura/schema.py ile birebir).
 import { API_URL, NV_URL, WS_ANNOTATIONS_URL, WS_EVENTS_URL } from "../config";
 import type {

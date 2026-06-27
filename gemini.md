@@ -1,4 +1,4 @@
-# Gemini CLI — AURA Geliştirme & Araştırma Rehberi
+# Gemini CLI — RoadGuard Geliştirme & Araştırma Rehberi
 
 > 🟡 **GÜNCEL DURUM (18.06.2026) — DÜRÜST NOT:** Gemini CLI **kısmen** çalışıyor.
 > Aşağıda ⭐ önerilen `gemini-3.1-pro-preview` (ve diğer 3.x pro modelleri) bu hesapta
@@ -55,7 +55,7 @@ gemini -p "..." --approval-mode auto_edit # düzenlemeleri oto-onayla, shell'i s
 gemini -y -p "..."                        # YOLO: tüm onayları atla (DİKKAT — yalnız güvenli işlerde)
 gemini -s -p "..."                        # shell araçlarını sandbox'ta çalıştır
 ```
-> AURA'da araştırma için **`--approval-mode plan`** (salt-okunur) tercih edilir; Gemini'nin
+> RoadGuard'da araştırma için **`--approval-mode plan`** (salt-okunur) tercih edilir; Gemini'nin
 > repoda değişiklik yapmasını istemiyoruz (değişiklikleri biz yapay zekâ tarafında yönetiyoruz).
 
 ### Oturum / worktree / alt-komutlar
@@ -70,14 +70,14 @@ gemini --list-extensions
 
 ## Diğer özellikler (REPL/proje)
 - **`GEMINI.md`** (proje kökü): otomatik yüklenen proje-bağlam dosyası.
-  İstenirse AURA için minimal bir `GEMINI.md` eklenip her gemini koşumu repo-farkında yapılabilir.
+  İstenirse RoadGuard için minimal bir `GEMINI.md` eklenip her gemini koşumu repo-farkında yapılabilir.
 - **Özel subagent'lar:** `.gemini/agents/*.md` (YAML frontmatter) — ana ajan ilgili `description`'a
   göre otomatik delege eder; `@agent-adı <prompt>` ile manuel.
 - **Plan Mode** (salt-okunur strateji onayı), **Rewind/Checkpoint** (REPL'de `Esc Esc`).
 - **Policy** dosyaları `~/.gemini/policies/*.toml` (allow/deny/ask_user — araç güvenliği).
 - Slash komutları (REPL): `/help`, `/settings`, `/agents list`, `/quit --delete` …
 
-## AURA'da kullanım desenleri (örnekler)
+## RoadGuard'da kullanım desenleri (örnekler)
 ```bash
 # Karanlık/açılı plaka için perspektif düzeltme + OCR araştırması (PRO + salt-okunur):
 gemini -m pro --approval-mode plan -p "TR license plate OCR on dark/angled CCTV: best open-source

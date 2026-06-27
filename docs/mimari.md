@@ -1,6 +1,6 @@
 <div align="center">
 
-# Proje AURA — Sistem Mimarisi v2.0
+# Proje RoadGuard — Sistem Mimarisi v2.0
 
 ![Surum](https://img.shields.io/badge/Surum-v2.0-1b5e20?style=flat-square)
 ![Inference%20API](https://img.shields.io/badge/inference__api-:8080-0d47a1?style=flat-square)

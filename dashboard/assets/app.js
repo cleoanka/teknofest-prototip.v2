@@ -1,4 +1,4 @@
-// AURA Dashboard orkestratörü. Modülleri kurar, WS'leri bağlar, header durumunu
+// RoadGuard Dashboard orkestratörü. Modülleri kurar, WS'leri bağlar, header durumunu
 // yoklar, track kartlarını ve event log'u günceller.
 import { CameraSelector } from "/assets/camera-selector.js";
 import { VideoRenderer } from "/assets/video-renderer.js";

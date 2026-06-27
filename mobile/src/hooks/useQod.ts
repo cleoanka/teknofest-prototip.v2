@@ -1,4 +1,4 @@
-// AURA mobil — QoD histerezis durum makinesi (şartname §3).
+// RoadGuard mobil — QoD histerezis durum makinesi (şartname §3).
 //
 // Kritik event (QOD_TRIGGER / RISK_ALERT / SPEED_LIMIT_VIOLATION / yaklaşma) gelince
 // "active"e geçer ve BİR KEZ yüksek-kalite talep eder (PATCH /config high). Event akışı

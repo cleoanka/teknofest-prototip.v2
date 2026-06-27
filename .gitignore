@@ -1,4 +1,4 @@
-# --- AURA .gitignore ---
+# --- RoadGuard .gitignore ---
 # Model ağırlıkları (bootstrap tarafından indirilir)
 weights/*.pt
 weights/*.onnx

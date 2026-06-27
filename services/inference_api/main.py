@@ -1,4 +1,4 @@
-"""AURA Inference API — FastAPI uygulaması (:8080).
+"""RoadGuard Inference API — FastAPI uygulaması (:8080).
 
 Gerçek YZ mikroservisi: pipeline'ı koşturur, MJPEG + WS yayar, dashboard'u statik
 serve eder. Mock'lar (qod_mock :8081, nv_mock :8082) ayrı servislerdir.
@@ -51,7 +51,7 @@ def create_app(cfg=None) -> FastAPI:
         app.state.stream.stop()
 
     app = FastAPI(
-        title="AURA Inference API",
+        title="RoadGuard Inference API",
         version=__version__,
         description="5G & YZ Akıllı Yol Güvenliği — gerçek YZ mikroservisi "
         "(araç/plaka/sürücü/hız + QoD). MJPEG + WS iki-kanal akış.",
@@ -81,7 +81,7 @@ def create_app(cfg=None) -> FastAPI:
         if idx.exists():
             return FileResponse(str(idx))
         return {
-            "service": "AURA Inference API",
+            "service": "RoadGuard Inference API",
             "version": __version__,
             "docs": "/docs",
             "dashboard": "M8'de eklenir",

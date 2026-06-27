@@ -14,12 +14,12 @@
 ---
 
 ## 🎯 Ne yapar
-AURA modellerini eğitmek için veri toplama, etiketleme ve sentetik augmentasyon
+RoadGuard modellerini eğitmek için veri toplama, etiketleme ve sentetik augmentasyon
 stratejisini tanımlar. İki ayrı veri seti: araç tespiti (Stage-1) ve sürücü durumu (Stage-2).
 
 ```mermaid
 flowchart LR
-    A["Açık veri setleri"] --> B["AURA taksonomisine eşleme"]
+    A["Açık veri setleri"] --> B["RoadGuard taksonomisine eşleme"]
     B --> C["PIL doğrulama"]
     C --> D["80/10/10 split<br/>(seed 42)"]
     D --> E["data/processed/*/data.yaml"]
@@ -31,12 +31,12 @@ flowchart LR
 ---
 
 ## ✅ Toplanan gerçek veri (18 Haz 2026) — özet
-Aşağıdaki dört açık veri seti **gerçekten indirildi**, sınıfları AURA taksonomisine
+Aşağıdaki dört açık veri seti **gerçekten indirildi**, sınıfları RoadGuard taksonomisine
 eşlendi, **tümü PIL ile doğrulandı** (bozuk görüntü yok) ve 80/10/10 (seed 42) split'lendi.
 Hepsi **CC BY 4.0** (FTR §5 kaynakçaya yazılır). Sayılar `data/processed/*/data.yaml` ve
 `data/raw/*` dizinlerine karşı doğrulanmıştır.
 
-| AURA sınıfı | Kaynak | Lisans | Görüntü (kullanılan) | Durum |
+| RoadGuard sınıfı | Kaynak | Lisans | Görüntü (kullanılan) | Durum |
 |---|---|---|---|---|
 | `license_plate` | `keremberke/license-plate-object-detection` (HF; Roboflow "Vehicle Registration Plates v1" → COCO→YOLO) | CC BY 4.0 | **8823** (9123 toplandı → PIL/split sonrası 8823: 6176/1765/882) | ✅ indirildi + işlendi |
 | `seatbelt` | Roboflow `oohmp/seatbelt-detection` v2 (HF `ramankamran/seatbelt-detection-v2i-yolov11-lt`) | CC BY 4.0 | **3104** (2 sınıf: `no_seatbelt_evidence` + `seatbelt_ok`) | ✅ indirildi + işlendi |
@@ -115,7 +115,7 @@ testleri içindir; eğitim verisi değildir. Gerçek TOGG veri seti geldiğinde
 ---
 
 ## ⚖️ Veri dengeleme (data balancing) — FTR §2 (20 puan)
-FTR şablonu verinin nasıl **dengelendiğini** açıkça ister. AURA tool'u dağılımı ölçer:
+FTR şablonu verinin nasıl **dengelendiğini** açıkça ister. RoadGuard tool'u dağılımı ölçer:
 ```bash
 python -m train dataset --report --output data/processed/
 ```
@@ -141,12 +141,12 @@ görüntü sayısı): `docs/yol_haritasi.md` §2 (Gemini araştırması; kullan�
 ## 📦 Eksik-sınıf manifesti + çekme aracı (`train/datasets.yaml`)
 Yol haritası §2'deki açık setler artık **bildirimsel bir manifestte** toplanır:
 `train/datasets.yaml` her hedef sınıf (`cigarette`, `seatbelt`, `fatigue`, `minibus`,
-`license_plate`) için **kaynak(lar) + lisans + ~görüntü sayısı + AURA taksonomisine
+`license_plate`) için **kaynak(lar) + lisans + ~görüntü sayısı + RoadGuard taksonomisine
 sınıf-eşlemesi** tutar. Eşleme `aura/taxonomy.py` ile tutarlıdır (ör. `cigarette → smoking`,
 `van → minibus`). Manifestteki açık-kaynak köprü kapsamı (lisanslar §5 kaynakçaya yazılır;
 **kullanım öncesi lisans/uyumluluk teyidi** notu korunur):
 
-| Hedef sınıf (AURA) | Kaynak(lar) | ~Görüntü | Lisans | Durum |
+| Hedef sınıf (RoadGuard) | Kaynak(lar) | ~Görüntü | Lisans | Durum |
 |---|---|---|---|---|
 | `license_plate` | `keremberke/license-plate-object-detection` (HF; Roboflow v1 → COCO→YOLO) | **8823** | CC BY 4.0 | **indirildi + işlendi**; YOLO26s fine-tune **TAMAMLANDI** (held-out mAP50 **0.983** / mAP50-95 **0.706**); `custom_license_plate` → **varsayılan LP dedektör** |
 | `seatbelt → no_seatbelt_evidence` | Roboflow `oohmp/seatbelt-detection` v2 (HF `ramankamran`) | **3104** | CC BY 4.0 | **indirildi + işlendi**; fine-tune **TAMAMLANDI** (held-out mAP50 **0.895** / mAP50-95 **0.546**); opsiyonel (dış-kamera görüş açısı) |

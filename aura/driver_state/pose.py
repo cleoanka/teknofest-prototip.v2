@@ -5,7 +5,7 @@ Neden var?
     yokken stok COCO modeli bu sınıfları ÜRETEMEZ (sessiz sıfır). v1 prototip aynı
     problemi MediaPipe el/yüz geometrisiyle çözmüş ve gerçek videolarda ölçmüştü
     (sigara recall %59, telefon %61, FP %0). MediaPipe hem Python 3.13'te yok hem
-    de AURA mimari kararı landmark kütüphanelerini yasaklıyor — bu modül aynı
+    de RoadGuard mimari kararı landmark kütüphanelerini yasaklıyor — bu modül aynı
     KANITLANMIŞ geometriyi ultralytics YOLO26-pose (COCO 17 keypoint) ile uygular:
     mimari karar korunur (saf YOLO26), bağımlılık eklenmez.
 

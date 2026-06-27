@@ -268,7 +268,7 @@ def build_report(
 
 def render_markdown(report: dict) -> str:
     lines = [
-        "# AURA — Başarım Metrikleri (FTR §4 Çözümün Sınanması)",
+        "# RoadGuard — Başarım Metrikleri (FTR §4 Çözümün Sınanması)",
         "",
         f"- Davranış tespiti eşiği: bir sınıf >= **{report['min_frames']}** kararlı karede görülürse pozitif.",
         "- Set: 3-videoluk gerçek held-out (kapalı otopark, TOGG). Küçük örnek → davranış",

@@ -1,4 +1,4 @@
-// AURA mobil — canlı MJPEG video (GET /stream/video).
+// RoadGuard mobil — canlı MJPEG video (GET /stream/video).
 //
 // React Native <Image> MJPEG multipart akışını sürekli oynatmaz; güvenilir canlı
 // oynatım için react-native-webview gerekir (HTML <img src=mjpeg> tarayıcıda akar).

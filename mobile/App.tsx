@@ -1,4 +1,4 @@
-// AURA mobil giriş noktası. NV doğrulaması geçince Dashboard'a geçer.
+// RoadGuard mobil giriş noktası. NV doğrulaması geçince Dashboard'a geçer.
 import { StatusBar } from "expo-status-bar";
 import React, { useState } from "react";
 

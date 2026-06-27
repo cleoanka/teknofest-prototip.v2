@@ -6,7 +6,7 @@
 
 **(Gemini araştırması destekli)**
 
-![surum](https://img.shields.io/badge/AURA-v2.3.0-blue?style=flat-square)
+![surum](https://img.shields.io/badge/RoadGuard-v2.3.0-blue?style=flat-square)
 ![FTR](https://img.shields.io/badge/FTR-28.06.2026-orange?style=flat-square)
 ![arastirma](https://img.shields.io/badge/arastirma-gemini--3.1--pro--preview-purple?style=flat-square)
 ![durum](https://img.shields.io/badge/FTR-A%C3%87IK-yellow?style=flat-square)
@@ -16,7 +16,7 @@
 ---
 
 > [!NOTE]
-> Bu belge, AURA'nın bilinen zayıf noktaları + FTR boşlukları için **somut, kaynaklı** sonraki adımları toplar. Araştırma `gemini-3.1-pro-preview` (salt-okunur) ile yapıldı.
+> Bu belge, RoadGuard'ın bilinen zayıf noktaları + FTR boşlukları için **somut, kaynaklı** sonraki adımları toplar. Araştırma `gemini-3.1-pro-preview` (salt-okunur) ile yapıldı.
 
 > [!WARNING]
 > ⚠️ **Her iddia çalışan ortama / resmi kaynağa karşı doğrulanmalı** (Gemini bilgisi güncel olmayabilir — bkz. `gemini.md`).
@@ -60,7 +60,7 @@ flowchart TD
 3. **OCR (EasyOCR yerine/yanında):** **PaddleOCR PP-OCRv4** (`PaddlePaddle/PaddleOCR`) — bloklu Latin metinde EasyOCR'dan belirgin sağlam; alternatif **LPRNet** (plakaya özel, küçük TR setiyle fine-tune) veya **TrOCR** (transformer, bulanıkta az halüsinasyon).
 
 > [!TIP]
-> **Entegrasyon notu:** AURA'nın plaka hattı (`aura/plate/reader.py`) zaten LP-dedektör + ön-işleme + oy havuzu modüler; OCR motoru `aura/plate/ocr.py:build_ocr` arkasında soyut → PaddleOCR adaptörü eklenebilir (mevcut EasyOCR yolu korunarak). Bu, A/B'deki tek zayıf metriği kapatır.
+> **Entegrasyon notu:** RoadGuard'ın plaka hattı (`aura/plate/reader.py`) zaten LP-dedektör + ön-işleme + oy havuzu modüler; OCR motoru `aura/plate/ocr.py:build_ocr` arkasında soyut → PaddleOCR adaptörü eklenebilir (mevcut EasyOCR yolu korunarak). Bu, A/B'deki tek zayıf metriği kapatır.
 
 ---
 
@@ -115,7 +115,7 @@ flowchart LR
     C --> E["Number Verification"]
 ```
 
-AURA tarafında karşılıkları: `qod` (yaklaşma tetiği), `nv_mock`, `mobile/`, `WS /stream/events` (bkz. `ftr.md` §6).
+RoadGuard tarafında karşılıkları: `qod` (yaklaşma tetiği), `nv_mock`, `mobile/`, `WS /stream/events` (bkz. `ftr.md` §6).
 
 > [!TIP]
 > Final'de yalnız endpoint/credential değişir.

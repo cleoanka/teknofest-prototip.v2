@@ -21,7 +21,7 @@ ROOT = Path(__file__).resolve().parent.parent
 FIG = ROOT / "docs" / "figures"
 FIG.mkdir(parents=True, exist_ok=True)
 
-# Renk paleti (TEKNOFEST/AURA — koyu kırmızı vurgulu, profesyonel)
+# Renk paleti (TEKNOFEST/RoadGuard — koyu kırmızı vurgulu, profesyonel)
 C_PRIMARY = "#1b5e20"  # yeşil — production/gerçek
 C_ACCENT = "#0d47a1"  # mavi
 C_BASE = "#9e9e9e"  # gri — baseline/eski
@@ -102,7 +102,7 @@ ax.set_title("Açık-kaynak veri seti dağılımı (CC BY 4.0)")
 _save(
     fig,
     "fig_veri_dengesi.png",
-    "Kaynak: docs/veri_seti.md — PIL-doğrulanmış, AURA taksonomisine eşlenmiş. seatbelt dengesizlik oranı 1,27 (<3).",
+    "Kaynak: docs/veri_seti.md — PIL-doğrulanmış, RoadGuard taksonomisine eşlenmiş. seatbelt dengesizlik oranı 1,27 (<3).",
 )
 
 # --- §2.5 Train/Val/Test split (license_plate örneği) ---

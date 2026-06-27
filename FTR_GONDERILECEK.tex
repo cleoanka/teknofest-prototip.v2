@@ -1,5 +1,5 @@
 % =====================================================================
-% AURA — Final Tasarım Raporu (FTR) — GÖNDERİLECEK SÜRÜM
+% RoadGuard — Final Tasarım Raporu (FTR) — GÖNDERİLECEK SÜRÜM
 % Derleme:  xelatex FTR_GONDERILECEK.tex   (TOC için iki kez çalıştırın)
 % Önce:     python tools/make_ftr_figures.py   (docs/figures/*.png üretir)
 % Format: Arial 12 / başlık 14 bold / 1.15 satır / iki yana yaslı /
@@ -45,7 +45,7 @@
 {\fontsize{12}{14}\bfseries TEKNOFEST 2026}\\[2pt]
 {\fontsize{12}{14}\selectfont 5G ve Yapay Zekâ ile Akıllı Yol Güvenliği Yarışması}\\[2.4cm]
 
-{\fontsize{42}{46}\bfseries\color{aura} AURA}\\[3pt]
+{\fontsize{42}{46}\bfseries\color{aura} RoadGuard}\\[3pt]
 {\color{aura}\rule{0.5\textwidth}{1.2pt}}\\[12pt]
 {\fontsize{15}{19}\bfseries 5G ve Yapay Zekâ ile Akıllı Yol Güvenliği Sistemi}\\[16pt]
 {\fontsize{17}{21}\bfseries\color{aurab} FİNAL TASARIM RAPORU}\\[2.6cm]
@@ -71,7 +71,7 @@ setleri üzerinde otomatik ölçüm hattıyla elde edilmiştir; yöntem ve sonu�
 
 % ============================ 1. ÖZET =================================
 \section{Proje Özeti}
-AURA, yol kenarı trafik kamerası akışından \textbf{araç, plaka, hız ve riskli sürücü
+RoadGuard, yol kenarı trafik kamerası akışından \textbf{araç, plaka, hız ve riskli sürücü
 davranışı} tespiti yapan gerçek bir yapay zekâ çekirdeğini; bu çekirdeği \textbf{5G CAMARA
 Quality-on-Demand (QoD)} ve \textbf{Number Verification (NV; sürücü telefon numarasının
 operatör nezdinde sessiz doğrulanması)} telekom yetenekleriyle birleştiren uçtan uca bir sistemdir. Amaç, yol güvenliğini tehdit eden olayları (dikkatsiz sürüş, araç-içi
@@ -112,7 +112,7 @@ birleşiminden çıkarıldığından tek bir sete bağlı değildir, sigaranın 
 
 \subsection{Etiketleme ve Sınıf Şeması}
 Etiketler YOLO formatındadır (\tcode{<class> <cx> <cy> <w> <h>}, normalize). Model-uzayı sınıf
-adları AURA kanonik taksonomisine eşlenir (ör. \tcode{cell phone}\,$\rightarrow$\,\tcode{phone},
+adları RoadGuard kanonik taksonomisine eşlenir (ör. \tcode{cell phone}\,$\rightarrow$\,\tcode{phone},
 \tcode{cigarette}\,$\rightarrow$\,\tcode{smoking}) — böylece model değişse de iç sözleşme sabit kalır.
 
 \subsection{Veri Dengeleme (Data Balancing)}
@@ -159,10 +159,10 @@ komutla yeniden üretir.
 
 \subsection{Problemin Analizi}
 Trafik kamerası görüntüsünden tespit, kontrollü laboratuvar koşullarından farklı yapısal zorluklar
-içerir. AURA, bu zorlukları gerçek footage üzerinde ölçerek tanımlamış ve her birine hedefli bir
+içerir. RoadGuard, bu zorlukları gerçek footage üzerinde ölçerek tanımlamış ve her birine hedefli bir
 tasarım kararıyla yanıt vermiştir (Tablo~\ref{tab:problem}). Bu problemlerin ortak noktası, kamera
 gürültüsünün ve değişken görüş koşullarının kare-bazlı kararları kararsız kılmasıdır; bu nedenle
-AURA'nın temel tercihi \textbf{kare-merkezli değil ID-merkezli} karar üretmektir — her araç bir
+RoadGuard'nın temel tercihi \textbf{kare-merkezli değil ID-merkezli} karar üretmektir — her araç bir
 takip kimliği (\tcode{track\_id}) altında izlenir ve tüm kararlar bu kimlik üzerinde zaman içinde
 biriktirilerek istikrara kavuşturulur.
 
@@ -194,7 +194,7 @@ akıştan türetilir. (Gerçek$\leftrightarrow$mock sınırı Bölüm 1'de tanı
 
 \begin{figure}[H]\centering
 \includegraphics[width=0.96\textwidth]{fig_mimari.png}
-\caption{AURA kuşbakışı kaskad boru hattı (soldan sağa akış): Aşama-1 tespit/takipten iki ROI ile üç paralel Aşama-2 motoruna (sürücü davranışı $\parallel$ plaka okuma $\parallel$ hız) ve ID-merkezli birikime; QoD tetikleyici (kesikli) kritik anda 5G kalitesini talep eder.}
+\caption{RoadGuard kuşbakışı kaskad boru hattı (soldan sağa akış): Aşama-1 tespit/takipten iki ROI ile üç paralel Aşama-2 motoruna (sürücü davranışı $\parallel$ plaka okuma $\parallel$ hız) ve ID-merkezli birikime; QoD tetikleyici (kesikli) kritik anda 5G kalitesini talep eder.}
 \label{fig:mimari}
 \end{figure}
 

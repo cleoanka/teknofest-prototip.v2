@@ -1,4 +1,4 @@
-"""AURA model eğitimi CLI — `python -m train` (docs/egitim.md).
+"""RoadGuard model eğitimi CLI — `python -m train` (docs/egitim.md).
 
 Alt komutlar:
   detector       Stage-1 YOLO26 araç/plaka tespit modeli fine-tune
@@ -60,7 +60,7 @@ def _add_common_train_args(sp, default_weights: str, default_imgsz: int, default
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="python -m train",
-        description="AURA model eğitimi (YOLO26 fine-tune + doğrulama + metrik export)",
+        description="RoadGuard model eğitimi (YOLO26 fine-tune + doğrulama + metrik export)",
         epilog=(
             "örnekler:\n"
             "  python -m train detector --data data/processed/data.yaml --epochs 100 --imgsz 768\n"

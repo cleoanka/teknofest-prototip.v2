@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# AURA — tüm servisleri kaldırır (inference :8080, qod :8081, nv :8082).
+# RoadGuard — tüm servisleri kaldırır (inference :8080, qod :8081, nv :8082).
 # .venv yoksa önce bootstrap çağırır. Servis modülü henüz yoksa (erken milestone)
 # uyarır ve atlar; mevcut olanları başlatır.
 set -uo pipefail
@@ -50,7 +50,7 @@ trap cleanup INT TERM EXIT
 
 # Sunucu dağıtımı: AURA_PROFILE=server ./run.sh  → config/profiles/server.yaml uygulanır
 # (inference servisi load_config() içinde AURA_PROFILE env'ini otomatik okur).
-echo "▶ AURA servisleri başlatılıyor  (profil: ${AURA_PROFILE:-varsayılan})"
+echo "▶ RoadGuard servisleri başlatılıyor  (profil: ${AURA_PROFILE:-varsayılan})"
 start "QoD mock"      "services.qod_mock.main:app"      "$QOD_PORT"
 start "NV mock"       "services.nv_mock.main:app"       "$NV_PORT"
 start "Inference API" "services.inference_api.main:app" "$INFER_PORT"

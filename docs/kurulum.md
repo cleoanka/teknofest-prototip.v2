@@ -12,7 +12,7 @@
 </div>
 
 ## 🎯 Ne yapar
-AURA'yı sıfırdan, tek komutla, manuel adım olmadan kurar. İdempotenttir.
+RoadGuard'yı sıfırdan, tek komutla, manuel adım olmadan kurar. İdempotenttir.
 
 ---
 

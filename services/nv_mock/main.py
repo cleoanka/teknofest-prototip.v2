@@ -11,7 +11,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 from pydantic import BaseModel
 
-app = FastAPI(title="AURA Number Verification Mock", version="2.0.0")
+app = FastAPI(title="RoadGuard Number Verification Mock", version="2.0.0")
 
 # Türk numarası ön-ekleri; per-request yeniden kurmamak için modül sabiti.
 _TR_PREFIXES = ("+90", "90", "0")

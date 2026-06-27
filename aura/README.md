@@ -4,7 +4,7 @@
 
 # 🧠 `aura/` — YZ Çekirdeği
 
-AURA'nın **gerçek** yapay zekâ / bilgisayarlı görü çekirdeği.
+RoadGuard'ın **gerçek** yapay zekâ / bilgisayarlı görü çekirdeği.
 
 ![Katman](https://img.shields.io/badge/Katman-YZ%20%C3%87ekirde%C4%9Fi-blue?style=flat-square)
 ![Tasarım](https://img.shields.io/badge/Tasar%C4%B1m-Decoupled%20Mikroservis-success?style=flat-square)
@@ -81,7 +81,7 @@ Dedektör/cihaz/eşikler **config profilleriyle** seçilir (`--profile server|la
 |---|---|
 | `config.py` | `load_config()` — `config/default.yaml` yükleyici (noktalı erişim) |
 | `device.py` | Merkezi cihaz çözümleyici — `cuda`/`auto` istense de GPU gerçekten çalışabiliyor mu probe eder, yoksa sessizce CPU'ya düşer |
-| `taxonomy.py` | Model-uzayı ↔ AURA kanonik sınıf-adı eşlemesi (ör. `cell phone`→`phone`) — model değişince sözleşme değişmesin |
+| `taxonomy.py` | Model-uzayı ↔ RoadGuard kanonik sınıf-adı eşlemesi (ör. `cell phone`→`phone`) — model değişince sözleşme değişmesin |
 | `schema.py` | Pydantic v2 sözleşmeleri (TrackRecord, AuraEvent, …) |
 | `synthetic.py` | `python -m aura.synthetic` — sentetik örnek video + GT |
 | `smoke.py` | `python -m aura.smoke` — adaptif kurulum/pipeline smoke testi |

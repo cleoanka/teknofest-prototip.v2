@@ -1,11 +1,11 @@
 # =============================================================================
-# PROFİL: custom — AURA ÖZEL EĞİTİMLİ domain modelleri (YOLO26s fine-tune)
+# PROFİL: custom — RoadGuard ÖZEL EĞİTİMLİ domain modelleri (YOLO26s fine-tune)
 # Kullanım:  python -m aura --profile custom   |   AURA_PROFILE=custom ...
 #            python tools/test_video.py --source v1.mp4 --profile custom --device mps
 # default.yaml ÜZERİNE derin-merge edilir; yalnız farklılıklar burada.
 #
 # EĞİTİM BİTTİ (19 Haz 2026). Bu profil, stok dedektörlerin domain-dışı kaldığı
-# iki AURA-kritik görevi özel eğitilmiş modellerle güçlendirir. GERÇEK held-out mAP
+# iki RoadGuard-kritik görevi özel eğitilmiş modellerle güçlendirir. GERÇEK held-out mAP
 # (Ultralytics val, ayrılmış test bölmesi — bkz. docs/veri_seti.md, ftr.md §4):
 #
 #   weights/custom_license_plate.pt  mAP50 0.983 / mAP50-95 0.707  (9123 görsel, keremberke/HF)

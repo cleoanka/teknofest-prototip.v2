@@ -11,7 +11,7 @@
 
 </div>
 
-FastAPI. AURA pipeline'ını arka plan thread'inde koşturur ve **iki-kanal** akış yayar.
+FastAPI. RoadGuard pipeline'ını arka plan thread'inde koşturur ve **iki-kanal** akış yayar.
 
 > [!IMPORTANT]
 > **Onur zırhı K-004** — Bu dosya yalnızca görsel olarak zenginleştirilmiştir. Hiçbir sayı, komut, dosya-yolu, bağlantı veya iddia değiştirilmemiş; tüm bölümler aynen korunmuştur.
@@ -28,7 +28,7 @@ Dashboard bbox toggle'ı **client-side** yapar (canvas temizle/çiz) → sunucuy
 
 ```mermaid
 flowchart LR
-    P["AURA pipeline<br/>(arka plan thread)"] --> SM["StreamManager<br/>(state.py)"]
+    P["RoadGuard pipeline<br/>(arka plan thread)"] --> SM["StreamManager<br/>(state.py)"]
     SM -->|MJPEG| V["GET /stream/video<br/>ham veya ?bbox=true"]
     SM -->|bbox koordinatları| A["WS /stream/annotations"]
     SM -->|AuraEvent| E["WS /stream/events"]

@@ -1,4 +1,4 @@
-// AURA mobil — servis adresleri ve WS/MJPEG URL türetme.
+// RoadGuard mobil — servis adresleri ve WS/MJPEG URL türetme.
 //
 // Backend İKİ ayrı servistir (farklı portlar):
 //   • inference_api  :8080  → /health /cameras /stream/* (WS+MJPEG) /config (PATCH)

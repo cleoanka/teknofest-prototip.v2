@@ -1,8 +1,8 @@
-> 📄 **PROJE AURA — Uygulama Planı v2.0** · [⬅ docs](README.md) · [repo kökü](../README.md)
+> 📄 **PROJE RoadGuard — Uygulama Planı v2.0** · [⬅ docs](README.md) · [repo kökü](../README.md)
 
 <div align="center">
 
-# 🛣️ PROJE AURA — Uygulama Planı v2.0
+# 🛣️ PROJE RoadGuard — Uygulama Planı v2.0
 
 ![surum](https://img.shields.io/badge/plan-v2.0-blue?style=flat-square)
 ![hedef](https://img.shields.io/badge/hedef-monorepo-informational?style=flat-square)
@@ -256,7 +256,7 @@ usage: python -m aura [-h] [--config PATH] [--source SOURCE]
                       [--device {auto,cpu,cuda,mps}] [--no-bbox]
                       [--log-level {DEBUG,INFO,WARNING}]
 
-AURA inference pipeline — araç, plaka, sürücü durumu ve hız tespiti.
+RoadGuard inference pipeline — araç, plaka, sürücü durumu ve hız tespiti.
 
 options:
   -h, --help            Bu yardımı göster ve çık
@@ -281,7 +281,7 @@ options:
 ```
 usage: python -m train [-h] {detector,driver-state,dataset} ...
 
-AURA model eğitimi
+RoadGuard model eğitimi
 
 subcommands:
   detector        Stage-1 araç tespit modelini eğit (YOLO26s fine-tune)
@@ -299,7 +299,7 @@ subcommands:
 usage: python -m aura.eval [-h] [--source SOURCE] [--ground-truth PATH]
                            [--qod-comparison] [--output PATH]
 
-AURA model değerlendirme — doğruluk metrikleri ve QoD A/B karşılaştırması
+RoadGuard model değerlendirme — doğruluk metrikleri ve QoD A/B karşılaştırması
 
 options:
   --source SOURCE       Test video dosyası
@@ -317,7 +317,7 @@ options:
 usage: python bootstrap.py [-h] [--skip-weights] [--skip-node]
                            [--force] [--dev]
 
-AURA kurulum bootstrap'i
+RoadGuard kurulum bootstrap'i
 
 options:
   --skip-weights    Model ağırlığı indirmeyi atla
@@ -573,7 +573,7 @@ Tüm detay `docs/mimari_ek_moduller.md`'de. `docs/mimari.md` yalnızca "bkz. mim
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  AURA Dashboard          [●REC] [QoD: ACTIVE] [FPS: 28] │
+│  RoadGuard Dashboard          [●REC] [QoD: ACTIVE] [FPS: 28] │
 ├──────────────┬──────────────────────────┬───────────────┤
 │              │                          │               │
 │  KAYNAK      │   CANLI VİDEO AKIŞI     │  TRACK LİSTESİ│

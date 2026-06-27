@@ -1,7 +1,7 @@
-# FTR Rehberi — Final Tasarım Raporu'nu AURA Kanıtlarıyla Doldurma
+# FTR Rehberi — Final Tasarım Raporu'nu RoadGuard Kanıtlarıyla Doldurma
 
 > **Bu belge ne?** TEKNOFEST 2026 "5G & YZ ile Akıllı Yol Güvenliği" yarışmasının
-> **Final Tasarım Raporu (FTR)** şablonunun her bölümünü, AURA prototipinin somut
+> **Final Tasarım Raporu (FTR)** şablonunun her bölümünü, RoadGuard prototipinin somut
 > kanıtlarına / komutlarına / sayılarına bağlayan **ipuçlu rehber + doldurulabilir
 > taslak**. Üç işlevi birden görür: (1) raporu doldurma kılavuzu, (2) finale
 > (mobil + 5G + QoD demo) hazırlık, (3) prototipin yeteneklerinin tam dokümantasyonu.
@@ -19,7 +19,7 @@
 başlık Arial Black 14, satır aralığı 1.15, iki yana yaslı, kenar boşlukları üst 2.8 /
 alt-sağ-sol 2.5. **Şablona uymayan rapor değerlendirilmez.**
 
-| FTR bölümü | Puan | AURA'daki ana kanıt |
+| FTR bölümü | Puan | RoadGuard'daki ana kanıt |
 |---|---|---|
 | 1. Proje Özeti | 5 | `README.md` + bu rehber §1 |
 | 2. **Veri Seti Oluşturulması** | **20** | `docs/veri_seti.md` + `docs/egitim.md` + `train/` tool (`dataset --report`) |
@@ -40,7 +40,7 @@ rehber özellikle bu ikisini doldurmaya odaklanır.
 **Rubrik:** Proje kapsamında yürütülen faaliyetlerin özeti.
 
 **Doldurulabilir taslak:**
-> AURA, yol kenarı trafik kamerası akışından **araç, plaka, hız ve riskli sürücü
+> RoadGuard, yol kenarı trafik kamerası akışından **araç, plaka, hız ve riskli sürücü
 > davranışı** tespiti yapan bir yapay zekâ çekirdeğini; bu çekirdeği **5G CAMARA
 > Quality-on-Demand (QoD)** ve **Number Verification** telekom yetenekleriyle birleştiren
 > uçtan uca bir sistemdir. YZ çekirdeği (tespit/takip/16-8 kararlılık/OCR/hız/risk)
@@ -80,7 +80,7 @@ bulunamamıştır; `fatigue` için teyitli açık set bulunamamıştır — dür
 
 **Doldurulacak içerik + komutlar:**
 - **Toplama (açık-kaynak köprü manifesti):** kaynaklar `train/datasets.yaml`'da
-  **bildirimsel** tutulur (her hedef sınıf → kaynak + lisans + ~görüntü + AURA taksonomisine
+  **bildirimsel** tutulur (her hedef sınıf → kaynak + lisans + ~görüntü + RoadGuard taksonomisine
   sınıf-eşlemesi). Ölçülen kapsam: `car/bus/truck/motorcycle/person → COCO`; dört no-auth gerçek
   bbox seti indirilip toplandı ve PIL-doğrulandı (`data/processed/{seatbelt,smoking,phone,license_plate}/`):
   `seatbelt → no_seatbelt_evidence` (Roboflow `oohmp` → HF `ramankamran/seatbelt-detection`, 3104 görsel,
@@ -118,7 +118,7 @@ bulunamamıştır; `fatigue` için teyitli açık set bulunamamıştır — dür
 > Bu setlerle özel-model eğitimi (YOLO26s fine-tune) hâlihazırda sürmektedir (`license_plate` val
 > mAP50 ≈0.97 @ epoch 12; `seatbelt`/`smoking` sırada — final mAP'ler henüz kesinleşmemiştir), §4
 > doğruluk sayıları eğitim tamamlanana dek BASE/stok YOLO26 ile ölçülmüştür. Tüm kaynaklar
-> `train/datasets.yaml` manifestinde lisans ve AURA-taksonomisi eşlemesiyle tutulur; `minibus` ve
+> `train/datasets.yaml` manifestinde lisans ve RoadGuard-taksonomisi eşlemesiyle tutulur; `minibus` ve
 > `fatigue` için teyitli no-auth açık set bulunamadığından bunlar dürüstçe boş bırakılmıştır
 > (komite verisi beklenir). Tüm etiketler YOLO formatına
 > dönüştürülmüş, **%80/%10/%10 train/val/test** olarak bölünmüştür (küçük özel sette
@@ -136,8 +136,8 @@ bulunamamıştır; `fatigue` için teyitli açık set bulunamamıştır — dür
 **Rubrik:** Video üzerinden tespitte temel problemler (ışık değişimi, hareket bulanıklığı,
 oklüzyon) + izlenen çözüm yolu + neden.
 
-**AURA'nın çözdüğü gerçek problemler (gerçek 4K/50fps footage'da ölçüldü):**
-| Problem | Belirti | AURA çözümü |
+**RoadGuard'ın çözdüğü gerçek problemler (gerçek 4K/50fps footage'da ölçüldü):**
+| Problem | Belirti | RoadGuard çözümü |
 |---|---|---|
 | Karanlık kabin (cam arkası sürücü) | pose keypoint görünmez | ROI CLAHE+gamma parlatma (`pose.roi_enhance`) |
 | Araç tipi titremesi (car↔truck) | uzak araç 'truck' okunur | alan-ağırlıklı track-bazlı **sınıf oylaması** |
@@ -204,7 +204,7 @@ python -m aura.eval --metrics-report --summaries eval_results/ab
 python -m aura.eval --source <video> --ground-truth <gt.json> --qod-comparison
 ```
 
-**ÖLÇÜLEN SONUÇLAR (3 gerçek video, kapalı otopark, TOGG; AURA v2.3, MPS/M4 Pro;
+**ÖLÇÜLEN SONUÇLAR (3 gerçek video, kapalı otopark, TOGG; RoadGuard v2.3, MPS/M4 Pro;
 ölçüldü 17 Haz 2026, dewarp/enhance OFF; `eval_results/metrics_report.md`).**
 **FPS sütunlarına 26 Haz 2026 tarihli CUDA ölçümleri (RTX 5070 Laptop, `bench.py`) eklendi:**
 
@@ -313,16 +313,16 @@ Rapora alınacak kaynaklar (dijital kaynak formatı: Soyad, A., Başlık, Tarih,
 - Roboflow Universe (Türk trafiği / plaka setleri), https://universe.roboflow.com
 - CAMARA Project — Quality-on-Demand & Number Verification API'leri, https://camaraproject.org
 - CCPD plaka veri seti (kullanıldıysa), Xu et al., 2018
-- AURA repo: github.com/cleoanka/teknofest-prototip.v2
+- RoadGuard repo: github.com/cleoanka/teknofest-prototip.v2
 
 ---
 
 ## 6. Final Yarışma Hazırlığı (şartname 4.2 — 3. aşama)
 
 Finalde mobil uygulamada **canlı 5G + NV + QoD**: 
-- **Number Verification:** kullanıcı/araç girişi sessiz doğrulama. AURA mock: `services/nv_mock` +
+- **Number Verification:** kullanıcı/araç girişi sessiz doğrulama. RoadGuard mock: `services/nv_mock` +
   `POST /verify`. Finalde yalnız endpoint/credential değişir. Mobil iskelet: `mobile/`.
-- **Quality-on-Demand:** "TOGG yaklaşınca yüksek kalite". AURA: `vehicle_approach` tetiği
+- **Quality-on-Demand:** "TOGG yaklaşınca yüksek kalite". RoadGuard: `vehicle_approach` tetiği
   (bbox alan-büyümesi) → `QOD_TRIGGER`. Kanıt: `python -m aura.eval --qod-comparison`
   (`eval_results/report.json`, yeniden-üretilebilir). Delta, kare-düzeyi GT içeren **kontrollü
   sentetik set** üzerinde, OFF/ON senaryolarıyla ölçülür; mutlak değerler ve delta, OFF baseline'ı
@@ -357,6 +357,6 @@ Finalde mobil uygulamada **canlı 5G + NV + QoD**:
   profili **12,31 FPS** (p50=80 ms, p95=93 ms); laptop profili (yolo26s 640) **14,72 FPS**.
   Gerçek değerler rapora §4.6'ya yazıldı; `eval_results/bench_cuda0_server.md` artefakt.
 
-> **Özet:** AURA, FTR'nin **tüm bölümlerine somut kanıt + tek-komut üretim** sağlar. En yüksek
+> **Özet:** RoadGuard, FTR'nin **tüm bölümlerine somut kanıt + tek-komut üretim** sağlar. En yüksek
 > puanlı Veri Seti (20) ve Sınama (20) bölümleri için sırasıyla `train dataset --report` ve
 > `aura.eval --metrics-report` çıktıları doğrudan rapora konur. Sayılar gerçektir, hile yoktur (K-004).

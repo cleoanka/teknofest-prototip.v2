@@ -1,4 +1,4 @@
-# `mobile/` — AURA Mobil (Expo / React Native)
+# `mobile/` — RoadGuard Mobil (Expo / React Native)
 
 > 📂 **mobile/** · Mobil İstemci (Expo / React Native) · [⬅ repo köküne dön](../README.md)
 

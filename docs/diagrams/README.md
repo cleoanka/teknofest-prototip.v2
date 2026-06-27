@@ -2,7 +2,7 @@
 
 <div align="center">
 
-# 🧠 AURA — Yayın Diyagramları
+# 🧠 RoadGuard — Yayın Diyagramları
 
 ### FTR §3.2 "Çözüm Mimarisi"
 

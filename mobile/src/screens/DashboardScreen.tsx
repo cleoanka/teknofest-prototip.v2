@@ -1,4 +1,4 @@
-// AURA mobil — canlı operatör paneli.
+// RoadGuard mobil — canlı operatör paneli.
 //  • WS /stream/annotations → araç KARTLARI (plaka/sürücü/risk/hız/QoD canlı durumu)
 //  • WS /stream/events      → aktivite AKIŞI + QoD histerezis tetiği
 //  • GET /stream/status     → bağlantı/QoD-oturum senkronu (poll)
@@ -97,7 +97,7 @@ export default function DashboardScreen({ phone }: Props) {
       {/* Başlık + canlı/QoD rozetleri */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.title}>◈ AURA</Text>
+          <Text style={styles.title}>◈ RoadGuard</Text>
           <Text style={styles.muted}>{phone} · NV doğrulandı ✓</Text>
         </View>
         <View style={styles.badges}>

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""AURA kurulum bootstrap'i — saf Python stdlib.
+"""RoadGuard kurulum bootstrap'i — saf Python stdlib.
 
 Tek komutla sıfırdan çalışır hale getirir: sanal ortam, donanıma uygun torch
 backend'i, paket bağımlılıkları, model ağırlıkları (SHA256 doğrulamalı), örnek
@@ -288,14 +288,14 @@ def install_torch(skip: bool) -> str:
 
 # --- 3.4 Paket kurulumu ---------------------------------------------------- #
 def install_package(dev: bool, skip: bool) -> None:
-    step("AURA paketi + bağımlılıklar")
+    step("RoadGuard paketi + bağımlılıklar")
     # --skip-deps verildiyse pip kurulumunu tümüyle atla.
     if skip:
         warn("paket kurulumu atlandı (--skip-deps)")
         return
     # --dev ile test/lint araçlarını da içeren "extra"yı seç, aksi halde temel paket.
     spec = ".[dev]" if dev else "."
-    # AURA paketini düzenlenebilir (editable, -e) modda kur — kaynak değişiklikleri anında yansır.
+    # RoadGuard paketini düzenlenebilir (editable, -e) modda kur — kaynak değişiklikleri anında yansır.
     run([venv_python(), "-m", "pip", "install", "-e", spec])
     ok(f"pip install -e {spec} tamamlandı")
     # Plakaya-özel OCR motoru (varsayılan plate.ocr_engine=fastplate) için fast-plate-ocr +
@@ -596,7 +596,7 @@ def build_parser() -> argparse.ArgumentParser:
     # Komut satırı argümanlarını ve --help çıktısını tanımlayan ayrıştırıcıyı kur.
     p = argparse.ArgumentParser(
         prog="python bootstrap.py",
-        description="AURA kurulum bootstrap'i — tek komutla sıfırdan kurulum.",
+        description="RoadGuard kurulum bootstrap'i — tek komutla sıfırdan kurulum.",
         epilog=(  # --help sonunda gösterilecek örnek kullanımlar
             "örnekler:\n"
             "  python bootstrap.py                 # tam kurulum\n"
@@ -625,14 +625,14 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)  # Argümanları ayrıştır (None → sys.argv kullanılır)
     # Renkli başlık banner'ı bas.
     print(_c("1;35", "\n╔══════════════════════════════════════════╗"))
-    print(_c("1;35", "║   AURA — Bootstrap / Tek Komutla Kurulum ║"))
+    print(_c("1;35", "║   RoadGuard — Bootstrap / Tek Komutla Kurulum ║"))
     print(_c("1;35", "╚══════════════════════════════════════════╝\n"))
 
     # Kurulum adımları sırayla — her biri idempotent ve bayraklarla yönetilebilir.
     check_system()  # 3.1 Python/git/platform doğrula
     ensure_venv(args.force)  # 3.2 Sanal ortamı kur
     install_torch(args.skip_deps)  # 3.3 Donanıma uygun torch'u kur
-    install_package(args.dev, args.skip_deps)  # 3.4 AURA paketini kur
+    install_package(args.dev, args.skip_deps)  # 3.4 RoadGuard paketini kur
     weights_status = fetch_weights(args.skip_weights)  # 3.5 Ağırlıkları indir/doğrula
     ensure_config_env()  # 3.6 Config ve .env hazırla
     ensure_sample_data(args.skip_deps)  # 3.7 Örnek veriyi üret

@@ -5,11 +5,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "aura"
 version = "2.3.0"
-description = "AURA — 5G & YZ ile Akıllı Yol Güvenliği (TEKNOFEST 2026) YZ çekirdeği ve servisleri"
+description = "RoadGuard — 5G & YZ ile Akıllı Yol Güvenliği (TEKNOFEST 2026) YZ çekirdeği ve servisleri"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
-authors = [{ name = "AURA Team" }]
+authors = [{ name = "RoadGuard Team" }]
 
 # NOT: torch/torchvision burada YOK — bootstrap.py backend'e göre (MPS/CUDA/CPU)
 # doğru index'ten kurar. ultralytics/easyocr torch'u zaten kurulu bulur.

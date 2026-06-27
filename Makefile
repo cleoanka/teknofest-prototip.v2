@@ -1,4 +1,4 @@
-# AURA — geliştirme kısayolları (cross-platform: macOS/Linux. Windows'ta setup.ps1 / run.ps1 / dev.ps1 kullanın.)
+# RoadGuard — geliştirme kısayolları (cross-platform: macOS/Linux. Windows'ta setup.ps1 / run.ps1 / dev.ps1 kullanın.)
 .PHONY: setup run doctor train eval metrics test lint format clean help
 
 PY := .venv/bin/python

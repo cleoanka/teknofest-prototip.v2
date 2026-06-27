@@ -146,7 +146,7 @@ def print_plan(plan: list[dict], base: Path) -> None:
     for step in plan:
         by_target.setdefault(step["target"], []).append(step)
     for tgt, steps in by_target.items():
-        print(f"\n  hedef sınıf: {tgt}  (AURA: {steps[0]['aura_class']})")
+        print(f"\n  hedef sınıf: {tgt}  (RoadGuard: {steps[0]['aura_class']})")
         for step in steps:
             out = _output_dir(step, base)
             n = step["images"]

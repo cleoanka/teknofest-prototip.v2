@@ -1,5 +1,5 @@
 # =============================================================================
-# AURA — Merkezi Yapılandırma (tek doğruluk kaynağı)
+# RoadGuard — Merkezi Yapılandırma (tek doğruluk kaynağı)
 # Hiçbir eşik/flag koda gömülmez; tüm çalışma zamanı davranışı buradan yönetilir.
 # Açıklamalar için bkz. config/README.md
 #
@@ -52,7 +52,7 @@ models:
     #   auto → pose ağırlığı diskte varsa pose, yoksa yolo.
     backend: auto
     # yolo backend ağırlığı: stok yolo26l (pose varsayılan olduğundan bu yalnız backend=yolo'da
-    # kullanılır). AURA özel eğitimli domain modeli (phone/smoking/seatbelt) için bunu
+    # kullanılır). RoadGuard özel eğitimli domain modeli (phone/smoking/seatbelt) için bunu
     # weights/custom_driver.pt yapıp `backend: yolo` seçin (bkz. docs/egitim.md).
     path: weights/yolo26l.pt
     conf: 0.45                     # fine-tune/domain model için (yolo backend)
