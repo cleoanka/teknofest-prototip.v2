@@ -69,7 +69,7 @@ gemini --list-extensions
 ```
 
 ## Diğer özellikler (REPL/proje)
-- **`GEMINI.md`** (proje kökü): `CLAUDE.md` gibi otomatik yüklenen proje-bağlam dosyası.
+- **`GEMINI.md`** (proje kökü): otomatik yüklenen proje-bağlam dosyası.
   İstenirse AURA için minimal bir `GEMINI.md` eklenip her gemini koşumu repo-farkında yapılabilir.
 - **Özel subagent'lar:** `.gemini/agents/*.md` (YAML frontmatter) — ana ajan ilgili `description`'a
   göre otomatik delege eder; `@agent-adı <prompt>` ile manuel.

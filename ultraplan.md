@@ -76,7 +76,7 @@ codex exec -s workspace-write -C ~/teknofest-prototip.v2 "<İŞ EMRİ PROMPTU>"
 ```bash
 aura fix  --dry "<kısa görev>"     # Codex yamasını ÖNİZLE (yazmaz) → incele
 aura fix  --apply                  # önizlenen yamayı uygula
-aura ship "<kısa görev>"           # plan(claude) → uygula(codex) → review(claude), tek komut
+aura ship "<kısa görev>"           # plan(yapay zekâ) → uygula(codex) → review(yapay zekâ), tek komut
 aura ship --deep --research "..."  # en güçlü modeller + gemini araştırma adımı
 ```
 > [!NOTE]
