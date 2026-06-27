@@ -20,14 +20,14 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from aura.driver_state.pose import (
+from roadguard.driver_state.pose import (
     L_EAR,
     NOSE,
     R_EAR,
     R_WRIST,
     PoseDriverClassifier,
 )
-from aura.schema import DriverState
+from roadguard.schema import DriverState
 
 # COCO-17 sırasında toplam keypoint sayısı (ultralytics pose çıktısı)
 _NKP = 17

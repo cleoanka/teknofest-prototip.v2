@@ -25,7 +25,7 @@ if (-not (Test-Path $PY)) {
   }
 }
 
-# bootstrap'ın ürettiği .env varsa AURA_* değişkenlerini yükle (kullanıcının
+# bootstrap'ın ürettiği .env varsa ROADGUARD_* değişkenlerini yükle (kullanıcının
 # oturumda elle set ettiği değerler ezilmez — önce gelen kazanır).
 $envFile = Join-Path $PSScriptRoot ".env"
 if (Test-Path $envFile) {
@@ -36,9 +36,9 @@ if (Test-Path $envFile) {
   }
 }
 
-$inferPort = if ($env:AURA_INFERENCE_PORT) { $env:AURA_INFERENCE_PORT } else { 8080 }
-$qodPort   = if ($env:AURA_QOD_MOCK_PORT)  { $env:AURA_QOD_MOCK_PORT }  else { 8081 }
-$nvPort    = if ($env:AURA_NV_MOCK_PORT)   { $env:AURA_NV_MOCK_PORT }   else { 8082 }
+$inferPort = if ($env:ROADGUARD_INFERENCE_PORT) { $env:ROADGUARD_INFERENCE_PORT } else { 8080 }
+$qodPort   = if ($env:ROADGUARD_QOD_MOCK_PORT)  { $env:ROADGUARD_QOD_MOCK_PORT }  else { 8081 }
+$nvPort    = if ($env:ROADGUARD_NV_MOCK_PORT)   { $env:ROADGUARD_NV_MOCK_PORT }   else { 8082 }
 
 $procs = @()
 
@@ -89,9 +89,9 @@ function Start-Svc($name, $app, $port) {
 }
 
 try {
-  # Sunucu/profil dağıtımı: $env:AURA_PROFILE='server'; .\run.ps1  → config/profiles/server.yaml
-  # (inference servisi load_config() içinde AURA_PROFILE env'ini otomatik okur — run.sh paritesi).
-  $profileName = if ($env:AURA_PROFILE) { $env:AURA_PROFILE } else { "varsayılan" }
+  # Sunucu/profil dağıtımı: $env:ROADGUARD_PROFILE='server'; .\run.ps1  → config/profiles/server.yaml
+  # (inference servisi load_config() içinde ROADGUARD_PROFILE env'ini otomatik okur — run.sh paritesi).
+  $profileName = if ($env:ROADGUARD_PROFILE) { $env:ROADGUARD_PROFILE } else { "varsayılan" }
   Write-Host "▶ RoadGuard servisleri başlatılıyor  (profil: $profileName)"
   Start-Svc "QoD mock"      "services.qod_mock.main:app"      $qodPort
   Start-Svc "NV mock"       "services.nv_mock.main:app"       $nvPort

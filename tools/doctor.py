@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-if os.environ.get("AURA_ASCII") == "1":
+if os.environ.get("ROADGUARD_ASCII") == "1":
     OK, WARN, BAD = "[OK]", "[!]", "[X]"
 else:
     OK, WARN, BAD = "✓", "!", "✗"
@@ -70,7 +70,7 @@ def _check_deps() -> bool:
 
 def _check_device() -> None:
     try:
-        from aura.device import resolve_device
+        from roadguard.device import resolve_device
 
         dev = resolve_device("auto")
         import torch
@@ -111,7 +111,7 @@ def _check_weights() -> bool:
 
 def _check_config(profile: str | None) -> bool:
     try:
-        from aura.config import available_profiles, load_config
+        from roadguard.config import available_profiles, load_config
 
         cfg = load_config(profile=profile)
         _line(OK, f"config yüklendi: {cfg.path.name}  | profil: {cfg.profile or '(yok)'}")
@@ -140,7 +140,7 @@ def _check_videos() -> None:
     _line(
         OK if sample.exists() else WARN,
         f"gömülü demo: {sample.relative_to(ROOT)}"
-        + ("" if sample.exists() else "  → `python -m aura.synthetic`"),
+        + ("" if sample.exists() else "  → `python -m roadguard.synthetic`"),
     )
     found = sorted((Path.home()).glob("video_*.mp4"))
     if found:

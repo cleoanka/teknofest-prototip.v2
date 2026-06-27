@@ -11,7 +11,7 @@ import logging
 
 from train.utils import run_finetune
 
-log = logging.getLogger("aura.train.detector")
+log = logging.getLogger("roadguard.train.detector")
 
 
 def train_detector(args) -> int:

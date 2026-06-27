@@ -26,7 +26,7 @@
 **[1]** Ultralytics, "Ultralytics YOLO — Documentation," sürüm **8.4.66** (repoda kurulu;
 `ultralytics>=8.4.0`, YOLO26 mimarisi 8.4.x ile gelir), 2025–2026. https://docs.ultralytics.com
 (erişim 23.06.2026). Lisans: AGPL-3.0. — *Kullanılan:* birincil dedektör `yolo26l` (COCO ön-eğitimli)
-ve özel fine-tune `custom_*` ağırlıkları; `aura/detection/yolo.py`.
+ve özel fine-tune `custom_*` ağırlıkları; `roadguard/detection/yolo.py`.
 
 **[2]** J. Redmon, S. Divvala, R. Girshick ve A. Farhadi, "You Only Look Once: Unified, Real-Time
 Object Detection," _IEEE/CVF CVPR_, 2016, ss. 779–788. DOI: 10.1109/CVPR.2016.91. — *Kavramsal temel:*
@@ -34,7 +34,7 @@ YOLO tek-aşamalı tespit paradigması.
 
 **[3]** Y. Zhang, P. Sun, Y. Jiang ve diğ., "ByteTrack: Multi-Object Tracking by Associating Every
 Detection Box," _ECCV_, 2022. arXiv:2110.06864. https://arxiv.org/abs/2110.06864 (erişim 23.06.2026).
-— *Kullanılan:* varsayılan takip algoritması (Ultralytics `bytetrack.yaml`); `aura/detection/yolo.py`.
+— *Kullanılan:* varsayılan takip algoritması (Ultralytics `bytetrack.yaml`); `roadguard/detection/yolo.py`.
 
 **[4]** N. Wojke, A. Bewley ve D. Paulus, "Simple Online and Realtime Tracking with a Deep
 Association Metric (DeepSORT)," _IEEE ICIP_, 2017. arXiv:1703.07402. — *İlgili:* takip literatürü temeli
@@ -55,11 +55,11 @@ eşleştirme (atama problemi).
 sürüm **1.1.0** (repoda kurulu; `onnxruntime` ile), 2024–2026.
 https://github.com/ankandrew/fast-plate-ocr (erişim 23.06.2026). — *Kullanılan (VARSAYILAN OCR motoru):*
 plakaya-özel hafif ONNX OCR; gerçek video_3'te EasyOCR il-kodu misread'ini kurtardı → **3/3 exact,
-CER 0**. `aura/plate/ocr.py:build_ocr`.
+CER 0**. `roadguard/plate/ocr.py:build_ocr`.
 
 **[8]** JaidedAI, "EasyOCR: Ready-to-use OCR with 80+ languages," sürüm **1.7.2** (repoda kurulu),
 2020–2026. https://github.com/JaidedAI/EasyOCR (erişim 23.06.2026). Lisans: Apache-2.0. — *Kullanılan
-(yedek/fallback OCR motoru):* `fast-plate-ocr` yoksa loglu düşüş; `aura/plate/ocr.py`.
+(yedek/fallback OCR motoru):* `fast-plate-ocr` yoksa loglu düşüş; `roadguard/plate/ocr.py`.
 
 **[9]** PaddlePaddle, "PaddleOCR — PP-OCRv4," 2023–2026. https://github.com/PaddlePaddle/PaddleOCR
 (erişim 23.06.2026). Lisans: Apache-2.0. — *Opsiyonel (entegre, varsayılan değil):* `plate.ocr_engine=paddleocr`
@@ -67,11 +67,11 @@ seçilince devreye girer; kurulu değilse fallback. `pyproject.toml` extra `padd
 
 **[10]** K. Zuiderveld, "Contrast Limited Adaptive Histogram Equalization (CLAHE)," _Graphics Gems IV_,
 P. Heckbert (Ed.), Academic Press, 1994, ss. 474–485. DOI: 10.1016/B978-0-12-336156-1.50061-6. —
-*Kullanılan:* düşük-ışık plaka/ROI iyileştirme; `aura/plate/ocr.py` (CLAHE) ve `pose.roi_enhance`.
+*Kullanılan:* düşük-ışık plaka/ROI iyileştirme; `roadguard/plate/ocr.py` (CLAHE) ve `pose.roi_enhance`.
 
 **[11]** R. Hartley ve A. Zisserman, _Multiple View Geometry in Computer Vision_, 2. baskı, Cambridge
 University Press, 2004. ISBN 978-0521540513. — *Kavramsal temel:* homografi / perspektif düzeltme
-(`cv2.getPerspectiveTransform`); `aura/optional/homography_ipm.py`.
+(`cv2.getPerspectiveTransform`); `roadguard/optional/homography_ipm.py`.
 
 **[12]** S. Silva ve C. R. Jung, "A Flexible Approach for Automatic License Plate Recognition in
 Unconstrained Scenarios (WPOD-NET / IWPOD-NET)," _IEEE Trans. Intelligent Transportation Systems_, 2021.
@@ -91,7 +91,7 @@ düşük-ışık iyileştirme; CLAHE yerine değerlendirilen seçenek (`docs/yol
 
 **[15]** Ultralytics, "YOLO — Pose / Keypoint estimation," 2025–2026.
 https://docs.ultralytics.com/tasks/pose (erişim 23.06.2026). — *Kullanılan:* sürücü hibrit motorunun
-poz-geometrisi katmanı (landmark kütüphanesi gerektirmeyen); `aura/driver_state/pose.py`.
+poz-geometrisi katmanı (landmark kütüphanesi gerektirmeyen); `roadguard/driver_state/pose.py`.
 
 **[16]** T. H. N. Le, Y. Zheng, C. Zhu, K. Luu ve M. Savvides, "Multiple Scale Faster-RCNN Approach to
 Driver's Cell-phone Usage and Hands on Steering Wheel Detection," _IEEE/CVF CVPR Workshops_, 2016.
@@ -109,12 +109,12 @@ araç-içi davranış sınıflandırması referans problemi.
 **[18]** R. E. Kalman, "A New Approach to Linear Filtering and Prediction Problems," _Transactions of
 the ASME — Journal of Basic Engineering_, c. 82, sayı 1, 1960, ss. 35–45. DOI: 10.1115/1.3662552. —
 *Kullanılan:* hız düzleştirme/öngörü (Kalman filtresi) ve takipte hareket modeli;
-`aura/speed/estimator.py`, `aura/speed/calibration.py`.
+`roadguard/speed/estimator.py`, `roadguard/speed/calibration.py`.
 
 **[19]** M. Bertozzi ve A. Broggi, "GOLD: A Parallel Real-Time Stereo Vision System for Generic Obstacle
 and Lane Detection (Inverse Perspective Mapping)," _IEEE Trans. Image Processing_, c. 7, sayı 1, 1998,
 ss. 62–81. DOI: 10.1109/83.650851. — *Kullanılan:* ters perspektif eşleme (IPM) ile metrik
-oto-kalibrasyon; `aura/optional/homography_ipm.py`, `aura/speed/estimator.py`.
+oto-kalibrasyon; `roadguard/optional/homography_ipm.py`, `roadguard/speed/estimator.py`.
 
 **[20]** OpenCV, "Camera Calibration and 3D Reconstruction — Geometric Image Transformations,"
 sürüm 4.13. https://docs.opencv.org/4.x/da/d54/group__imgproc__transform.html (erişim 23.06.2026). —
@@ -127,7 +127,7 @@ sürüm 4.13. https://docs.opencv.org/4.x/da/d54/group__imgproc__transform.html 
 **[21]** J. Stallkamp, M. Schlipsing, J. Salmen ve C. Igel, "The German Traffic Sign Recognition
 Benchmark (GTSRB): A multi-class classification competition," _IJCNN_, 2011, ss. 1453–1460.
 DOI: 10.1109/IJCNN.2011.6033395. — *Kavramsal temel:* trafik tabelası tanıma ve hız-limiti sınıfları
-(`speed_limit_*`); `aura/scene/sign_tracker.py`, `config/default.yaml` `sign.value_map`.
+(`speed_limit_*`); `roadguard/scene/sign_tracker.py`, `config/default.yaml` `sign.value_map`.
 
 ---
 
@@ -135,7 +135,7 @@ DOI: 10.1109/IJCNN.2011.6033395. — *Kavramsal temel:* trafik tabelası tanıma
 
 **[22]** CAMARA Project (Linux Foundation), "Quality on Demand (QoD) API," 2023–2026.
 https://github.com/camaraproject/QualityOnDemand (erişim 23.06.2026). — *Kullanılan (sözleşme taklidi):*
-QoD oturum oluştur/sorgula/sil + QoS profilleri (QOS_E/L); `aura/qod/client.py`, `services/qod_mock/`.
+QoD oturum oluştur/sorgula/sil + QoS profilleri (QOS_E/L); `roadguard/qod/client.py`, `services/qod_mock/`.
 
 **[23]** CAMARA Project (Linux Foundation), "Number Verification API," 2023–2026.
 https://github.com/camaraproject/NumberVerification (erişim 23.06.2026). — *Kullanılan (sözleşme taklidi):*
@@ -241,7 +241,7 @@ açık set **yoktur** — manifestte boş bırakılır (uydurma kaynak eklenmez)
 
 **[44]** M. Everingham, L. Van Gool, C. K. I. Williams, J. Winn ve A. Zisserman, "The PASCAL Visual
 Object Classes (VOC) Challenge," _International Journal of Computer Vision_, c. 88, 2010, ss. 303–338.
-DOI: 10.1007/s11263-009-0275-3. — *Kullanılan:* mAP / Precision-Recall metodolojisi; `aura/eval/`.
+DOI: 10.1007/s11263-009-0275-3. — *Kullanılan:* mAP / Precision-Recall metodolojisi; `roadguard/eval/`.
 
 **[45]** COCO Consortium, "COCO Detection Evaluation (mAP@[.50:.95])," 2014–2026.
 https://cocodataset.org/#detection-eval (erişim 23.06.2026). — *Kullanılan:* mAP50 / mAP50-95 ölçüm
@@ -250,7 +250,7 @@ protokolü (Ultralytics `model.val`); `weights/custom_*.metrics.json`.
 **[46]** Karakter Hata Oranı (Character Error Rate, CER) — Levenshtein düzenleme mesafesi temelli OCR
 metriği; V. I. Levenshtein, "Binary codes capable of correcting deletions, insertions, and reversals,"
 _Soviet Physics Doklady_, c. 10, 1966, ss. 707–710. — *Kullanılan:* plaka OCR doğruluğu (exact-match +
-CER); `aura/eval/report.py`.
+CER); `roadguard/eval/report.py`.
 
 ---
 
@@ -270,19 +270,19 @@ problem tanımı, FTR formatı, değerlendirme kriterleri, açık-veri kullanım
 
 | RoadGuard bileşeni | Dosya | Kaynak no. |
 |---|---|---|
-| Dedektör (YOLO26 + COCO) | `aura/detection/yolo.py` | [1][2][34] |
-| Takip (ByteTrack) | `aura/detection/yolo.py` | [3][5][6] |
-| Plaka OCR (fast-plate / EasyOCR / Paddle) | `aura/plate/ocr.py` | [7][8][9] |
-| Plaka iyileştirme (CLAHE) + dewarp | `aura/plate/ocr.py`, `aura/optional/homography_ipm.py` | [10][11][20] |
-| Sürücü durumu (poz hibrit) | `aura/driver_state/pose.py` | [15][16] |
-| Hız (Kalman/EMA/IPM) | `aura/speed/estimator.py`, `calibration.py` | [18][19][20] |
-| Tabela / hız-limiti | `aura/scene/sign_tracker.py` | [21] |
-| QoD (CAMARA) | `aura/qod/client.py`, `services/qod_mock/` | [22][24][25][26] |
+| Dedektör (YOLO26 + COCO) | `roadguard/detection/yolo.py` | [1][2][34] |
+| Takip (ByteTrack) | `roadguard/detection/yolo.py` | [3][5][6] |
+| Plaka OCR (fast-plate / EasyOCR / Paddle) | `roadguard/plate/ocr.py` | [7][8][9] |
+| Plaka iyileştirme (CLAHE) + dewarp | `roadguard/plate/ocr.py`, `roadguard/optional/homography_ipm.py` | [10][11][20] |
+| Sürücü durumu (poz hibrit) | `roadguard/driver_state/pose.py` | [15][16] |
+| Hız (Kalman/EMA/IPM) | `roadguard/speed/estimator.py`, `calibration.py` | [18][19][20] |
+| Tabela / hız-limiti | `roadguard/scene/sign_tracker.py` | [21] |
+| QoD (CAMARA) | `roadguard/qod/client.py`, `services/qod_mock/` | [22][24][25][26] |
 | Number Verification | `services/nv_mock/` | [23][24] |
 | API / servis çerçevesi | `services/inference_api/` | [30] |
 | Mobil demo | `mobile/` | [33] |
 | Eğitim verisi | `train/datasets.yaml`, `data/processed/` | [34]–[38] |
-| Metrikler (mAP/CER) | `aura/eval/` | [44][45][46] |
+| Metrikler (mAP/CER) | `roadguard/eval/` | [44][45][46] |
 
 ---
 

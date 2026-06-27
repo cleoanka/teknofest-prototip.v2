@@ -14,14 +14,14 @@ from __future__ import annotations
 
 import os
 
-os.environ.setdefault("AURA_AUTOSTART", "0")
-os.environ.setdefault("AURA_CAMERA_PROBE", "0")
+os.environ.setdefault("ROADGUARD_AUTOSTART", "0")
+os.environ.setdefault("ROADGUARD_CAMERA_PROBE", "0")
 os.environ.setdefault("AI_MODE", "mock")
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
-from aura.schema import AnnotationFrame, BBox, TrackRecord  # noqa: E402
+from roadguard.schema import AnnotationFrame, BBox, TrackRecord  # noqa: E402
 from services.inference_api.main import create_app  # noqa: E402
 
 
@@ -166,9 +166,9 @@ def test_eval_run_queued_echo_and_job_writes_results(client, monkeypatch):
     # harness modülünü monkeypatch'le (lazy import bu modülü hedefler).
     import types
 
-    fake_harness = types.ModuleType("aura.eval.harness")
+    fake_harness = types.ModuleType("roadguard.eval.harness")
     fake_harness.run_eval = fake_run_eval
-    monkeypatch.setitem(__import__("sys").modules, "aura.eval.harness", fake_harness)
+    monkeypatch.setitem(__import__("sys").modules, "roadguard.eval.harness", fake_harness)
 
     r = client.post(
         "/eval/run",
@@ -193,9 +193,9 @@ def test_eval_run_queued_echo_and_job_writes_results(client, monkeypatch):
 def test_eval_run_qod_comparison_false_echo(client, monkeypatch):
     import types
 
-    fake_harness = types.ModuleType("aura.eval.harness")
+    fake_harness = types.ModuleType("roadguard.eval.harness")
     fake_harness.run_eval = lambda *a, **k: {"status": "ok"}
-    monkeypatch.setitem(__import__("sys").modules, "aura.eval.harness", fake_harness)
+    monkeypatch.setitem(__import__("sys").modules, "roadguard.eval.harness", fake_harness)
     r = client.post("/eval/run", json={"qod_comparison": False})
     assert r.status_code == 200
     assert r.json()["qod_comparison"] is False
@@ -209,9 +209,9 @@ def test_eval_run_harness_error_path_sets_error_then_export_empty(client, monkey
     def boom(*a, **k):
         raise RuntimeError("harness patladi")
 
-    fake_harness = types.ModuleType("aura.eval.harness")
+    fake_harness = types.ModuleType("roadguard.eval.harness")
     fake_harness.run_eval = boom
-    monkeypatch.setitem(__import__("sys").modules, "aura.eval.harness", fake_harness)
+    monkeypatch.setitem(__import__("sys").modules, "roadguard.eval.harness", fake_harness)
 
     r = client.post("/eval/run", json={"source": "x.mp4"})
     assert r.status_code == 200 and r.json()["status"] == "queued"
@@ -233,9 +233,9 @@ def test_eval_run_defaults_source_and_gt(client, monkeypatch):
 
     import services.inference_api.routers.eval as eval_mod
 
-    fake_harness = types.ModuleType("aura.eval.harness")
+    fake_harness = types.ModuleType("roadguard.eval.harness")
     fake_harness.run_eval = lambda *a, **k: {"status": "ok"}
-    monkeypatch.setitem(__import__("sys").modules, "aura.eval.harness", fake_harness)
+    monkeypatch.setitem(__import__("sys").modules, "roadguard.eval.harness", fake_harness)
 
     r = client.post("/eval/run", json={})
     body = r.json()

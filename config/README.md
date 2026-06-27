@@ -16,11 +16,11 @@
 ## 🧩 Ne yapar
 
 `default.yaml` RoadGuard'ın **tek doğruluk kaynağıdır**. Hiçbir eşik/flag koda gömülmez;
-tüm çalışma zamanı davranışı buradan yönetilir. `aura.config.load_config()` bu dosyayı
+tüm çalışma zamanı davranışı buradan yönetilir. `roadguard.config.load_config()` bu dosyayı
 yükler, seçili env değişkenlerini override olarak uygular ve noktalı erişim sağlar:
 
 ```python
-from aura.config import load_config
+from roadguard.config import load_config
 cfg = load_config()                       # sadece default.yaml
 cfg = load_config(profile="server")       # default.yaml + profiles/server.yaml (derin-merge)
 cfg.get("plate.voting_buffer_size")       # 7
@@ -44,8 +44,8 @@ flowchart LR
 ## 🗂️ Profiller (`config/profiles/*.yaml`)
 
 `default.yaml` üzerine **derin-merge** edilen overlay'ler; yalnız farkları içerir. Seçim
-sırası: `--profile` argümanı > `AURA_PROFILE` env > yok. CLI: `--profile` bayrağı
-(`aura`, `aura.eval`, `tools/test_video.py`, `tools/doctor.py`).
+sırası: `--profile` argümanı > `ROADGUARD_PROFILE` env > yok. CLI: `--profile` bayrağı
+(`roadguard`, `roadguard.eval`, `tools/test_video.py`, `tools/doctor.py`).
 
 | Profil | Dedektör | Cihaz | imgsz | Hedef |
 |---|---|---|---|---|
@@ -54,7 +54,7 @@ sırası: `--profile` argümanı > `AURA_PROFILE` env > yok. CLI: `--profile` ba
 | `v4-finetune` | yolguvenligi_types_v4 (ESKİ yolov8m) | auto | 768 | A/B kıyas tabanı — production değil (production: YOLO26) |
 
 Kendi profilinizi ekleyin (`config/profiles/uretim.yaml`) → `--profile uretim`. Liste:
-`python -c "from aura.config import available_profiles as a; print(a())"`. Detay: `docs/dagitim.md`.
+`python -c "from roadguard.config import available_profiles as a; print(a())"`. Detay: `docs/dagitim.md`.
 
 ---
 
@@ -117,9 +117,9 @@ motor-bağımsız çalışır.
 > **K-004:** config-driven motor seçimi, oran-bazlı, videoya-özel sabit/kara-liste YOK; fast-plate-ocr
 > kurulu değilse easyocr baseline'ına şeffaf düşülür.
 
-PaddleOCR için: `pip install 'aura[paddle]'`,
+PaddleOCR için: `pip install 'roadguard[paddle]'`,
 `ocr_gpu` (varsayılan `true` — OCR motorunu GPU'da çalıştır; **CUDA gerçekten kullanılabilir
-değilse otomatik CPU'ya düşer**, `aura/device.cuda_is_usable` ile probe edilir. EasyOCR'a
+değilse otomatik CPU'ya düşer**, `roadguard/device.cuda_is_usable` ile probe edilir. EasyOCR'a
 `gpu=`, PaddleOCR'a sürüme göre `device=gpu`/`use_gpu=` olarak geçirilir),
 `lp_detector.*` (sıkı plaka kırpma — **varsayılan eğitilmiş `custom_license_plate`**, YOLO26s,
 held-out mAP50 0.983; A/B 3/3 korundu → varsayılan; yoksa loglu stok `lp_yolo11n`/geniş-crop fallback),
@@ -138,7 +138,7 @@ belirsizi PENDING yapar net plakayı onaylar); **`confirm_peak_weight`** (v2.3) 
 plaka en az bir kez bu etkin-ağırlıkla (OCR güveni × kırpık kalitesi) okunmuş olmalı —
 hep-uzak sistematik misread onaylanmaz; 0 = kapalı. Ek **pozisyon-veto** (v2.3): ayrı-aday
 bütün-string marjını geçse bile her karakter pozisyonu belirsizse onay verilmez. — bkz.
-`aura/plate/normalize.py`).
+`roadguard/plate/normalize.py`).
 
 #### `early_read.*` — gri-bölge erken-okuma (v2.4)
 
@@ -149,7 +149,7 @@ okuma için **güvenlik ağı olarak KALIR**.
 
 > [!WARNING]
 > **A/B (19 Haz 2026, 3 gerçek video, MPS-YOLO+fastplate, GT=34TC8532):** `enabled=true` video_3'ü
-> 2.10s → 1.26s erken onayladı AMA değer YANLIŞ (`34TC8512`, son hane 3→1). `AURA_ER_TRACE` ölçümü:
+> 2.10s → 1.26s erken onayladı AMA değer YANLIŞ (`34TC8512`, son hane 3→1). `ROADGUARD_ER_TRACE` ölçümü:
 > lp_h 28-32'de fastplate `34TC8532`/`34TC8512`/`34TC8577` arası salınıyor, yanlış okumalar da conf
 > 0.91-0.96 (conf ayırt etmiyor); ikinci motor (easyocr) bu boyutta plakayı hiç okuyamıyor → mutabakat
 > ASLA oluşmuyor, yalnız `high_conf` kaçışı oya girip yanlışı onaya taşıyor. SR + 5-kare median füzyon
@@ -171,7 +171,7 @@ kapalı (PLAIN davranış). Yalnız gerçek-motor yolunda etkin (mock/sentetik a
 
 > [!CAUTION]
 > **K-004:** videoya-özel sabit/blacklist YOK; saf piksel-boyut + okuma-kalitesi kapısı. — bkz.
-> `aura/plate/reader.py` (`_early_read`/`_er_upscale`/`_er_fuse`).
+> `roadguard/plate/reader.py` (`_early_read`/`_er_upscale`/`_er_fuse`).
 
 ### `models.driver_state` (backend seçimi)
 
@@ -229,5 +229,5 @@ kapalıyken import bile yapılmaz (lazy). Detay: `docs/mimari_ek_moduller.md`.
 
 ## 🌱 Env override
 
-`.env` (veya kabuk) bazı değerleri override eder: `AURA_PROFILE` (config profili),
-`AI_MODE`, `AURA_DEVICE`, `AURA_INFERENCE_PORT`, `AURA_QOD_MOCK_PORT`, `AURA_NV_MOCK_PORT`.
+`.env` (veya kabuk) bazı değerleri override eder: `ROADGUARD_PROFILE` (config profili),
+`AI_MODE`, `ROADGUARD_DEVICE`, `ROADGUARD_INFERENCE_PORT`, `ROADGUARD_QOD_MOCK_PORT`, `ROADGUARD_NV_MOCK_PORT`.

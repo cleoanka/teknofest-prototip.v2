@@ -2,11 +2,11 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import type { AuraEvent } from "../api/types";
+import type { RoadGuardEvent } from "../api/types";
 import { COLORS, EVENT_COLOR, qodReasonLabel, riskLabel } from "./theme";
 
 // Event tipini okunabilir TR satıra çevir (payload sözleşmesi accumulator/qod'dan).
-export function describe(e: AuraEvent): string {
+export function describe(e: RoadGuardEvent): string {
   const p = (e.payload ?? {}) as Record<string, any>;
   switch (e.type) {
     case "PLATE_CONFIRMED":
@@ -41,7 +41,7 @@ function timeOf(ts: number): string {
   return d.toLocaleTimeString("tr-TR", { hour12: false });
 }
 
-function EventRowBase({ event }: { event: AuraEvent }) {
+function EventRowBase({ event }: { event: RoadGuardEvent }) {
   const color = EVENT_COLOR[event.type] ?? COLORS.muted;
   return (
     <View style={[styles.row, { borderLeftColor: color }]}>

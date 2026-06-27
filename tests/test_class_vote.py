@@ -7,7 +7,7 @@ Senaryolar gerçek video ölçümlerinden alınmıştır (12 Haz akşamı):
 
 from __future__ import annotations
 
-from aura.stability.class_vote import TrackClassVoter
+from roadguard.stability.class_vote import TrackClassVoter
 
 
 def _voter(cfg, decay: float | None = None) -> TrackClassVoter:

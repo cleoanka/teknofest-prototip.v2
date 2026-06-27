@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from aura.config import load_config  # noqa: E402
+from roadguard.config import load_config  # noqa: E402
 
 
 def run_once(source: str, frames: int, lp_on: bool, conf: float) -> dict:
@@ -34,7 +34,7 @@ def run_once(source: str, frames: int, lp_on: bool, conf: float) -> dict:
     cfg.data["models"]["detector"]["conf"] = conf  # stok fallback için düşük eşik
     cfg.data["plate"]["lp_detector"]["enabled"] = lp_on
 
-    from aura.pipeline.pipeline import Pipeline
+    from roadguard.pipeline.pipeline import Pipeline
 
     pipe = Pipeline(cfg)
 

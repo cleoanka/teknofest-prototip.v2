@@ -34,7 +34,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from aura.config import load_config  # noqa: E402
+from roadguard.config import load_config  # noqa: E402
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -133,7 +133,7 @@ def main(argv: list[str] | None = None) -> int:
     cfg.data["runtime"]["device"] = args.device
 
     # Cihazı gerçek-çözülmüş adıyla raporla (auto → cuda0/mps/cpu; CUDA kullanılamazsa düşer).
-    from aura.device import resolve_device  # ağır import argümanlar doğrulandıktan sonra
+    from roadguard.device import resolve_device  # ağır import argümanlar doğrulandıktan sonra
 
     resolved = resolve_device(args.device)
     device_tag = resolved.replace(":", "")  # cuda:0 → cuda0 (dosya adı dostu)
@@ -142,7 +142,7 @@ def main(argv: list[str] | None = None) -> int:
     out_dir.mkdir(exist_ok=True)
     out_md = Path(args.output) if args.output else out_dir / f"bench_{device_tag}.md"
 
-    from aura.pipeline.pipeline import Pipeline  # ağır import
+    from roadguard.pipeline.pipeline import Pipeline  # ağır import
 
     pipe = Pipeline(cfg)
 

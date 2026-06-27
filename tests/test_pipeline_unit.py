@@ -13,9 +13,9 @@ from __future__ import annotations
 
 import numpy as np
 
-from aura.detection.detector import Detection, Person
-from aura.pipeline import Pipeline
-from aura.schema import BBox
+from roadguard.detection.detector import Detection, Person
+from roadguard.pipeline import Pipeline
+from roadguard.schema import BBox
 
 
 class _StubDetector:
@@ -104,7 +104,7 @@ def test_scene_active_limit_injected_into_accumulator(cfg):
 
     # SignTracker.update'i zorla: sahne bağlamı aktif limit 50 döndürsün.
     def _fake_update(signs, idx, now=None):
-        from aura.schema import SceneContext
+        from roadguard.schema import SceneContext
 
         return SceneContext(active_speed_limit_kmh=50), []
 

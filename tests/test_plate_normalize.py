@@ -7,7 +7,7 @@ EasyOCR '34TC8532' plakasını kareler arasında '041C8532' (3→0, T→1) ve '8
 
 from __future__ import annotations
 
-from aura.plate.normalize import PlateVotePool, normalize_tr
+from roadguard.plate.normalize import PlateVotePool, normalize_tr
 
 
 # --- normalize_tr --------------------------------------------------------- #

@@ -1,6 +1,6 @@
 # =============================================================================
 # PROFİL: custom — RoadGuard ÖZEL EĞİTİMLİ domain modelleri (YOLO26s fine-tune)
-# Kullanım:  python -m aura --profile custom   |   AURA_PROFILE=custom ...
+# Kullanım:  python -m roadguard --profile custom   |   ROADGUARD_PROFILE=custom ...
 #            python tools/test_video.py --source v1.mp4 --profile custom --device mps
 # default.yaml ÜZERİNE derin-merge edilir; yalnız farklılıklar burada.
 #
@@ -38,7 +38,7 @@ models:
     # bastırma latch'i kayboldu → telefon videosunda (video_2) telefon KAÇTI + sigara FP arttı.
     # Bu yüzden custom_smoking roi_objects'e ALINMADI. Held-out mAP50 0.856 (FTR §4).
     # DOĞRU entegrasyon (artık KODDA): roi_objects'in YANINDA opsiyonel ikinci
-    # 'smoking_model' kanalı — aura/driver_state/pose.py yalnız 'smoking' NESNESİNİ
+    # 'smoking_model' kanalı — roadguard/driver_state/pose.py yalnız 'smoking' NESNESİNİ
     # OR'lar, phone yolu (nesne-kanıtı + bastırma latch'i) korunur. Bu profil ikinci
     # modeli AÇIKÇA bağlar (default.yaml zaten enabled; burada path netleştirilir).
     # GRACEFUL-ABSENT: ağırlık diskte yoksa no-op, davranış değişmez.

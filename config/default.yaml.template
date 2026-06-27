@@ -36,7 +36,7 @@ models:
     #          STOK COCO yolo26l bu sınıfları ÜRETEMEZ (sessiz sıfır).
     #   pose → YOLO26-pose keypoint geometrisi: bilek↔ağız/kulak GÖRELİ yakınlığı
     #          (v1'in gerçek videoda ölçülmüş MediaPipe geometrisinin saf-YOLO portu;
-    #          fine-tune ağırlık GEREKTİRMEZ). Bkz. aura/driver_state/pose.py.
+    #          fine-tune ağırlık GEREKTİRMEZ). Bkz. roadguard/driver_state/pose.py.
     #   auto → pose ağırlığı diskte varsa pose, yoksa yolo.
     backend: auto
     path: weights/yolo26l.pt
@@ -177,7 +177,7 @@ plate:
   lp_qod_below_px: 26           # bundan alçak LP görüldüğü AN 'plate_too_small' kalite tetiği
   ocr_second_variant: true      # okuma güveni düşükse CLAHE+2x varyantıyla ikinci deneme
   ocr_second_variant_below: 0.5 # bu güvenin altındaki okumalarda varyant devreye girer
-  # Format-öncelikli KALICI oy havuzu (aura/plate/normalize.py):
+  # Format-öncelikli KALICI oy havuzu (roadguard/plate/normalize.py):
   # oylar track ömrü boyunca birikir (redde sıfırlanmaz). KARAR yalnızca ikamesiz
   # format-geçerli ham okumalarla verilir ve her okuma OCR GÜVENİYLE ağırlıklanır
   # (yakın/net okuma uzak/bulanık okumayı ezer — uzaktan sistematik 3→0 hatası
@@ -220,7 +220,7 @@ speed:
     line_a_y: 0.40              # normalize ekran konumu (0-1)
     line_b_y: 0.70
     real_distance_m: 20.0       # iki çizgi arası gerçek mesafe (metre)
-  # --- metric (oto-kalibrasyon, kalibrasyonsuz km/h) — aura/speed/calibration.py ---
+  # --- metric (oto-kalibrasyon, kalibrasyonsuz km/h) — roadguard/speed/calibration.py ---
   plate_width_m: 0.520          # TR Tip-1 plaka standardı (520 mm) — varsa en kesin ppm kaynağı
   plate_aspect_tolerance: 0.35  # 520/120≈4.33'ten sapma toleransı (foreshortening koruması)
   vehicle_width_m:              # sınıf-bazlı tipik genişlik (m) — araç ppm yedeği

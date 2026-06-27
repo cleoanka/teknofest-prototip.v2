@@ -1,6 +1,6 @@
 # =============================================================================
 # PROFİL: laptop — hafif/geliştirme (Apple Silicon MPS veya CPU)
-# Kullanım:  python -m aura --profile laptop   |   AURA_PROFILE=laptop ...
+# Kullanım:  python -m roadguard --profile laptop   |   ROADGUARD_PROFILE=laptop ...
 # default.yaml ÜZERİNE derin-merge edilir; yalnız farklılıklar burada.
 #
 # Hedef: dizüstünde hızlı yineleme. Cascade'in hafif ucu: Stage-1 yolo26s,

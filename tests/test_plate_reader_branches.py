@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from aura.plate.reader import PlateReader
-from aura.schema import BBox
+from roadguard.plate.reader import PlateReader
+from roadguard.schema import BBox
 
 FRAME_SHAPE = (360, 640, 3)
 
@@ -357,7 +357,7 @@ class _LowConfThenNoneOCR:
 def test_second_variant_adds_independent_vote():
     # İlk okuma None (ikinci-şans tetikler); ikinci varyant geçerli okuma döndürür →
     # havuza ek bağımsız oy yazılır.
-    from aura.config import load_config
+    from roadguard.config import load_config
 
     r = PlateReader(load_config(), ocr=_LowConfThenNoneOCR([(None, 0.0), ("34TC8532", 0.9)]))
     r._second_variant = True  # enjekte-OCR kapatır; davranışı izole etmek için aç
@@ -371,7 +371,7 @@ def test_second_variant_adds_independent_vote():
 def PlateReader_with_ocr(cfg=None, qod=None, ocr_value=("34TC8532", 0.9)):
     """Enjekte-OCR'lı reader (model gerektirmez). cfg fixture'ı doğrudan veremediğimiz
     için modül-içi minimal cfg yüklenir."""
-    from aura.config import load_config
+    from roadguard.config import load_config
 
     c = cfg if cfg is not None else load_config()
     return PlateReader(c, qod=qod, ocr=FakeOCR(ocr_value))

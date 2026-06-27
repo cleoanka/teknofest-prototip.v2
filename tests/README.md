@@ -1,4 +1,4 @@
-> 📂 **aura/tests/** · Test Paketi · [⬅ repo kökü](../README.md)
+> 📂 **roadguard/tests/** · Test Paketi · [⬅ repo kökü](../README.md)
 
 <div align="center">
 
@@ -48,7 +48,7 @@ flowchart TD
 
 | Alan | Dosyalar | Test eder |
 |---|---|---|
-| Sözleşme/şema | `test_contracts.py`, `test_events.py` | §6.0 pydantic sözleşmeleri, AuraEvent/AnnotationFrame emitter + WS push |
+| Sözleşme/şema | `test_contracts.py`, `test_events.py` | §6.0 pydantic sözleşmeleri, RoadGuardEvent/AnnotationFrame emitter + WS push |
 | Tespit/takip | `test_detection.py`, `test_yolo_detector.py`, `test_class_vote.py` | Mock + gerçek YOLO26 dedektör, IoU takipçi, ROI geometri, alan-ağırlıklı sınıf oyu |
 | Stabilite | `test_stability.py` | 16/8 state machine (7/16→ret, 8/16→kabul, flicker) |
 | Sürücü durumu | `test_driver_state.py`, `test_driver_engine.py`, `test_driver_pose.py`, `test_driver_lock.py`, `test_driver_yolo_backend.py` | Katman A pose/yolo backend, Katman B `DriverStateEngine` ID-oylaması, sürücü kimlik kilidi |

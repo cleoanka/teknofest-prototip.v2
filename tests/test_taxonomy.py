@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from aura.taxonomy import canonical
+from roadguard.taxonomy import canonical
 
 
 def test_coco_cell_phone_maps_to_phone():

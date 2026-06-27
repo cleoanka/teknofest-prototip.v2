@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from aura.qod import QoDController
+from roadguard.qod import QoDController
 
 
 def test_trigger_emits_and_activates(cfg):

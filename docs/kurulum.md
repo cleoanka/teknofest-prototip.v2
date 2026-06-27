@@ -127,14 +127,14 @@ open http://localhost:8080/
 ## 🧪 Örnekler
 ```bash
 # CPU'ya zorla
-AURA_DEVICE=cpu ./run.sh
+ROADGUARD_DEVICE=cpu ./run.sh
 # Farklı port
-AURA_INFERENCE_PORT=9090 ./run.sh
+ROADGUARD_INFERENCE_PORT=9090 ./run.sh
 ```
 ```powershell
 # Windows (PowerShell) — değişkeni önce ayarlayın
-$env:AURA_DEVICE = "cpu"; .\run.ps1
-$env:AURA_INFERENCE_PORT = "9090"; .\run.ps1
+$env:ROADGUARD_DEVICE = "cpu"; .\run.ps1
+$env:ROADGUARD_INFERENCE_PORT = "9090"; .\run.ps1
 ```
 
 ---
@@ -145,8 +145,8 @@ $env:AURA_INFERENCE_PORT = "9090"; .\run.ps1
 | `Python 3.10+ gerekli` | `python3 --version`; pyenv/Homebrew ile güncelleyin |
 | Ağırlık indirilemiyor (404/ağ) | Kurulum durmaz; pipeline `mock` modda çalışır. Manuel: `.pt`'yi `weights/`'e koyun |
 | `ultralytics yok` → mock mod | Normal; gerçek model için ağırlık + `ai_mode: real` |
-| Port dolu | `AURA_INFERENCE_PORT`/`AURA_QOD_MOCK_PORT`/`AURA_NV_MOCK_PORT` ile değiştirin |
-| `/cameras` izin istiyor (macOS) | Kamera izni verin veya `AURA_CAMERA_PROBE=0` |
+| Port dolu | `ROADGUARD_INFERENCE_PORT`/`ROADGUARD_QOD_MOCK_PORT`/`ROADGUARD_NV_MOCK_PORT` ile değiştirin |
+| `/cameras` izin istiyor (macOS) | Kamera izni verin veya `ROADGUARD_CAMERA_PROBE=0` |
 | node yok | Sarı uyarı; Python servisleri tam çalışır, mobil opsiyonel |
 | `.ps1 çalıştırılamıyor` (Windows) | `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` — detay: [`windows.md`](windows.md) |
 | `python` Store'u açıyor (Windows) | `py -3` kullanın; betikler otomatik düşer. Kalıcı: Store stub'ını kapatın |

@@ -2,7 +2,7 @@
 
 OpenCV ile 0–N indekslerini dener; platforma göre isim çözer (macOS AVFoundation,
 Windows DirectShow). iPhone Continuity Camera standart webcam olarak listelenir.
-`AURA_CAMERA_PROBE=0` ile donanım taraması atlanır (CI/başsız ortam).
+`ROADGUARD_CAMERA_PROBE=0` ile donanım taraması atlanır (CI/başsız ortam).
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from fastapi import APIRouter
 from services.inference_api.models import CameraInfo, CamerasResponse
 
 router = APIRouter(tags=["cameras"])
-log = logging.getLogger("aura.api.cameras")
+log = logging.getLogger("roadguard.api.cameras")
 
 
 def _macos_camera_names() -> list[str]:
@@ -47,7 +47,7 @@ def _name_for(index: int, mac_names: list[str]) -> str:
 
 
 def enumerate_cameras(max_index: int = 6) -> list[CameraInfo]:
-    if os.environ.get("AURA_CAMERA_PROBE", "1") == "0":
+    if os.environ.get("ROADGUARD_CAMERA_PROBE", "1") == "0":
         return []
     mac_names = _macos_camera_names() if platform.system() == "Darwin" else []
     cams: list[CameraInfo] = []

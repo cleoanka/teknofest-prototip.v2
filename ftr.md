@@ -9,7 +9,7 @@
 > ✅ **Takvim (güncel):** FTR son teslim **28.06.2026'ya ERTELENDİ** (kullanıcı teyit etti;
 > eski şartname PDF'indeki 14.06 geçersiz). Yani **FTR HÂLÂ AÇIK** — bu rehber + aşağıdaki
 > doldurulabilir taslak doğrudan kullanılabilir. En yüksek puanlı §2 (Veri Seti) ve §4 (Sınama)
-> için sırasıyla `train dataset --report` ve `aura.eval --metrics-report` çıktıları hazır.
+> için sırasıyla `train dataset --report` ve `roadguard.eval --metrics-report` çıktıları hazır.
 
 ---
 
@@ -24,11 +24,11 @@ alt-sağ-sol 2.5. **Şablona uymayan rapor değerlendirilmez.**
 | 1. Proje Özeti | 5 | `README.md` + bu rehber §1 |
 | 2. **Veri Seti Oluşturulması** | **20** | `docs/veri_seti.md` + `docs/egitim.md` + `train/` tool (`dataset --report`) |
 | 3. Yapay Zekâ Çözümü | 50 | 3.1 Problem `docs/mimari.md`§problem · 3.2 Mimari `docs/mimari.md` diyagramı · 3.3 Detay `docs/mimari.md`+`docs/cli_referans.md` |
-| 4. **Çözümün Sınanması** | **20** | `python -m aura.eval --metrics-report` → `eval_results/metrics_report.md` (P/R/F1/CER/FPS) |
+| 4. **Çözümün Sınanması** | **20** | `python -m roadguard.eval --metrics-report` → `eval_results/metrics_report.md` (P/R/F1/CER/FPS) |
 | 5. Kaynakça | 5 | bu rehber §5 |
 
 **Yarışma final puanı (şartname Tablo 1, ayrı):** %40 YZ doğruluk + %40 QoD entegrasyonu
-+ %20 rapor/sunum. → QoD kanıtı: `python -m aura.eval --qod-comparison` (A/B delta).
++ %20 rapor/sunum. → QoD kanıtı: `python -m roadguard.eval --qod-comparison` (A/B delta).
 
 **En zayıf iki nokta = en yüksek puanlı iki bölüm:** Veri Seti (20) ve Metrik (20). Bu
 rehber özellikle bu ikisini doldurmaya odaklanır.
@@ -198,10 +198,10 @@ tablolar/grafikler. "Çözümümüze neden güveniyoruz?" sorusuna **veriye daya
 python tools/test_video.py --source ~/video_1.mp4 --device auto            # yolo26l (varsayılan)
 python tools/test_video.py --source ~/video_1.mp4 --profile v4-finetune    # fine-tune A/B
 # 2) Özetlerden P/R/F1 + plaka CER + FPS metrik raporu (FTR §4 tabloları)
-python -m aura.eval --metrics-report --summaries eval_results/ab
+python -m roadguard.eval --metrics-report --summaries eval_results/ab
 #    → eval_results/metrics_report.md + .csv + .json
 # 3) QoD A/B delta (yarışma %40 QoD kanıtı)
-python -m aura.eval --source <video> --ground-truth <gt.json> --qod-comparison
+python -m roadguard.eval --source <video> --ground-truth <gt.json> --qod-comparison
 ```
 
 **ÖLÇÜLEN SONUÇLAR (3 gerçek video, kapalı otopark, TOGG; RoadGuard v2.3, MPS/M4 Pro;
@@ -254,7 +254,7 @@ P = R = F1 = **1.0**, makro-F1 **1.0**. (Stabilite fixleri öncesi eski yolo26l,
   | Recall | **0.641** |
 
   Bu, model-kartı iddiası değil **bizim koştuğumuz held-out doğrulama setinin** sonucudur ve
-  raporun asıl dedektör doğruluk sayısıdır (komut: `python -m aura.eval --map --weights
+  raporun asıl dedektör doğruluk sayısıdır (komut: `python -m roadguard.eval --map --weights
   weights/yolo26l.pt --data <coco_val>.yaml`).
 - **(YALNIZ HIZLI SAĞLIK) Stok `yolo26l` — coco128 (küçük, eğitimle örtüşme olası):**
   mAP50 **0.790**, mAP50-95 **0.619**. DİKKAT: coco128 küçük ve büyük olasılıkla train-örtüşmeli
@@ -286,10 +286,10 @@ P = R = F1 = **1.0**, makro-F1 **1.0**. (Stabilite fixleri öncesi eski yolo26l,
   (swerving P=R=F1=1.0). `RISK_ALERT` + QoD tetiği besler.
 
 **Kanıt İzi (şartname 4.5 — "kanıtlanamayan hedef puanlanmaz"):** her hedefin otomatik
-üretildiği üç artefaktla kanıtlanır: (a) `python -m aura --save-events kanit.jsonl` →
+üretildiği üç artefaktla kanıtlanır: (a) `python -m roadguard --save-events kanit.jsonl` →
 **zaman-damgalı JSONL olay izi** (tespit/plaka/davranış/hız/swerving/QoD); (b)
 `python tools/test_video.py --source <video> --json <özet.json>` → **annotated mp4 + JSON oy
-dökümü** (plaka oy havuzu, bayrak süreleri, swerving kareleri); (c) `python -m aura.eval
+dökümü** (plaka oy havuzu, bayrak süreleri, swerving kareleri); (c) `python -m roadguard.eval
 --metrics-report` bu özetlerden §4 tablolarını **yeniden üretir** (her sayı bir komuta + artefakta
 bağlı, elle girilmemiş).
 
@@ -323,7 +323,7 @@ Finalde mobil uygulamada **canlı 5G + NV + QoD**:
 - **Number Verification:** kullanıcı/araç girişi sessiz doğrulama. RoadGuard mock: `services/nv_mock` +
   `POST /verify`. Finalde yalnız endpoint/credential değişir. Mobil iskelet: `mobile/`.
 - **Quality-on-Demand:** "TOGG yaklaşınca yüksek kalite". RoadGuard: `vehicle_approach` tetiği
-  (bbox alan-büyümesi) → `QOD_TRIGGER`. Kanıt: `python -m aura.eval --qod-comparison`
+  (bbox alan-büyümesi) → `QOD_TRIGGER`. Kanıt: `python -m roadguard.eval --qod-comparison`
   (`eval_results/report.json`, yeniden-üretilebilir). Delta, kare-düzeyi GT içeren **kontrollü
   sentetik set** üzerinde, OFF/ON senaryolarıyla ölçülür; mutlak değerler ve delta, OFF baseline'ı
   temsil eden düşük-kalite simülasyonun saldırganlığına bağlıdır (DÜRÜST NOT: en güncel koşuda OFF
@@ -332,7 +332,7 @@ Finalde mobil uygulamada **canlı 5G + NV + QoD**:
   kare-düzeyi GT olmadığından A/B orada ölçülemez.
 - **Tespitlerin mobil ekranda gösterimi:** `WS /stream/events` + `mobile/`.
 - **Kural 4.5 (kanıt yükümlülüğü):** her hedef otomatik üretildiği kanıtlanmalı →
-  `python -m aura --save-events kanit.jsonl` (zaman damgalı JSONL iz) + `tools/test_video.py`
+  `python -m roadguard --save-events kanit.jsonl` (zaman damgalı JSONL iz) + `tools/test_video.py`
   annotated mp4 + JSON özet (oy dökümü, bayrak süreleri, swerving kareleri).
 
 ---
@@ -359,4 +359,4 @@ Finalde mobil uygulamada **canlı 5G + NV + QoD**:
 
 > **Özet:** RoadGuard, FTR'nin **tüm bölümlerine somut kanıt + tek-komut üretim** sağlar. En yüksek
 > puanlı Veri Seti (20) ve Sınama (20) bölümleri için sırasıyla `train dataset --report` ve
-> `aura.eval --metrics-report` çıktıları doğrudan rapora konur. Sayılar gerçektir, hile yoktur (K-004).
+> `roadguard.eval --metrics-report` çıktıları doğrudan rapora konur. Sayılar gerçektir, hile yoktur (K-004).

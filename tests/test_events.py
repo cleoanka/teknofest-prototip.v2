@@ -1,18 +1,22 @@
-"""AuraEvent/AnnotationFrame şema doğrulama + EventEmitter + StreamManager push."""
+"""RoadGuardEvent/AnnotationFrame şema doğrulama + EventEmitter + StreamManager push."""
 
 from __future__ import annotations
 
 import asyncio
 
-from aura.events import EventEmitter
-from aura.schema import AnnotationFrame, AuraEvent, make_event
+from roadguard.events import EventEmitter
+from roadguard.schema import AnnotationFrame, RoadGuardEvent, make_event
 
 
 def test_event_roundtrip():
     e = make_event(5, "PLATE_CONFIRMED", {"value": "34ABC123"}, ts=1.0)
     d = e.model_dump()
-    assert d["type"] == "PLATE_CONFIRMED" and d["track_id"] == 5 and d["source"] == "aura-inference"
-    assert AuraEvent.model_validate(d).payload["value"] == "34ABC123"
+    assert (
+        d["type"] == "PLATE_CONFIRMED"
+        and d["track_id"] == 5
+        and d["source"] == "roadguard-inference"
+    )
+    assert RoadGuardEvent.model_validate(d).payload["value"] == "34ABC123"
 
 
 def test_annotation_roundtrip():
@@ -36,7 +40,7 @@ def test_invalid_event_type_rejected():
     import pytest
 
     with pytest.raises(pydantic.ValidationError):
-        AuraEvent(track_id=1, type="NOT_A_TYPE")
+        RoadGuardEvent(track_id=1, type="NOT_A_TYPE")
 
 
 def test_stream_manager_threadsafe_push(cfg):

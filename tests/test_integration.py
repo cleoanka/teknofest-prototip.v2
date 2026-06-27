@@ -18,8 +18,8 @@ def test_real_yolo_detector_loads(cfg):
     if not weight.exists():
         pytest.skip("detector ağırlığı yok (bootstrap indirmedi)")
     cfg.data["runtime"]["ai_mode"] = "real"
-    from aura.detection.detector import build_detector
-    from aura.detection.yolo import YOLO26Detector
+    from roadguard.detection.detector import build_detector
+    from roadguard.detection.yolo import YOLO26Detector
 
     det = build_detector(cfg)
     assert isinstance(det, YOLO26Detector)
@@ -33,10 +33,10 @@ def test_real_pipeline_end_to_end(cfg):
     cfg.data["runtime"]["ai_mode"] = "real"
     src = "data/samples/ornek.mp4"
     if not Path(src).exists():
-        from aura.synthetic import generate
+        from roadguard.synthetic import generate
 
         generate(Path("data/samples"), 30, 30, 640, 360)
-    from aura.pipeline import Pipeline
+    from roadguard.pipeline import Pipeline
 
     events = Pipeline(cfg).run_video(src, max_frames=30)
     assert isinstance(events, list)

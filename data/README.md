@@ -48,7 +48,7 @@ Bootstrap tarafından üretilen **deterministik sentetik trafik senaryosu**:
 
 Yeniden üret:
 ```bash
-python -m aura.synthetic --out data/samples --frames 90
+python -m roadguard.synthetic --out data/samples --frames 90
 ```
 
 Ek olarak `samples/` gerçek test videolarının **video-düzeyi** ground-truth'unu da tutar:

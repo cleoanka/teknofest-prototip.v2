@@ -5,15 +5,15 @@ from __future__ import annotations
 import cv2
 import numpy as np
 
-from aura.detection.detector import (
+from roadguard.detection.detector import (
     StubDetector,
     build_detector,
     cap_roi_to_area,
     crop_person_roi,
     crop_rois,
 )
-from aura.detection.mock import MockDetector, SimpleIoUTracker, _iou
-from aura.schema import BBox
+from roadguard.detection.mock import MockDetector, SimpleIoUTracker, _iou
+from roadguard.schema import BBox
 
 
 def _frame_with_blocks() -> np.ndarray:

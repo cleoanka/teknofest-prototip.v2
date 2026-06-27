@@ -339,7 +339,7 @@ def _download(url: str, dest: Path, retries: int = 3) -> bool:
 def _download_once(url: str, dest: Path) -> bool:
     try:
         # Bazı sunucular User-Agent ister; özel bir başlıkla istek oluştur.
-        req = urllib.request.Request(url, headers={"User-Agent": "aura-bootstrap"})
+        req = urllib.request.Request(url, headers={"User-Agent": "roadguard-bootstrap"})
         with urllib.request.urlopen(req, timeout=60) as resp:  # noqa: S310
             # İlerleme yüzdesi için toplam boyutu başlıktan al (yoksa 0).
             total = int(resp.headers.get("Content-Length", 0))
@@ -539,12 +539,12 @@ def ensure_sample_data(skip_deps: bool) -> None:
         warn("bağımlılıklar atlandığından örnek video üretilemedi")
         return
     try:
-        # venv python'una aura.synthetic modülünü çağırarak sentetik video ürettir.
-        run([venv_python(), "-m", "aura.synthetic", "--out", str(SAMPLES_DIR)])
+        # venv python'una roadguard.synthetic modülünü çağırarak sentetik video ürettir.
+        run([venv_python(), "-m", "roadguard.synthetic", "--out", str(SAMPLES_DIR)])
         ok("sentetik örnek video + ground-truth üretildi")
     except subprocess.CalledProcessError:
         # Modül henüz yoksa/başarısızsa kritik değil — uyar ve devam et.
-        warn("örnek video üretilemedi (aura.synthetic henüz mevcut değil?)")
+        warn("örnek video üretilemedi (roadguard.synthetic henüz mevcut değil?)")
 
 
 # --- 3.8 Node.js (opsiyonel) ---------------------------------------------- #
@@ -584,7 +584,7 @@ def smoke_test(skip_deps: bool) -> None:
         return
     try:
         # venv python'unda 10 kare üzerinde hızlı bir uçtan uca çalışırlık testi yap.
-        run([venv_python(), "-m", "aura.smoke", "--frames", "10"])
+        run([venv_python(), "-m", "roadguard.smoke", "--frames", "10"])
         ok("smoke test geçti")
     except subprocess.CalledProcessError:
         # Smoke test başarısızsa kurulum sağlıklı değildir → ölümcül hata.

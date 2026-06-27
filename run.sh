@@ -16,7 +16,7 @@ if [ ! -x "$PY" ]; then
   fi
 fi
 
-# bootstrap'ın ürettiği .env varsa AURA_* değişkenlerini yükle (oturumda elle
+# bootstrap'ın ürettiği .env varsa ROADGUARD_* değişkenlerini yükle (oturumda elle
 # set edilen değerler ezilmez — run.ps1 ile aynı sözleşme).
 if [ -f "$ROOT/.env" ]; then
   while IFS='=' read -r k v; do
@@ -26,9 +26,9 @@ if [ -f "$ROOT/.env" ]; then
   done < "$ROOT/.env"
 fi
 
-INFER_PORT="${AURA_INFERENCE_PORT:-8080}"
-QOD_PORT="${AURA_QOD_MOCK_PORT:-8081}"
-NV_PORT="${AURA_NV_MOCK_PORT:-8082}"
+INFER_PORT="${ROADGUARD_INFERENCE_PORT:-8080}"
+QOD_PORT="${ROADGUARD_QOD_MOCK_PORT:-8081}"
+NV_PORT="${ROADGUARD_NV_MOCK_PORT:-8082}"
 
 pids=()
 start() { # ad  module:app  port
@@ -48,9 +48,9 @@ cleanup() {
 }
 trap cleanup INT TERM EXIT
 
-# Sunucu dağıtımı: AURA_PROFILE=server ./run.sh  → config/profiles/server.yaml uygulanır
-# (inference servisi load_config() içinde AURA_PROFILE env'ini otomatik okur).
-echo "▶ RoadGuard servisleri başlatılıyor  (profil: ${AURA_PROFILE:-varsayılan})"
+# Sunucu dağıtımı: ROADGUARD_PROFILE=server ./run.sh  → config/profiles/server.yaml uygulanır
+# (inference servisi load_config() içinde ROADGUARD_PROFILE env'ini otomatik okur).
+echo "▶ RoadGuard servisleri başlatılıyor  (profil: ${ROADGUARD_PROFILE:-varsayılan})"
 start "QoD mock"      "services.qod_mock.main:app"      "$QOD_PORT"
 start "NV mock"       "services.nv_mock.main:app"       "$NV_PORT"
 start "Inference API" "services.inference_api.main:app" "$INFER_PORT"

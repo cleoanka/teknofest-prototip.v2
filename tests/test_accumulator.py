@@ -21,8 +21,8 @@ yoktu. Kapsanan davranışlar:
 
 from __future__ import annotations
 
-from aura.accumulator import Accumulator
-from aura.schema import BBox, DriverState, PlateState, SceneContext, SpeedState
+from roadguard.accumulator import Accumulator
+from roadguard.schema import BBox, DriverState, PlateState, SceneContext, SpeedState
 
 
 def _bbox(cls="car", conf=0.9):

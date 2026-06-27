@@ -108,7 +108,7 @@ Eğitimde ultralytics otomatik uygular; öne çıkanlar:
 | **Karartma / gamma** | **gece koşulları** (far patlaması senaryosu için kritik) |
 | Motion blur | yüksek hızlı araç bulanıklığı |
 
-`data/samples/` içindeki **sentetik trafik videosu** (`python -m aura.synthetic`) hat
+`data/samples/` içindeki **sentetik trafik videosu** (`python -m roadguard.synthetic`) hat
 testleri içindir; eğitim verisi değildir. Gerçek TOGG veri seti geldiğinde
 `data/raw/` altına yerleştirip `prepare_dataset` ile işleyin.
 
@@ -142,7 +142,7 @@ görüntü sayısı): `docs/yol_haritasi.md` §2 (Gemini araştırması; kullan�
 Yol haritası §2'deki açık setler artık **bildirimsel bir manifestte** toplanır:
 `train/datasets.yaml` her hedef sınıf (`cigarette`, `seatbelt`, `fatigue`, `minibus`,
 `license_plate`) için **kaynak(lar) + lisans + ~görüntü sayısı + RoadGuard taksonomisine
-sınıf-eşlemesi** tutar. Eşleme `aura/taxonomy.py` ile tutarlıdır (ör. `cigarette → smoking`,
+sınıf-eşlemesi** tutar. Eşleme `roadguard/taxonomy.py` ile tutarlıdır (ör. `cigarette → smoking`,
 `van → minibus`). Manifestteki açık-kaynak köprü kapsamı (lisanslar §5 kaynakçaya yazılır;
 **kullanım öncesi lisans/uyumluluk teyidi** notu korunur):
 

@@ -109,7 +109,7 @@ flowchart TD
 
     SPEED["Hız (SpeedEstimator)<br/>metric oto-kalibrasyon (Kalman+EMA)<br/>+ swerving (ZigZag yanal yörünge)"]
     ACC["6. ID-merkezli Accumulator<br/>risk kuralları (speed.over_limit / swerving / driver)"]
-    EMIT["Event / Annotation stream (EventEmitter)<br/>AuraEvent (durum değişimi) ∥ AnnotationFrame (kare)"]
+    EMIT["Event / Annotation stream (EventEmitter)<br/>RoadGuardEvent (durum değişimi) ∥ AnnotationFrame (kare)"]
 
     DASH["Dashboard (canvas)"]
     MOB["Mobil (Expo)"]
@@ -221,7 +221,7 @@ kare başına TEK pose geçişi korunur. Bu sayede l-pose gibi büyük model aff
 
 **İki katman (v2.3 — `DriverStateEngine`):** Aşama 2 artık iki katmana ayrılmıştır:
 - **Katman A (model):** yukarıdaki pose-hibrit / yolo backend — tek-kare HAM bayrak.
-- **Katman B (`aura/driver_state/engine.py` + `voting.py`):** her `track_id` için ayrı
+- **Katman B (`roadguard/driver_state/engine.py` + `voting.py`):** her `track_id` için ayrı
   **zaman-oylaması** (`TrackVoter`); bir bayrak son `window` karenin ≥`min_votes` tanesinde
   True ise aktiftir (varsayılan 16/8 = eski davranış). Araç sahneden çıkınca tampon
   `max_age` karede düşer (bellek). Bu, eski per-(track,alan) `StabilityTracker` çağrısının
@@ -321,7 +321,7 @@ flowchart TD
   misread'leri (ör. `34→04`) yakın/net okumayı artık ezemez.
 - **OCR güçlendirme:** aynı-satır segment birleştirme ("34"+"TC"+"8532" tek okuma),
   parlama testi (far ışığı OCR'a girmez), küçük plakada CLAHE+2x varyantı.
-- **Kalıcı oy havuzu (`aura/plate/normalize.py`):** okumalar track ömrü boyunca birikir
+- **Kalıcı oy havuzu (`roadguard/plate/normalize.py`):** okumalar track ömrü boyunca birikir
   (redde sıfırlanmaz). TR-blok-farkında normalizasyon (O→0, 1→I...) aday üretir; KARAR
   yalnızca **ikamesiz format-geçerli ham okumalarla**, her okuma **güven × kaynak
   kalitesiyle ağırlıklanarak** verilir (min ağırlık + ikinciye fark + oran — erken/yanlış
@@ -361,7 +361,7 @@ kullanır → mimariyi gerçekten 5G-native kılar.
 
 ## 7.4 Swerving — Dikkatsiz Sürüş / Yalpalama Tespiti
 Hız tahmincisinin yanında, **kalibrasyon gerektirmeyen** yanal yörünge analizi
-(`aura/speed/estimator.py::_swerving_flag`). ZigZag ekstremum sayacı: aracın bbox
+(`roadguard/speed/estimator.py::_swerving_flag`). ZigZag ekstremum sayacı: aracın bbox
 merkez-x serisi, mevcut uç noktadan `amp_ratio × o-anki-genişlik` kadar GERİ dönünce bir
 yön-değişimi sayılır; `min_flips` dönüşe ulaşan track **swerving** bayrağı alır.
 
@@ -377,7 +377,7 @@ Tasarım garantileri (sentetik + 3 gerçek videoda doğrulandı):
 
 Tüm karar akışı **ID-merkezlidir** (her araç bir `TrackRecord`). Trafik tabelası ise
 bir araca değil **sahneye** aittir; bu yüzden ID-merkezli accumulator'ın *yanına*
-ince bir **sahne katmanı** eklenir (`aura/scene/sign_tracker.py`).
+ince bir **sahne katmanı** eklenir (`roadguard/scene/sign_tracker.py`).
 
 Akış:
 
@@ -500,7 +500,7 @@ flowchart LR
             QODC["QoDController (in-process karar + histerezis)"]
             MJPEG["GET /stream/video — MJPEG (?bbox=true server-side)"]
             WSA["WS /stream/annotations — AnnotationFrame"]
-            WSE["WS /stream/events — AuraEvent"]
+            WSE["WS /stream/events — RoadGuardEvent"]
             EVAL["POST /eval/run · GET /eval/results (A/B delta)"]
             PIPE --> EM
             EM --> WSA
@@ -543,7 +543,7 @@ flowchart LR
 ### 8.2 Event + Annotation stream sözleşmesi (iki-kanal)
 - **`AnnotationFrame`** (kare başına): `{frame_id, ts, tracks:[{track_id, bbox, cls, plate,
   driver, speed_kmh, risk_flags, qod_active}]}` → dashboard canvas client-side çizer.
-- **`AuraEvent`** (durum değişimi): `{event_id, ts, track_id, type, payload, source}`;
+- **`RoadGuardEvent`** (durum değişimi): `{event_id, ts, track_id, type, payload, source}`;
   tipler: DETECTION_UPDATE, PLATE_CONFIRMED/REJECTED, DRIVER_STATE, SPEED, QOD_TRIGGER/RELEASE,
   RISK_ALERT.
 - Ham video (MJPEG) ile annotation **ayrı kanaldan** akar → bbox toggle sunucuya gidiş-geliş
@@ -607,7 +607,7 @@ platforma özgü isim döner:
 - **RTSP/IP kamera:** dashboard'da manuel URL girişi (EpocCam, Camo, DroidCam uyumlu).
 
 > [!TIP]
-> `AURA_CAMERA_PROBE=0` ile başsız/CI ortamında donanım taraması atlanır.
+> `ROADGUARD_CAMERA_PROBE=0` ile başsız/CI ortamında donanım taraması atlanır.
 
 ## 11. Opsiyonel Ek Modüller (§8 toggle)
 Sıfır-atık payload, süper çözünürlük, homography/IPM — **default kapalı**, lazy import.
@@ -634,8 +634,8 @@ Detay yalnızca **[`docs/mimari_ek_moduller.md`](mimari_ek_moduller.md)**'de.
 Tam eşleme: [`docs/sartname_izlenebilirlik.md`](sartname_izlenebilirlik.md).
 | Şartname | Bileşen |
 |---|---|
-| Araç/plaka/hız/araç-içi tespit (%40) | `aura/` YZ çekirdeği + `train/` + `aura/eval` |
-| QoD yalnızca kritik anda + kanıt (%40) | `aura/qod` + `qod_mock` + A/B harness + dashboard paneli |
+| Araç/plaka/hız/araç-içi tespit (%40) | `roadguard/` YZ çekirdeği + `train/` + `roadguard/eval` |
+| QoD yalnızca kritik anda + kanıt (%40) | `roadguard/qod` + `qod_mock` + A/B harness + dashboard paneli |
 | Number Verification | `nv_mock` + `mobile/` |
 | Tespitlerin mobil gösterimi | `mobile/` + `WS /stream/events` |
 | Modern mimari / rapor (%20) | repo yapısı + `docs/` + CI |

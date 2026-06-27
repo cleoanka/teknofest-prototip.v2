@@ -1,6 +1,6 @@
 """StreamManager — pipeline'ı arka planda koşturan ve MJPEG + WS besleyen runtime.
 
-İki-kanal mimari: ham JPEG (MJPEG) ve `AnnotationFrame`/`AuraEvent` WS akışları
+İki-kanal mimari: ham JPEG (MJPEG) ve `AnnotationFrame`/`RoadGuardEvent` WS akışları
 ayrı yayılır. Pipeline arka plan thread'inde çalışır; WS push'ları event loop'a
 `call_soon_threadsafe` ile güvenli aktarılır.
 """
@@ -14,10 +14,10 @@ import time
 
 import cv2
 
-from aura.config import load_config, resolve_source
-from aura.pipeline import Pipeline
+from roadguard.config import load_config, resolve_source
+from roadguard.pipeline import Pipeline
 
-log = logging.getLogger("aura.api.stream")
+log = logging.getLogger("roadguard.api.stream")
 
 
 class StreamManager:

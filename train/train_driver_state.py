@@ -12,7 +12,7 @@ import logging
 
 from train.utils import run_finetune
 
-log = logging.getLogger("aura.train.driver_state")
+log = logging.getLogger("roadguard.train.driver_state")
 
 
 def train_driver_state(args) -> int:

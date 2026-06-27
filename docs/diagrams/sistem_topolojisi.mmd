@@ -13,7 +13,7 @@ flowchart LR
             QODC["QoDController (in-process karar + histerezis)"]
             MJPEG["GET /stream/video — MJPEG (?bbox=true server-side)"]
             WSA["WS /stream/annotations — AnnotationFrame"]
-            WSE["WS /stream/events — AuraEvent"]
+            WSE["WS /stream/events — RoadGuardEvent"]
             EVAL["POST /eval/run · GET /eval/results (A/B delta)"]
             PIPE --> EM
             EM --> WSA

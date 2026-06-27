@@ -20,7 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from aura import __version__
+from roadguard import __version__
 from services.inference_api.routers import cameras, config, eval, stream, system, tracks
 from services.inference_api.security import cors_origins
 from services.inference_api.state import StreamManager
@@ -32,7 +32,7 @@ for _s in (sys.stdout, sys.stderr):
         pass
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-log = logging.getLogger("aura.api")
+log = logging.getLogger("roadguard.api")
 
 DASHBOARD_DIR = Path(__file__).resolve().parents[2] / "dashboard"
 
@@ -42,7 +42,7 @@ def create_app(cfg=None) -> FastAPI:
     async def lifespan(app: FastAPI):
         app.state.stream.attach_loop(asyncio.get_running_loop())
         app.state.eval_results = None
-        if os.environ.get("AURA_AUTOSTART", "1") != "0":
+        if os.environ.get("ROADGUARD_AUTOSTART", "1") != "0":
             try:
                 app.state.stream.start()
             except Exception as e:  # noqa: BLE001
@@ -58,13 +58,13 @@ def create_app(cfg=None) -> FastAPI:
         lifespan=lifespan,
     )
     # CORS allowlist (SEC-001): '*' yerine env-yapilandirilir liste. Varsayilan
-    # localhost + dashboard same-origin → yerel demo bozulmaz; AURA_CORS_ORIGINS
-    # ile genisletilir. Token basligina (X-AURA-Token) izin verilir.
+    # localhost + dashboard same-origin → yerel demo bozulmaz; ROADGUARD_CORS_ORIGINS
+    # ile genisletilir. Token basligina (X-RoadGuard-Token) izin verilir.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=cors_origins(),
         allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-        allow_headers=["Content-Type", "X-AURA-Token", "Authorization"],
+        allow_headers=["Content-Type", "X-RoadGuard-Token", "Authorization"],
     )
     app.state.stream = StreamManager(cfg)
 

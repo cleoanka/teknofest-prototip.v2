@@ -1,12 +1,12 @@
 {
   "expo": {
     "name": "RoadGuard",
-    "slug": "aura-mobile",
+    "slug": "roadguard-mobile",
     "version": "2.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "platforms": ["ios", "android", "web"],
-    "scheme": "aura",
+    "scheme": "roadguard",
     "splash": { "backgroundColor": "#0d1117" },
     "extra": {
       "note": "API adresi EXPO_PUBLIC_API_URL ile override edilir (bkz. README)."

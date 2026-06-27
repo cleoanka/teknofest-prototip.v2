@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from aura.detection.yolo import YOLO26Detector
-from aura.schema import BBox
+from roadguard.detection.yolo import YOLO26Detector
+from roadguard.schema import BBox
 
 
 # --------------------------------------------------------------------------- #
@@ -177,7 +177,7 @@ def test_detect_names_as_list():
 # _dedup()
 # --------------------------------------------------------------------------- #
 def _det(x1, y1, x2, y2, conf, cls="car"):
-    from aura.detection.detector import Detection
+    from roadguard.detection.detector import Detection
 
     return Detection(bbox=BBox(x1=x1, y1=y1, x2=x2, y2=y2, conf=conf, cls=cls))
 

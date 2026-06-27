@@ -44,7 +44,7 @@ gemini -p "..." -o stream-json            # JSONL akış (canlı ilerleme / jq)
 ### Bağlam enjeksiyonu (güçlü)
 ```bash
 gemini -p "@config/default.yaml dosyasındaki dedektör eşiklerini incele ve öner"
-gemini --include-directories aura/plate -p "plaka OCR hattını gözden geçir"
+gemini --include-directories roadguard/plate -p "plaka OCR hattını gözden geçir"
 ```
 `@yol/dosya` belirli dosyaları, `--include-directories` tüm klasörü bağlama alır.
 

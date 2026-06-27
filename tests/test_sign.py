@@ -9,12 +9,12 @@ from __future__ import annotations
 
 import numpy as np
 
-from aura.accumulator.accumulator import Accumulator
-from aura.config import Config
-from aura.detection.detector import Sign
-from aura.detection.mock import MockDetector
-from aura.scene.sign_tracker import SCENE_TRACK_ID, SignTracker
-from aura.schema import BBox, DriverState, SceneContext, SpeedState
+from roadguard.accumulator.accumulator import Accumulator
+from roadguard.config import Config
+from roadguard.detection.detector import Sign
+from roadguard.detection.mock import MockDetector
+from roadguard.scene.sign_tracker import SCENE_TRACK_ID, SignTracker
+from roadguard.schema import BBox, DriverState, SceneContext, SpeedState
 
 
 def _sign(cls: str, conf: float = 0.9) -> Sign:

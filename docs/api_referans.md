@@ -74,7 +74,7 @@ curl -s localhost:8080/info
 ### 🎥 Kamera / Kaynak
 
 #### `GET /cameras`
-Kullanılabilir kameraları listele (index, ad, çözünürlük). `AURA_CAMERA_PROBE=0` ile tarama atlanır.
+Kullanılabilir kameraları listele (index, ad, çözünürlük). `ROADGUARD_CAMERA_PROBE=0` ile tarama atlanır.
 ```bash
 curl -s localhost:8080/cameras
 ```
@@ -147,10 +147,10 @@ asyncio.run(main())
 ```
 
 #### `WS /stream/events`
-Gerçek zamanlı `AuraEvent` stream'i.
+Gerçek zamanlı `RoadGuardEvent` stream'i.
 ```json
 {"event_id":"...","ts":1780898442.0,"track_id":1,"type":"PLATE_CONFIRMED",
- "payload":{"value":"34ABC123","confidence":1.0},"source":"aura-inference"}
+ "payload":{"value":"34ABC123","confidence":1.0},"source":"roadguard-inference"}
 ```
 
 > [!TIP]

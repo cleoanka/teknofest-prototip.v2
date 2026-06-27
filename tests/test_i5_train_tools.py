@@ -270,10 +270,10 @@ class TestTrainUtils:
         assert train_utils.resolve_device("cpu") == "cpu"
         assert train_utils.resolve_device("mps") == "mps"
 
-    def test_resolve_device_auto_uses_aura_device(self, monkeypatch):
+    def test_resolve_device_auto_uses_roadguard_device(self, monkeypatch):
         monkeypatch.setitem(
             sys.modules,
-            "aura.device",
+            "roadguard.device",
             types.SimpleNamespace(resolve_device=lambda x: "cpu"),
         )
         assert train_utils.resolve_device("auto") == "cpu"
@@ -481,7 +481,7 @@ class TestFetch:
             "version": 1,
             "targets": {
                 "minibus": {
-                    "aura_class": "minibus",
+                    "roadguard_class": "minibus",
                     "sources": [
                         {
                             "kind": "roboflow",
@@ -496,7 +496,7 @@ class TestFetch:
                     ],
                 },
                 "cigarette": {
-                    "aura_class": "smoking",
+                    "roadguard_class": "smoking",
                     "sources": [
                         {"kind": "kaggle", "name": "cig", "license": "MIT", "ref": "u/cig-set"}
                     ],
@@ -594,7 +594,7 @@ class TestFetch:
     def test_fetch_dry_default(self, tmp_path, monkeypatch):
         m = tmp_path / "m.yaml"
         m.write_text(
-            "targets:\n  minibus:\n    aura_class: minibus\n    sources:\n"
+            "targets:\n  minibus:\n    roadguard_class: minibus\n    sources:\n"
             "      - kind: roboflow\n        name: mb\n        workspace: ws\n        project: pr\n",
             encoding="utf-8",
         )
@@ -612,7 +612,7 @@ class TestFetch:
     def test_fetch_run_invokes_roboflow_pull(self, tmp_path, monkeypatch):
         m = tmp_path / "m.yaml"
         m.write_text(
-            "targets:\n  minibus:\n    aura_class: minibus\n    sources:\n"
+            "targets:\n  minibus:\n    roadguard_class: minibus\n    sources:\n"
             "      - kind: roboflow\n        name: mb\n        workspace: ws\n"
             "        project: pr\n        version: 1\n",
             encoding="utf-8",
@@ -633,7 +633,7 @@ class TestFetch:
         """SİMÜLASYON: ağ-gecikmesi → roboflow_pull TimeoutError; fetch rc!=0 döner."""
         m = tmp_path / "m.yaml"
         m.write_text(
-            "targets:\n  minibus:\n    aura_class: minibus\n    sources:\n"
+            "targets:\n  minibus:\n    roadguard_class: minibus\n    sources:\n"
             "      - kind: roboflow\n        name: mb\n        workspace: ws\n        project: pr\n",
             encoding="utf-8",
         )
@@ -863,7 +863,7 @@ class TestDoctor:
         doctor = _import_tool("doctor")
         monkeypatch.setitem(
             sys.modules,
-            "aura.config",
+            "roadguard.config",
             types.SimpleNamespace(
                 available_profiles=lambda: [],
                 load_config=lambda profile=None: (_ for _ in ()).throw(RuntimeError("boom")),
@@ -907,7 +907,7 @@ class TestBench:
         cfg = types.SimpleNamespace(data={})
         monkeypatch.setattr(bench, "load_config", lambda c, profile=None: cfg)
         monkeypatch.setitem(
-            sys.modules, "aura.device", types.SimpleNamespace(resolve_device=lambda d: "cpu")
+            sys.modules, "roadguard.device", types.SimpleNamespace(resolve_device=lambda d: "cpu")
         )
 
         class FakePipe:
@@ -919,7 +919,7 @@ class TestBench:
                     yield (None, None, None)
 
         monkeypatch.setitem(
-            sys.modules, "aura.pipeline.pipeline", types.SimpleNamespace(Pipeline=FakePipe)
+            sys.modules, "roadguard.pipeline.pipeline", types.SimpleNamespace(Pipeline=FakePipe)
         )
         rc = bench.main(["--source", str(src), "--warmup", "2"])
         assert rc == 0
@@ -935,7 +935,7 @@ class TestBench:
             bench, "load_config", lambda c, profile=None: types.SimpleNamespace(data={})
         )
         monkeypatch.setitem(
-            sys.modules, "aura.device", types.SimpleNamespace(resolve_device=lambda d: "cpu")
+            sys.modules, "roadguard.device", types.SimpleNamespace(resolve_device=lambda d: "cpu")
         )
 
         class FakePipe:
@@ -946,7 +946,7 @@ class TestBench:
                 yield (None, None, None)
 
         monkeypatch.setitem(
-            sys.modules, "aura.pipeline.pipeline", types.SimpleNamespace(Pipeline=FakePipe)
+            sys.modules, "roadguard.pipeline.pipeline", types.SimpleNamespace(Pipeline=FakePipe)
         )
         assert bench.main(["--source", str(src), "--warmup", "10"]) == 1
         assert "ölçülecek kare yok" in capsys.readouterr().err
@@ -1025,7 +1025,7 @@ class TestShowDriverRois:
         monkeypatch.setitem(sys.modules, "numpy", np)
         monkeypatch.setitem(
             sys.modules,
-            "aura.config",
+            "roadguard.config",
             types.SimpleNamespace(
                 load_config=lambda c: types.SimpleNamespace(
                     data={"runtime": {}}, get=lambda *a, **k: 0.1
@@ -1034,24 +1034,24 @@ class TestShowDriverRois:
         )
         monkeypatch.setitem(
             sys.modules,
-            "aura.detection.detector",
+            "roadguard.detection.detector",
             types.SimpleNamespace(
                 crop_person_roi=lambda *a: None, crop_rois=lambda *a: (None, None)
             ),
         )
         monkeypatch.setitem(
             sys.modules,
-            "aura.detection.yolo",
+            "roadguard.detection.yolo",
             types.SimpleNamespace(YOLO26Detector=lambda cfg: object()),
         )
         monkeypatch.setitem(
             sys.modules,
-            "aura.driver_state.classifier",
+            "roadguard.driver_state.classifier",
             types.SimpleNamespace(build_driver_classifier=lambda cfg: object()),
         )
         monkeypatch.setitem(
             sys.modules,
-            "aura.identity.driver_lock",
+            "roadguard.identity.driver_lock",
             types.SimpleNamespace(DriverLock=lambda cfg: object()),
         )
         assert sdr.main(["--source", str(tmp_path / "v.mp4")]) == 1

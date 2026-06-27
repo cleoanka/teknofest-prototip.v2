@@ -1,7 +1,7 @@
 """Akış router'ı — start/stop/config/status + MJPEG video + WS annotations/events.
 
 İki-kanal tasarım: `GET /stream/video` ham/annotated MJPEG; `WS /stream/annotations`
-kare başına bbox; `WS /stream/events` AuraEvent stream'i. Dashboard bbox toggle'ı
+kare başına bbox; `WS /stream/events` RoadGuardEvent stream'i. Dashboard bbox toggle'ı
 client-side (canvas) yapar — sunucuya gidiş-geliş yok.
 """
 
@@ -17,8 +17,8 @@ from services.inference_api.models import StreamConfigPatch, StreamStartRequest
 from services.inference_api.security import validate_source, verify_token, verify_token_read
 
 router = APIRouter(tags=["stream"])
-log = logging.getLogger("aura.api.stream")
-_BOUNDARY = "auraframe"
+log = logging.getLogger("roadguard.api.stream")
+_BOUNDARY = "roadguardframe"
 # MJPEG multipart başlığı kare-içeriğinden bağımsız sabit → bir kez encode et,
 # her karede (.encode() + literal birleştirme) yeniden kurma.
 _FRAME_HEAD = b"--" + _BOUNDARY.encode() + b"\r\nContent-Type: image/jpeg\r\n\r\n"
@@ -61,7 +61,7 @@ def stream_status(request: Request):
 def stream_video(request: Request, bbox: bool = Query(False), _=Depends(verify_token_read)):
     """MJPEG akışı. `?bbox=true` → server-side çizimli; `false` → ham (dashboard canvas çizer).
 
-    PII koruma opt-in (AURA_API_PROTECT_READS): `<img>` başlık gönderemediğinden
+    PII koruma opt-in (ROADGUARD_API_PROTECT_READS): `<img>` başlık gönderemediğinden
     `?token=` query-param ile kimlik doğrular (bkz. verify_token_read).
     """
     sm = request.app.state.stream

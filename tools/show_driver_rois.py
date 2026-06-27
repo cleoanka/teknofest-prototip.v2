@@ -102,11 +102,11 @@ def main(argv=None):
     import cv2
     import numpy as np
 
-    from aura.config import load_config
-    from aura.detection.detector import crop_person_roi, crop_rois
-    from aura.detection.yolo import YOLO26Detector
-    from aura.driver_state.classifier import build_driver_classifier
-    from aura.identity.driver_lock import DriverLock
+    from roadguard.config import load_config
+    from roadguard.detection.detector import crop_person_roi, crop_rois
+    from roadguard.detection.yolo import YOLO26Detector
+    from roadguard.driver_state.classifier import build_driver_classifier
+    from roadguard.identity.driver_lock import DriverLock
 
     src = Path(args.source).expanduser()
     out_dir = ROOT / "eval_results"

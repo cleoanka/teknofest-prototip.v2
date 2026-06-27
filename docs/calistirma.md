@@ -30,7 +30,7 @@ Kurulu sistemde tipik bir demo akışını adım adım gösterir.
 flowchart TD
     A["1. Servisleri kaldır<br/>./run.sh"] --> B["2. Dashboard'u aç<br/>http://localhost:8080/"]
     B --> C["3. QoD A/B kanıtı<br/>Eval Çalıştır"]
-    C --> D["4. CLI ile pipeline<br/>python -m aura"]
+    C --> D["4. CLI ile pipeline<br/>python -m roadguard"]
     D --> E["5. Gerçek video testi<br/>tools/test_video.py"]
     E --> F["6. Mobil (opsiyonel)<br/>expo start"]
     classDef opt fill:#fff3cd,stroke:#d39e00;
@@ -45,7 +45,7 @@ flowchart TD
 .\run.ps1            # Windows (PowerShell 5.1+) — eşdeğer
 ```
 inference_api (:8080), qod_mock (:8081), nv_mock (:8082) kalkar. Dashboard otomatik
-örnek videoyla başlar (`AURA_AUTOSTART=1`).
+örnek videoyla başlar (`ROADGUARD_AUTOSTART=1`).
 
 > [!NOTE]
 > Tüm Windows iş akışı (profil, env sözdizimi, sorun giderme): **[`windows.md`](windows.md)**.
@@ -69,8 +69,8 @@ gösterir (plaka doğruluğu, küçük nesne, tespit oranı).
 
 ### 4️⃣ CLI ile pipeline
 ```bash
-.venv/bin/python -m aura --source data/samples/ornek.mp4 --max-frames 90 --log-level INFO
-.venv/bin/python -m aura.eval --source data/samples/ornek.mp4 --qod-comparison
+.venv/bin/python -m roadguard --source data/samples/ornek.mp4 --max-frames 90 --log-level INFO
+.venv/bin/python -m roadguard.eval --source data/samples/ornek.mp4 --qod-comparison
 ```
 
 ### 5️⃣ Gerçek video testi (kanıt üretimi)

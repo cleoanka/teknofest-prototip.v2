@@ -14,8 +14,8 @@ from __future__ import annotations
 # Modül import'u sırasında autostart/kamera tetiklenmesin.
 import os
 
-os.environ.setdefault("AURA_AUTOSTART", "0")
-os.environ.setdefault("AURA_CAMERA_PROBE", "0")
+os.environ.setdefault("ROADGUARD_AUTOSTART", "0")
+os.environ.setdefault("ROADGUARD_CAMERA_PROBE", "0")
 os.environ.setdefault("AI_MODE", "mock")
 
 import importlib  # noqa: E402
@@ -25,7 +25,7 @@ from pathlib import Path  # noqa: E402
 import pytest  # noqa: E402
 
 RECONFIGURE_MODULES = [
-    "aura.__main__",
+    "roadguard.__main__",
     "train.__main__",
     "services.inference_api.main",
     "train.merge_driver_datasets",
@@ -65,7 +65,7 @@ def test_reconfigure_block_is_import_safe_against_non_reconfigurable_stream():
 
 def test_homography_ipm_reads_utf8(tmp_path):
     """homography_ipm._load_calib Türkçe karakterli yaml'ı utf-8 ile okumalı."""
-    from aura.optional import homography_ipm
+    from roadguard.optional import homography_ipm
 
     p = tmp_path / "ipm.yaml"
     p.write_text("ipm:\n  not: 'şçğüöİ kalibrasyon'\n", encoding="utf-8")
@@ -103,8 +103,8 @@ def test_m1_sources_have_utf8_encoding():
     """M1 düzeltilen 3 read_text çağrısı encoding='utf-8' içermeli."""
     import inspect
 
-    from aura.eval import harness
-    from aura.optional import homography_ipm
+    from roadguard.eval import harness
+    from roadguard.optional import homography_ipm
     from train import prepare_dataset
 
     for mod in (homography_ipm, harness, prepare_dataset):

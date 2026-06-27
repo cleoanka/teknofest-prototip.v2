@@ -37,14 +37,14 @@ FTR §4 tablolarına yapıştırılabilir.
 flowchart LR
     V1["test_video.py<br/>video_1 · yolo26l"] --> S["eval_results/ab<br/>(özet JSON'lar)"]
     V2["test_video.py<br/>video_1 · v4-finetune"] --> S
-    S --> R["aura.eval<br/>--metrics-report"]
+    S --> R["roadguard.eval<br/>--metrics-report"]
     R --> O["metrics_report<br/>.md + .csv + .json"]
 ```
 
 ```bash
 python tools/test_video.py --source ~/video_1.mp4 --json eval_results/ab/video_1_yolo26l.json
 python tools/test_video.py --source ~/video_1.mp4 --profile v4-finetune --json eval_results/ab/video_1_v4.json
-python -m aura.eval --metrics-report --summaries eval_results/ab   # → eval_results/metrics_report.md+csv+json
+python -m roadguard.eval --metrics-report --summaries eval_results/ab   # → eval_results/metrics_report.md+csv+json
 ```
 
 > [!NOTE]
@@ -131,7 +131,7 @@ flowchart TD
 Her senaryo için tam metrik seti; çıktı **delta tablosu** (mutlak + yüzde fark).
 
 ```bash
-.venv/bin/python -m aura.eval --source data/samples/ornek.mp4 \
+.venv/bin/python -m roadguard.eval --source data/samples/ornek.mp4 \
   --ground-truth data/samples/ornek_gt.json --qod-comparison
 ```
 Çıktı: `eval_results/report.md` + `report.json`; ayrıca `GET /eval/results` ve dashboard

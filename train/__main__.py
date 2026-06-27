@@ -34,7 +34,7 @@ def _add_common_train_args(sp, default_weights: str, default_imgsz: int, default
     sp.add_argument("--weights", default=default_weights, help="Başlangıç ağırlığı (base model)")
     sp.add_argument("--device", default="auto", choices=["auto", "cpu", "cuda", "mps"])
     sp.add_argument("--project", default=default_project)
-    sp.add_argument("--name", default="aura")
+    sp.add_argument("--name", default="roadguard")
     sp.add_argument(
         "--out", default=None, help="weights/ altına kaydedilecek isim (vars: göreve göre)"
     )

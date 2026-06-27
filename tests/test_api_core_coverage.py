@@ -17,8 +17,8 @@ from __future__ import annotations
 
 import os
 
-os.environ.setdefault("AURA_AUTOSTART", "0")
-os.environ.setdefault("AURA_CAMERA_PROBE", "0")
+os.environ.setdefault("ROADGUARD_AUTOSTART", "0")
+os.environ.setdefault("ROADGUARD_CAMERA_PROBE", "0")
 os.environ.setdefault("AI_MODE", "mock")
 
 import asyncio  # noqa: E402
@@ -26,8 +26,8 @@ import asyncio  # noqa: E402
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
-from aura.config import load_config  # noqa: E402
-from aura.schema import AnnotationFrame, make_event  # noqa: E402
+from roadguard.config import load_config  # noqa: E402
+from roadguard.schema import AnnotationFrame, make_event  # noqa: E402
 from services.inference_api.main import create_app  # noqa: E402
 from services.inference_api.state import StreamManager  # noqa: E402
 
@@ -333,7 +333,7 @@ def test_info_config_summary_and_status_shape(client):
 
 # --- /cameras ------------------------------------------------------------- #
 def test_cameras_probe_disabled_returns_empty(client):
-    # AURA_CAMERA_PROBE=0 → donanım taraması yok, boş liste.
+    # ROADGUARD_CAMERA_PROBE=0 → donanım taraması yok, boş liste.
     j = client.get("/cameras").json()
     assert j["cameras"] == [] and j["rtsp_supported"] is True
 

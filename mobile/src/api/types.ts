@@ -1,4 +1,4 @@
-// RoadGuard backend veri sözleşmeleri (aura/schema.py ile birebir) — TypeScript karşılıkları.
+// RoadGuard backend veri sözleşmeleri (roadguard/schema.py ile birebir) — TypeScript karşılıkları.
 // Bu tipler downstream'in (kartlar, rozetler, overlay) güvendiği tek kaynaktır.
 
 // ---- Number Verification (nv_mock :8082) ---- //
@@ -13,7 +13,7 @@ export interface VerifyResponse {
 }
 
 // ---- Event stream (WS /stream/events) ---- //
-export type AuraEventType =
+export type RoadGuardEventType =
   | "DETECTION_UPDATE"
   | "PLATE_CONFIRMED"
   | "PLATE_REJECTED"
@@ -26,11 +26,11 @@ export type AuraEventType =
   | "SPEED_LIMIT_DETECTED"
   | "SPEED_LIMIT_VIOLATION";
 
-export interface AuraEvent {
+export interface RoadGuardEvent {
   event_id: string;
   ts: number;
   track_id: number;
-  type: AuraEventType | string; // ileri uyumlu: bilinmeyen tipler de taşınır
+  type: RoadGuardEventType | string; // ileri uyumlu: bilinmeyen tipler de taşınır
   payload: Record<string, unknown>;
   source: string;
 }
@@ -40,7 +40,7 @@ export interface AuraEvent {
 export type QodReason = string;
 
 // ---- Annotation stream (WS /stream/annotations) ---- //
-// track dict alanları: aura/pipeline/pipeline.py::record_to_annotation
+// track dict alanları: roadguard/pipeline/pipeline.py::record_to_annotation
 export type PlateStatus = "pending" | "confirmed" | "rejected";
 
 export interface AnnotationTrack {

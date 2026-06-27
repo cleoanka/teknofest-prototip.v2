@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { requestQuality } from "../api/client";
-import type { AuraEvent } from "../api/types";
+import type { RoadGuardEvent } from "../api/types";
 import type { QodPhase } from "../ui/QodIndicator";
 
 // QoD'u tetikleyen kritik event tipleri.
@@ -26,7 +26,7 @@ export interface QodController {
   phase: QodPhase;
   reason: string | null;
   // Dashboard her gelen event'i buraya verir.
-  onEvent: (e: AuraEvent) => void;
+  onEvent: (e: RoadGuardEvent) => void;
   // status.qod_active_sessions ile senkron (backend gerçeği): 0'a düşünce bırakmayı hızlandırır.
   syncSessions: (n: number) => void;
 }
@@ -73,7 +73,7 @@ export function useQod(): QodController {
   );
 
   const onEvent = useCallback(
-    (e: AuraEvent) => {
+    (e: RoadGuardEvent) => {
       if (TRIGGER_TYPES.has(e.type)) {
         const why =
           (e.payload?.reason as string) ??

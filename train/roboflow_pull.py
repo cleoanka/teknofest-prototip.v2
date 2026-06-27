@@ -10,7 +10,7 @@ import logging
 import os
 import sys
 
-log = logging.getLogger("aura.train.roboflow")
+log = logging.getLogger("roadguard.train.roboflow")
 
 
 def roboflow_pull(args) -> int:

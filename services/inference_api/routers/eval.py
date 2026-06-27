@@ -1,7 +1,7 @@
 """Değerlendirme router'ı — /eval/run, /eval/results, /eval/results/export.
 
 M7: endpoint iskeleti + son sonuçları sunma. M9: gerçek QoD A/B harness bağlanır
-(aura.eval.harness). Dashboard QoD A/B paneli bu endpoint'leri tüketir.
+(roadguard.eval.harness). Dashboard QoD A/B paneli bu endpoint'leri tüketir.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from services.inference_api.models import EvalRunRequest
 from services.inference_api.security import resolve_ground_truth, validate_source, verify_token
 
 router = APIRouter(tags=["eval"])
-log = logging.getLogger("aura.api.eval")
+log = logging.getLogger("roadguard.api.eval")
 
 # Varsayılan ground-truth yolu (istek başına literal kurmak yerine modül-sabiti).
 _DEFAULT_GT = "data/samples/ornek_gt.json"
@@ -49,7 +49,7 @@ def eval_run(
 
     def _job():
         try:
-            from aura.eval.harness import run_eval  # M9
+            from roadguard.eval.harness import run_eval  # M9
 
             request.app.state.eval_results = run_eval(
                 sm.cfg, source, gt, qod_comparison=req.qod_comparison

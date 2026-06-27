@@ -7,10 +7,10 @@ from pathlib import Path
 
 import numpy as np
 
-from aura.config import load_config
-from aura.optional.loader import _reset_cache, get_optional, is_enabled
-from aura.pipeline import Pipeline
-from aura.schema import BBox
+from roadguard.config import load_config
+from roadguard.optional.loader import _reset_cache, get_optional, is_enabled
+from roadguard.pipeline import Pipeline
+from roadguard.schema import BBox
 
 SAMPLE = "data/samples/ornek.mp4"
 _MODULES = ("zero_waste_payload", "super_resolution", "homography_ipm")
@@ -18,7 +18,7 @@ _MODULES = ("zero_waste_payload", "super_resolution", "homography_ipm")
 
 def _ensure_sample():
     if not Path(SAMPLE).exists():
-        from aura.synthetic import generate
+        from roadguard.synthetic import generate
 
         generate(Path("data/samples"), 90, 30, 640, 360)
 
@@ -26,7 +26,7 @@ def _ensure_sample():
 def _purge():
     _reset_cache()
     for m in _MODULES:
-        sys.modules.pop(f"aura.optional.{m}", None)
+        sys.modules.pop(f"roadguard.optional.{m}", None)
 
 
 def test_disabled_modules_not_imported(cfg):
@@ -35,13 +35,13 @@ def test_disabled_modules_not_imported(cfg):
     assert not is_enabled(cfg, "zero_waste_payload")
     Pipeline(cfg).run_video(SAMPLE, max_frames=20)
     for m in ("zero_waste_payload", "super_resolution"):
-        assert f"aura.optional.{m}" not in sys.modules  # kapalıyken import YOK
+        assert f"roadguard.optional.{m}" not in sys.modules  # kapalıyken import YOK
 
 
 def test_get_optional_none_when_off(cfg):
     _purge()
     assert get_optional(cfg, "super_resolution") is None
-    assert "aura.optional.super_resolution" not in sys.modules
+    assert "roadguard.optional.super_resolution" not in sys.modules
 
 
 def test_zero_waste_enabled_imports_and_attaches(cfg):
@@ -51,7 +51,7 @@ def test_zero_waste_enabled_imports_and_attaches(cfg):
     cfg.data.setdefault("runtime", {})["ai_mode"] = "mock"  # sentetik karede deterministik tespit
     pipe = Pipeline(cfg)
     pipe.run_video(SAMPLE, max_frames=40)
-    assert "aura.optional.zero_waste_payload" in sys.modules
+    assert "roadguard.optional.zero_waste_payload" in sys.modules
     anno = pipe.emitter.latest_annotation()
     assert anno and anno.tracks and "zwp" in anno.tracks[0]
     assert "structured" in anno.tracks[0]["zwp"]
@@ -70,7 +70,7 @@ def test_super_resolution_enhances(cfg):
 # zero_waste_payload.build_payload: ROI yok / imencode başarısız / ROI var
 # --------------------------------------------------------------------------- #
 def test_build_payload_structured_only_no_roi():
-    from aura.optional.zero_waste_payload import build_payload
+    from roadguard.optional.zero_waste_payload import build_payload
 
     track = {"track_id": 7, "cls": "car", "plate": "34TC8532", "speed_kmh": 50}
     p = build_payload(track, plate_roi=None)
@@ -81,7 +81,7 @@ def test_build_payload_structured_only_no_roi():
 
 
 def test_build_payload_empty_roi_skipped():
-    from aura.optional.zero_waste_payload import build_payload
+    from roadguard.optional.zero_waste_payload import build_payload
 
     empty = np.zeros((0, 0, 3), np.uint8)  # size==0
     p = build_payload({"track_id": 1}, plate_roi=empty)
@@ -89,7 +89,7 @@ def test_build_payload_empty_roi_skipped():
 
 
 def test_build_payload_attaches_roi_jpeg():
-    from aura.optional.zero_waste_payload import build_payload
+    from roadguard.optional.zero_waste_payload import build_payload
 
     roi = np.full((12, 30, 3), 200, np.uint8)
     p = build_payload({"track_id": 2}, plate_roi=roi)
@@ -100,7 +100,7 @@ def test_build_payload_attaches_roi_jpeg():
 
 def test_build_payload_imencode_fail_no_roi_key(monkeypatch):
     # cv2.imencode ok=False döndürürse (kodlama başarısız) JPEG eklenmez
-    import aura.optional.zero_waste_payload as zwp
+    import roadguard.optional.zero_waste_payload as zwp
 
     monkeypatch.setattr(zwp.cv2, "imencode", lambda *a, **k: (False, None))
     roi = np.full((12, 30, 3), 200, np.uint8)
@@ -113,13 +113,13 @@ def test_build_payload_imencode_fail_no_roi_key(monkeypatch):
 # super_resolution.enhance: None/boş erken-dönüş + _warned bir-kez
 # --------------------------------------------------------------------------- #
 def test_super_resolution_none_returns_none():
-    import aura.optional.super_resolution as sr
+    import roadguard.optional.super_resolution as sr
 
     assert sr.enhance(None) is None
 
 
 def test_super_resolution_empty_roi_passthrough():
-    import aura.optional.super_resolution as sr
+    import roadguard.optional.super_resolution as sr
 
     empty = np.zeros((0, 0, 3), np.uint8)
     out = sr.enhance(empty)
@@ -127,11 +127,11 @@ def test_super_resolution_empty_roi_passthrough():
 
 
 def test_super_resolution_warns_only_once(caplog):
-    import aura.optional.super_resolution as sr
+    import roadguard.optional.super_resolution as sr
 
     sr._warned = False  # durumu sıfırla
     roi = np.full((5, 8, 3), 100, np.uint8)
-    with caplog.at_level("INFO", logger="aura.optional.super_resolution"):
+    with caplog.at_level("INFO", logger="roadguard.optional.super_resolution"):
         sr.enhance(roi, scale=2)
         sr.enhance(roi, scale=2)
     infos = [r for r in caplog.records if "bicubic" in r.getMessage()]
@@ -142,7 +142,7 @@ def test_homography_ipm_speed():
     cfg = load_config()
     cfg.data["optional_modules"]["homography_ipm"] = True
     cfg.data["speed"]["calibration_file"] = "config/calibration/ornek_kamera.yaml"
-    from aura.optional.homography_ipm import _state, ipm_speed
+    from roadguard.optional.homography_ipm import _state, ipm_speed
 
     _state.clear()
     fs = (360, 640, 3)

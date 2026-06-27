@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from aura.eval import metrics as M
-from aura.eval.harness import run_eval
+from roadguard.eval import metrics as M
+from roadguard.eval.harness import run_eval
 
 
 def _ensure_sample() -> Path:
     s = Path("data/samples/ornek.mp4")
     if not s.exists():
-        from aura.synthetic import generate
+        from roadguard.synthetic import generate
 
         generate(s.parent, 90, 30, 640, 360)
     return s

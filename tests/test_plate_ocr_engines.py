@@ -8,8 +8,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from aura.plate import ocr as ocr_mod
-from aura.plate.ocr import MockOCR, RealOCR, _FastPlateAdapter, build_ocr
+from roadguard.plate import ocr as ocr_mod
+from roadguard.plate.ocr import MockOCR, RealOCR, _FastPlateAdapter, build_ocr
 
 
 # --- RealOCR.read: easyocr yüklemeden sahte readtext ile -------------------- #

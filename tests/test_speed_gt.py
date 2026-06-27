@@ -8,8 +8,8 @@ km/h ile karşılaştırılır. GT'de real_speed_kmh yoksa hız doğruluğu SESS
 
 from __future__ import annotations
 
-from aura.eval import metrics as M
-from aura.eval.report import (
+from roadguard.eval import metrics as M
+from roadguard.eval.report import (
     gt_label,
     pred_from_summary,
     render_markdown,
