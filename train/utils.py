@@ -129,6 +129,13 @@ def run_finetune(args, out_name: str, task_label: str) -> int:
     )
     if getattr(args, "lr0", None) is not None:
         kw["lr0"] = float(args.lr0)
+    # Regularizasyon (dropout): küçük setlerde (seatbelt/smoking ~500-3000 görsel)
+    # eğitim eğrisi analizi hafif aşırı-uyum eğilimi gösterdi (val mAP peak sonrası
+    # düşüş). Varsayılan 0.0 (geriye uyum, doğrulanmış modeller değişmez); küçük-set
+    # retrain'inde --dropout 0.10-0.15 önerilir (genelleme artar).
+    if getattr(args, "dropout", 0.0):
+        kw["dropout"] = float(args.dropout)
+        log.info("Dropout regularizasyonu: %.3f", float(args.dropout))
     if getattr(args, "resume", False):
         kw["resume"] = True
     if getattr(args, "no_augment", False):
