@@ -1,7 +1,7 @@
-"""Sınıf adı taksonomisi — model-uzayı ↔ AURA kanonik uzayı.
+"""Sınıf adı taksonomisi — model-uzayı ↔ RoadGuard kanonik uzayı.
 
 Farklı ağırlıklar aynı kavrama farklı ad verir: stok COCO ``cell phone`` der,
-fine-tune modelimiz ``phone``; bir sigara modeli ``cigarette`` der, AURA şeması
+fine-tune modelimiz ``phone``; bir sigara modeli ``cigarette`` der, RoadGuard şeması
 ``smoking`` bekler. Bu eşleme TEK noktada yapılır ki model değişince pipeline,
 şema ve config sözleşmesi değişmesin (hidden_prototip "iki-uzaylı taksonomi"
 dersi). Yeni bir ağırlığın sınıf adları buradaki kanonik adlara çevrilemiyorsa
@@ -10,7 +10,7 @@ tek yapılacak iş bu sözlüğe satır eklemektir.
 
 from __future__ import annotations
 
-# model çıktısı (küçük harf) → kanonik AURA adı
+# model çıktısı (küçük harf) → kanonik RoadGuard adı
 CLASS_ALIASES: dict[str, str] = {
     # telefon
     "cell phone": "phone",
@@ -32,5 +32,5 @@ CLASS_ALIASES: dict[str, str] = {
 
 
 def canonical(name: str) -> str:
-    """Model sınıf adını kanonik AURA adına çevir (bilinmeyen ad olduğu gibi döner)."""
+    """Model sınıf adını kanonik RoadGuard adına çevir (bilinmeyen ad olduğu gibi döner)."""
     return CLASS_ALIASES.get(str(name).strip().lower(), str(name))

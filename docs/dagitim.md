@@ -15,14 +15,14 @@
 </div>
 
 > [!NOTE]
-> AURA **sunucuda** çalışacak şekilde tasarlanmıştır (edge cihaz hedefi yok). Bu doküman
+> RoadGuard **sunucuda** çalışacak şekilde tasarlanmıştır (edge cihaz hedefi yok). Bu doküman
 > sunucu kurulumu, profil seçimi, servis olarak çalıştırma ve ölçeklenmeyi anlatır.
 
 ---
 
 ## 🧩 1. Profil seçimi
 
-AURA'nın çalışma zamanı davranışı `config/profiles/*.yaml` ile seçilir (`default.yaml`
+RoadGuard'ın çalışma zamanı davranışı `config/profiles/*.yaml` ile seçilir (`default.yaml`
 üzerine **derin-merge**). Sunucu için **`server`** profili:
 
 ```bash
@@ -86,7 +86,7 @@ flowchart TD
 
 ```ini
 [Unit]
-Description=AURA Inference API
+Description=RoadGuard Inference API
 After=network.target
 [Service]
 WorkingDirectory=/opt/aura
@@ -122,8 +122,8 @@ $action  = New-ScheduledTaskAction  -Execute "powershell.exe" `
   -WorkingDirectory "C:\opt\aura"
 $trigger = New-ScheduledTaskTrigger -AtStartup
 $env_v   = @{ AURA_PROFILE = "server" }   # profil için run.ps1 .env'i de okur
-Register-ScheduledTask -TaskName "AURA Inference" -Action $action -Trigger $trigger `
-  -RunLevel Highest -Description "AURA servisleri (inference/qod/nv)"
+Register-ScheduledTask -TaskName "RoadGuard Inference" -Action $action -Trigger $trigger `
+  -RunLevel Highest -Description "RoadGuard servisleri (inference/qod/nv)"
 ```
 
 > [!TIP]

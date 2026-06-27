@@ -1,5 +1,5 @@
 # =============================================================================
-# AURA — Merkezi Yapılandırma (tek doğruluk kaynağı)
+# RoadGuard — Merkezi Yapılandırma (tek doğruluk kaynağı)
 # Hiçbir eşik/flag koda gömülmez; tüm çalışma zamanı davranışı buradan yönetilir.
 # Açıklamalar için bkz. config/README.md
 # =============================================================================

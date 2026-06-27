@@ -1,8 +1,8 @@
-# KAYNAKÇA — AURA (TEKNOFEST 2026 "5G & YZ ile Akıllı Yol Güvenliği")
+# KAYNAKÇA — RoadGuard (TEKNOFEST 2026 "5G & YZ ile Akıllı Yol Güvenliği")
 
 > **Ne bu?** ULTRAPLAN **W2** (23–28 Haz: rapor + cila) için, **FTR §5 Kaynakça (5 puan)**
 > kalemini besleyen tam, akademik formatlı kaynak listesi. Buradaki her kaynak,
-> AURA kod tabanında **gerçekten kullanılan** bir yöntem/kütüphane/veri setine ya da
+> RoadGuard kod tabanında **gerçekten kullanılan** bir yöntem/kütüphane/veri setine ya da
 > rapor metninde atıf yapılan doğrulanabilir bir belgeye karşılık gelir.
 >
 > **Onur zırhı (K-004):** Uydurma kaynak yoktur. Her giriş ya repoda kullanılan bir
@@ -268,7 +268,7 @@ problem tanımı, FTR formatı, değerlendirme kriterleri, açık-veri kullanım
 
 ## 11. Yöntem ↔ Kaynak izlenebilirlik özeti
 
-| AURA bileşeni | Dosya | Kaynak no. |
+| RoadGuard bileşeni | Dosya | Kaynak no. |
 |---|---|---|
 | Dedektör (YOLO26 + COCO) | `aura/detection/yolo.py` | [1][2][34] |
 | Takip (ByteTrack) | `aura/detection/yolo.py` | [3][5][6] |
@@ -290,7 +290,7 @@ problem tanımı, FTR formatı, değerlendirme kriterleri, açık-veri kullanım
 
 | Bileşen | Lisans |
 |---|---|
-| AURA (bu proje) | MIT (`pyproject.toml`) |
+| RoadGuard (bu proje) | MIT (`pyproject.toml`) |
 | Ultralytics YOLO | AGPL-3.0 |
 | EasyOCR, PaddleOCR, FastAPI, ONNX Runtime | Apache-2.0 / MIT |
 | Tüm kullanılan veri setleri ([34]–[38]) | CC BY 4.0 |

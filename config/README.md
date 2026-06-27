@@ -15,7 +15,7 @@
 
 ## 🧩 Ne yapar
 
-`default.yaml` AURA'nın **tek doğruluk kaynağıdır**. Hiçbir eşik/flag koda gömülmez;
+`default.yaml` RoadGuard'ın **tek doğruluk kaynağıdır**. Hiçbir eşik/flag koda gömülmez;
 tüm çalışma zamanı davranışı buradan yönetilir. `aura.config.load_config()` bu dosyayı
 yükler, seçili env değişkenlerini override olarak uygular ve noktalı erişim sağlar:
 

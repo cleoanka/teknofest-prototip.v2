@@ -38,7 +38,7 @@ def _check_imports() -> list[str]:
 
 
 def run(frames: int) -> int:
-    print("▶ AURA smoke test")
+    print("▶ RoadGuard smoke test")
     failures = [n for n in _check_imports() if n.startswith("ZORUNLU")]
     for n in _check_imports():
         prefix = "  ✗" if n.startswith("ZORUNLU") else "  ·"
@@ -86,7 +86,7 @@ def run(frames: int) -> int:
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
         prog="python -m aura.smoke",
-        description="AURA adaptif smoke test (kurulum + pipeline doğrulama).",
+        description="RoadGuard adaptif smoke test (kurulum + pipeline doğrulama).",
     )
     p.add_argument("--frames", type=int, default=10, help="İşlenecek kare sayısı")
     args = p.parse_args(argv)

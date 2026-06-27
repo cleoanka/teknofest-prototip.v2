@@ -1,4 +1,4 @@
-// AURA backend veri sözleşmeleri (aura/schema.py ile birebir) — TypeScript karşılıkları.
+// RoadGuard backend veri sözleşmeleri (aura/schema.py ile birebir) — TypeScript karşılıkları.
 // Bu tipler downstream'in (kartlar, rozetler, overlay) güvendiği tek kaynaktır.
 
 // ---- Number Verification (nv_mock :8082) ---- //

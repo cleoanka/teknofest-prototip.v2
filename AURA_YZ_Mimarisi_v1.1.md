@@ -1,11 +1,11 @@
-# Proje AURA: 5G Akıllı Yol Güvenliği — YZ Mimarisi
+# Proje RoadGuard: 5G Akıllı Yol Güvenliği — YZ Mimarisi
 
 **Sürüm:** 1.1 — Mimari Taslak  
 **Kapsam:** Yalnızca YZ/İnference Katmanı
 
 > Output/Alert katmanı (baz istasyonu, mobil istemci, dashboard entegrasyonu) kasıtlı olarak bu dokümanın kapsamı dışındadır. Bu modül event-driven bir microservice olarak bağımsız çalışır; harici servislere API arayüzü üzerinden bağlanır.
 
-> **Not:** Mimari iskelet içindeki YOLO26s, YOLO26l ve OCR bileşenleri şu an yer tutucudur. Proje olgunlaştıkça bu birimler, AURA'nın özel veri setiyle eğitilmiş custom modellerle ikame edilecektir.
+> **Not:** Mimari iskelet içindeki YOLO26s, YOLO26l ve OCR bileşenleri şu an yer tutucudur. Proje olgunlaştıkça bu birimler, RoadGuard'ın özel veri setiyle eğitilmiş custom modellerle ikame edilecektir.
 
 ---
 

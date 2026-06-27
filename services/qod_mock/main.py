@@ -14,7 +14,7 @@ import uuid
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
-app = FastAPI(title="AURA QoD Mock (CAMARA Quality-on-Demand)", version="2.0.0")
+app = FastAPI(title="RoadGuard QoD Mock (CAMARA Quality-on-Demand)", version="2.0.0")
 
 _sessions: dict[str, dict] = {}
 _MAX_SESSIONS = 1000  # auth'suz mock: sınırsız POST /sessions ile bellek tükenmesini önle

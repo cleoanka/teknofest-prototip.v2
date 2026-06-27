@@ -1,4 +1,4 @@
-"""AURA değerlendirme CLI — `python -m aura.eval` (plan.md §4.3)."""
+"""RoadGuard değerlendirme CLI — `python -m aura.eval` (plan.md §4.3)."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from aura.config import load_config
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="python -m aura.eval",
-        description="AURA model değerlendirme — doğruluk metrikleri ve QoD A/B karşılaştırması",
+        description="RoadGuard model değerlendirme — doğruluk metrikleri ve QoD A/B karşılaştırması",
         epilog=(
             "örnekler:\n"
             "  python -m aura.eval --source data/samples/ornek.mp4 "

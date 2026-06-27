@@ -1,6 +1,6 @@
 <div align="center">
 
-# AURA — 5G & Yapay Zekâ ile Akıllı Yol Güvenliği
+# RoadGuard — 5G & Yapay Zekâ ile Akıllı Yol Güvenliği
 
 **Trafik kamerasından araç · plaka · sürücü davranışı · hız → CAMARA 5G QoD ile birleşen tek-komut monorepo**
 
@@ -24,7 +24,7 @@
 > **TEKNOFEST 2026** "5G & Yapay Zekâ ile Akıllı Yol Güvenliği" yarışması prototipi.
 > Üretim kalitesinde, cross-platform (macOS + Windows), tek komutla ayağa kalkan monorepo.
 
-AURA; trafik kamerası görüntüsünden **araç / plaka / sürücü davranışı / hız** tespiti yapan
+RoadGuard; trafik kamerası görüntüsünden **araç / plaka / sürücü davranışı / hız** tespiti yapan
 gerçek bir YZ çekirdeği ile, bu çekirdeği **5G QoD** (CAMARA Quality-on-Demand) ve
 **Number Verification** gibi telekom yetenekleriyle birleştiren bir sistemdir.
 
@@ -122,7 +122,7 @@ biten ile süren net ayrılır; rakamlar repo ölçümleriyle (`eval_results/`, 
 
 Puanlama: **%40 YZ · %40 QoD · %20 rapor** (FTR son teslim 28.06.2026).
 
-| Eksen | Ağırlık | AURA'nın kanıtı |
+| Eksen | Ağırlık | RoadGuard'ın kanıtı |
 |---|---|---|
 | YZ başarımı | %40 | Gerçek CV çekirdeği; held-out davranış makro-F1 1.0, plaka 3/3 exact, araç %100, stok mAP50-95 0.537 |
 | QoD kullanımı | %40 | A/B harness ölçülebilir delta üretir (+33/+51/+25pp); `vehicle_approach` tetiği şartnamenin "TOGG yaklaşınca QoD" senaryosunu birebir karşılar |

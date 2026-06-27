@@ -1,6 +1,6 @@
 <div align="center">
 
-# 📋 FTR Rehberi — AURA Final Tasarım Raporu
+# 📋 FTR Rehberi — RoadGuard Final Tasarım Raporu
 
 **Gönderilecek FTR'nin içinde ne var, bizden ne bekleniyor, neler eklenebilir?**
 
@@ -25,7 +25,7 @@
 | **Puanlama** (şartname Tablo 1) | **%40** YZ doğruluk/hassasiyet · **%40** 5G QoD entegrasyonu · **%20** rapor + sunum |
 | **FTR teslimi** | KYS sistemi, saat 17:00'a kadar (repo bağlayıcı tarihi **28.06.2026**; şartname PDF'i 14.06 yazar — ertelendi) |
 | **Format** (zorunlu) | 3–10 sayfa · Arial 12 / başlık 14 bold · 1.15 satır · iki yana yaslı · kenar üst 2.8 / diğer 2.5 cm · **Kapak + İçindekiler ayrı 2 sayfa** |
-| **Onur kuralı** (şartname 4.5) | "Raporladığı her hedefin otomatik üretildiğini kanıtlamakla yükümlü; **kanıtlanamayan hedef değerlendirilmez**" → AURA'nın K-004 zırhı + kanıt izi bunu karşılar |
+| **Onur kuralı** (şartname 4.5) | "Raporladığı her hedefin otomatik üretildiğini kanıtlamakla yükümlü; **kanıtlanamayan hedef değerlendirilmez**" → RoadGuard'ın K-004 zırhı + kanıt izi bunu karşılar |
 
 ---
 

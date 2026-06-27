@@ -1,4 +1,4 @@
-// AURA mobil — sessiz giriş (Number Verification). SMS/OTP YOK.
+// RoadGuard mobil — sessiz giriş (Number Verification). SMS/OTP YOK.
 // Şebeke/SIM bağı (sim_token + TR numarası) operatör NV API'siyle sessizce doğrulanır;
 // burada nv_mock (:8082) POST /verify çağrılır. Başarılıysa otomatik Dashboard'a geçilir.
 import React, { useEffect, useState } from "react";
@@ -42,7 +42,7 @@ export default function LoginScreen({ onLogin }: Props) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.logo}>◈ AURA</Text>
+      <Text style={styles.logo}>◈ RoadGuard</Text>
       <Text style={styles.subtitle}>5G &amp; YZ · Akıllı Yol Güvenliği</Text>
       <Text style={styles.phone}>{DEMO_PHONE}</Text>
 

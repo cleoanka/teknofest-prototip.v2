@@ -4,7 +4,7 @@
 
 <div align="center">
 
-![AURA](https://img.shields.io/badge/AURA-CLI%20Referansı-0A66C2?style=flat-square)
+![RoadGuard](https://img.shields.io/badge/RoadGuard-CLI%20Referansı-0A66C2?style=flat-square)
 ![Sürüm](https://img.shields.io/badge/sürüm-v2.3-2ea44f?style=flat-square)
 ![Kaynak](https://img.shields.io/badge/kaynak-gerçek%20--help%20çıktıları-orange?style=flat-square)
 ![profile](https://img.shields.io/badge/--profile-server%20%7C%20laptop%20%7C%20v4--finetune-blueviolet?style=flat-square)
@@ -58,7 +58,7 @@ flowchart LR
 usage: python bootstrap.py [-h] [--skip-weights] [--skip-node] [--skip-deps]
                            [--force] [--dev]
 
-AURA kurulum bootstrap'i — tek komutla sıfırdan kurulum.
+RoadGuard kurulum bootstrap'i — tek komutla sıfırdan kurulum.
 
 options:
   -h, --help      show this help message and exit
@@ -85,7 +85,7 @@ usage: python -m aura [-h] [--config PATH] [--source SOURCE]
                       [--max-frames MAX_FRAMES] [--save-events PATH]
                       [--log-level {DEBUG,INFO,WARNING}]
 
-AURA inference pipeline — araç, plaka, sürücü durumu ve hız tespiti.
+RoadGuard inference pipeline — araç, plaka, sürücü durumu ve hız tespiti.
 
 options:
   -h, --help            show this help message and exit
@@ -119,7 +119,7 @@ usage: python tools/test_video.py [-h] --source PATH [--config PATH]
                                   [--max-frames MAX_FRAMES] [--output PATH]
                                   [--json PATH] [--no-video]
 
-Videoyu AURA pipeline'ından geçir; annotated mp4 + JSON özet üret.
+Videoyu RoadGuard pipeline'ından geçir; annotated mp4 + JSON özet üret.
 
 options:
   -h, --help            show this help message and exit
@@ -158,7 +158,7 @@ usage: python -m aura.eval [-h] [--source SOURCE]
                            [--ground-truth GROUND_TRUTH] [--qod-comparison]
                            [--output OUTPUT] [--config CONFIG]
 
-AURA model değerlendirme — doğruluk metrikleri ve QoD A/B karşılaştırması
+RoadGuard model değerlendirme — doğruluk metrikleri ve QoD A/B karşılaştırması
 
 options:
   -h, --help            show this help message and exit
@@ -182,7 +182,7 @@ options:
 ```
 usage: python -m train [-h] {detector,driver-state,dataset} ...
 
-AURA model eğitimi
+RoadGuard model eğitimi
 
 positional arguments:
   {detector,driver-state,dataset}
@@ -304,7 +304,7 @@ options:
 ```
 usage: python -m aura.smoke [-h] [--frames FRAMES]
 
-AURA adaptif smoke test (kurulum + pipeline doğrulama).
+RoadGuard adaptif smoke test (kurulum + pipeline doğrulama).
 
 options:
   -h, --help       show this help message and exit

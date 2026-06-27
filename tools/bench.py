@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""FPS / kare-süresi benchmark aracı — bir videoyu AURA pipeline'ından geçirip
+"""FPS / kare-süresi benchmark aracı — bir videoyu RoadGuard pipeline'ından geçirip
 işleme hızını ölçer ve Markdown rapor yazar.
 
 Üretilen ölçüler (yalnız ısınma sonrası, K-004 — uydurma yok):
@@ -41,7 +41,7 @@ def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="python tools/bench.py",
         description=(
-            "Videoyu AURA pipeline'ından geçir; ortalama FPS + p50/p95 kare-süresi "
+            "Videoyu RoadGuard pipeline'ından geçir; ortalama FPS + p50/p95 kare-süresi "
             "ölç ve eval_results/bench_<device>.md raporu yaz."
         ),
         epilog=(
@@ -186,7 +186,7 @@ def main(argv: list[str] | None = None) -> int:
     ts = time.strftime("%Y-%m-%d %H:%M:%S")
     profile_str = args.profile or "default"
     lines = [
-        f"# AURA Benchmark — {device_tag}",
+        f"# RoadGuard Benchmark — {device_tag}",
         "",
         f"- **Tarih:** {ts}",
         f"- **Kaynak:** `{src.name}`",

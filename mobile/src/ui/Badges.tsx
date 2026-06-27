@@ -1,4 +1,4 @@
-// AURA mobil — tespit rozetleri: plaka durumu, QoD, sürücü ihlali, risk, hız.
+// RoadGuard mobil — tespit rozetleri: plaka durumu, QoD, sürücü ihlali, risk, hız.
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 

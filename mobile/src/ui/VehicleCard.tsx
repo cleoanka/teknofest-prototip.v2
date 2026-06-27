@@ -1,4 +1,4 @@
-// AURA mobil — tek araç tespit kartı. Annotation track'inden tüm rozetleri birleştirir.
+// RoadGuard mobil — tek araç tespit kartı. Annotation track'inden tüm rozetleri birleştirir.
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 

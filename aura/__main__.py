@@ -1,4 +1,4 @@
-"""AURA ana inference pipeline CLI — `python -m aura`.
+"""RoadGuard ana inference pipeline CLI — `python -m aura`.
 
 plan.md §4.1 argparse şablonu.
 """
@@ -21,7 +21,7 @@ for _s in (sys.stdout, sys.stderr):
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="python -m aura",
-        description="AURA inference pipeline — araç, plaka, sürücü durumu ve hız tespiti.",
+        description="RoadGuard inference pipeline — araç, plaka, sürücü durumu ve hız tespiti.",
         epilog=(
             "örnekler:\n"
             "  python -m aura --source 0\n"

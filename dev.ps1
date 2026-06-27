@@ -1,4 +1,4 @@
-﻿# AURA — geliştirme kısayolları (Windows / PowerShell 5.1+; Makefile eşleniği).
+﻿# RoadGuard — geliştirme kısayolları (Windows / PowerShell 5.1+; Makefile eşleniği).
 # Kullanım:
 #   .\dev.ps1 setup                     # tek-komut kurulum (bootstrap.py --dev)
 #   .\dev.ps1 run                       # tüm servisleri kaldır (run.ps1)

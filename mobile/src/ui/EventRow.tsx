@@ -1,4 +1,4 @@
-// AURA mobil — canlı event akışı satırı (WS /stream/events). Kompakt aktivite günlüğü.
+// RoadGuard mobil — canlı event akışı satırı (WS /stream/events). Kompakt aktivite günlüğü.
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 

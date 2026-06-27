@@ -1,4 +1,4 @@
-"""Sınıf adı taksonomisi — model-uzayı → kanonik AURA adı eşlemesi."""
+"""Sınıf adı taksonomisi — model-uzayı → kanonik RoadGuard adı eşlemesi."""
 
 from __future__ import annotations
 

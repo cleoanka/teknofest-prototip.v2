@@ -1,4 +1,4 @@
-// AURA mobil — renkler ve etiket sözlükleri (tek kaynak; kart/rozet/akış paylaşır).
+// RoadGuard mobil — renkler ve etiket sözlükleri (tek kaynak; kart/rozet/akış paylaşır).
 
 export const COLORS = {
   bg: "#0d1117",

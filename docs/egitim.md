@@ -7,13 +7,13 @@
 ![YOLO26](https://img.shields.io/badge/YOLO26-8.4.x-00B0FF?style=flat-square)
 ![PyTorch](https://img.shields.io/badge/PyTorch-2.12-EE4C2C?style=flat-square)
 ![Device](https://img.shields.io/badge/device-auto%20(CUDA%E2%86%92MPS%E2%86%92CPU)-7952B3?style=flat-square)
-![Sürüm](https://img.shields.io/badge/AURA-v2.3.0-success?style=flat-square)
+![Sürüm](https://img.shields.io/badge/RoadGuard-v2.3.0-success?style=flat-square)
 ![Lisans](https://img.shields.io/badge/license-MIT-green?style=flat-square)
 
 </div>
 
 > [!NOTE]
-> Bu belge, AURA'nın YOLO26 modellerini kendi/komite verinizle nasıl eğiteceğinizi,
+> Bu belge, RoadGuard'ın YOLO26 modellerini kendi/komite verinizle nasıl eğiteceğinizi,
 > veriyi nasıl dengeleyeceğinizi ve sonuçları **FTR raporuna** (§2 Veri Seti, §4 Sınama)
 > nasıl bağlayacağınızı uçtan uca anlatır. Eğitim tool'u `train/` altındadır ve
 > **eğit → doğrula (`model.val`) → metrik export (mAP/P/R/F1) → en iyi ağırlığı `weights/`'e
@@ -32,7 +32,7 @@ flowchart LR
 
 ## 📍 0. Mevcut durum (dürüst)
 
-- AURA'nın varsayılan araç dedektörü **stok `yolo26l`** (sunucu); sürücü davranışı **YOLO26-pose**
+- RoadGuard'ın varsayılan araç dedektörü **stok `yolo26l`** (sunucu); sürücü davranışı **YOLO26-pose**
   geometrisiyle fine-tune'suz çalışır. Plaka kırpma artık **eğitilmiş `custom_license_plate`**
   (YOLO26s) varsayılandır; ağırlık yoksa loglu stok LP'ye/geniş-crop'a düşer → **plaka/davranış
   demosu eğitim olmadan da** çalışır.
@@ -76,7 +76,7 @@ flowchart LR
 
 Eksik sınıflar (`cigarette/smoking`, `seatbelt`, `fatigue`, `minibus`, `license_plate`)
 için açık veri setleri `train/datasets.yaml` manifestinde toplanır (kaynak + lisans +
-AURA taksonomisine eşleme). Önce **planı** görün (ağ kullanmaz), sonra gerçek indirin:
+RoadGuard taksonomisine eşleme). Önce **planı** görün (ağ kullanmaz), sonra gerçek indirin:
 
 ```mermaid
 flowchart LR
@@ -164,7 +164,7 @@ flowchart TD
 ```
 
 **Birden çok sürücü-davranış veri setini birleştirme:** `python -m train.merge_driver_datasets`
-(spec: `train/configs/driver_merge.json`) — farklı kaynakların sınıflarını AURA taksonomisine
+(spec: `train/configs/driver_merge.json`) — farklı kaynakların sınıflarını RoadGuard taksonomisine
 (phone/smoking/seatbelt/fatigue) eşleyip tek YOLO setinde toplar.
 
 ---

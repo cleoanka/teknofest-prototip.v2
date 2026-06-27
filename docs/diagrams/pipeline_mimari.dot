@@ -1,4 +1,4 @@
-// AURA — FTR §3.2 kuşbakışı mimari (graphviz, YATAY/LR pipeline). Render:
+// RoadGuard — FTR §3.2 kuşbakışı mimari (graphviz, YATAY/LR pipeline). Render:
 //   dot -Tpng -Gdpi=200 docs/diagrams/pipeline_mimari.dot -o docs/figures/fig_mimari.png
 digraph RoadGuard {
   rankdir=LR; bgcolor="white"; splines=spline; compound=true; pad=0.35;

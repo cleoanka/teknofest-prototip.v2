@@ -91,7 +91,7 @@ def _find_pr_curve(save_dir) -> str | None:
 def _render_markdown(data: dict) -> str:
     """mAP sonuç sözlüğünden FTR §4 Markdown raporu üret."""
     lines = [
-        "# AURA — İstatistiksel mAP (geniş set) (FTR §4)",
+        "# RoadGuard — İstatistiksel mAP (geniş set) (FTR §4)",
         "",
         f"- **Ağırlık:** `{data['weights']}`",
         f"- **Veri tanımı (data.yaml):** `{data['data']}`",

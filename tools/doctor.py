@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""AURA sağlık kontrolü — `python tools/doctor.py` (kurulum/ortam teşhisi).
+"""RoadGuard sağlık kontrolü — `python tools/doctor.py` (kurulum/ortam teşhisi).
 
 Tek bakışta "her şey hazır mı?" sorusunu yanıtlar: Python sürümü, çekirdek
 bağımlılıklar (ultralytics/torch/easyocr), hesaplama cihazı (CUDA/MPS/CPU),
@@ -151,7 +151,7 @@ def _check_videos() -> None:
 
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(
-        prog="python tools/doctor.py", description="AURA ortam/sağlık kontrolü"
+        prog="python tools/doctor.py", description="RoadGuard ortam/sağlık kontrolü"
     )
     p.add_argument(
         "--profile",
@@ -160,7 +160,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = p.parse_args(argv)
 
-    print("\n=== AURA Doctor — ortam ve hazırlık kontrolü ===\n")
+    print("\n=== RoadGuard Doctor — ortam ve hazırlık kontrolü ===\n")
     print("[Python]")
     py = _check_python()
     print("\n[Bağımlılıklar]")

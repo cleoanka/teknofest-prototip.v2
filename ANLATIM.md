@@ -1,6 +1,6 @@
 <div align="center">
 
-# 📖 AURA — Uzun Anlatım: Her Şey Ne İşe Yarıyor?
+# 📖 RoadGuard — Uzun Anlatım: Her Şey Ne İşe Yarıyor?
 
 **Kod tabanının baştan sona, dosya dosya, "bu ne işe yarar / nasıl çalışır" anlatımı.**
 Önce **bootstrap** (kurulum) ve **pipeline** (çekirdek akış); sonra her alt-sistem detayıyla.
@@ -19,7 +19,7 @@
 
 ## İçindekiler
 
-1. [Kuşbakışı: AURA nedir, parçalar nasıl bağlanır](#1-kuşbakışı)
+1. [Kuşbakışı: RoadGuard nedir, parçalar nasıl bağlanır](#1-kuşbakışı)
 2. [`bootstrap.py` — tek komutla kurulum](#2-bootstrappy)
 3. [`aura/pipeline/pipeline.py` — çekirdek orkestratör](#3-pipeline)
 4. [Stage-1 · `detection/` — tespit + takip](#4-detection)
@@ -37,9 +37,9 @@
 ---
 
 <a name="1-kuşbakışı"></a>
-## 1. Kuşbakışı: AURA nedir, parçalar nasıl bağlanır
+## 1. Kuşbakışı: RoadGuard nedir, parçalar nasıl bağlanır
 
-AURA, yol kenarı bir trafik kamerası akışından **araç, plaka, hız ve riskli sürücü davranışı**
+RoadGuard, yol kenarı bir trafik kamerası akışından **araç, plaka, hız ve riskli sürücü davranışı**
 tespit eden gerçek bir YZ çekirdeğini; bu çekirdeği **5G CAMARA QoD** (Quality-on-Demand) ve
 **Number Verification** telekom yetenekleriyle birleştiren uçtan uca bir sistemdir.
 
@@ -469,7 +469,7 @@ Pipeline'ın altyapı çekirdeği. **Hiçbir eşik/flag koda gömülmez — tek 
 - **`schema.py`** — Pydantic v2 çekirdek sözleşmeleri: `PlateState`, `DriverState` (`active_flags()`
   yalnız ihlalleri döner; kemerin **görülmesi** ihlal değil), `SpeedState`, `BBox`, ID-merkezli
   `TrackRecord`, stream sözleşmeleri `AuraEvent`/`AnnotationFrame`.
-- **`taxonomy.py`** — model-uzayı ↔ AURA kanonik-uzayı eşlemesini **tek noktada** yapar (`CLASS_ALIASES`,
+- **`taxonomy.py`** — model-uzayı ↔ RoadGuard kanonik-uzayı eşlemesini **tek noktada** yapar (`CLASS_ALIASES`,
   `canonical`) → model değişince pipeline/şema/config sözleşmesi değişmesin.
 - **`preprocessing/preprocess.py`** — şu an M2 **pass-through** (arayüz sabit, filtreler sonraki
   iterasyonda); **`synthetic.py`** — gerçek TOGG verisi gelene dek deterministik trafik videosu + GT

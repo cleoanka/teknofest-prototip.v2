@@ -1,4 +1,4 @@
-﻿# AURA kurulum sarmalayıcı (Windows / PowerShell 5.1+). Tüm mantık bootstrap.py'de.
+﻿# RoadGuard kurulum sarmalayıcı (Windows / PowerShell 5.1+). Tüm mantık bootstrap.py'de.
 # Geliştirici ekstraları (pytest/ruff/black) için: .\setup.ps1 --dev   (make setup eşdeğeri)
 $ErrorActionPreference = "Stop"
 $env:PYTHONUTF8 = "1"

@@ -13,7 +13,7 @@
 </div>
 
 > [!NOTE]
-> Bu belge, **Windows üzerinde sıfır AURA bilgisiyle** kurulum, çalıştırma, eğitim ve
+> Bu belge, **Windows üzerinde sıfır RoadGuard bilgisiyle** kurulum, çalıştırma, eğitim ve
 > değerlendirmeyi tek yerden anlatır. Tüm mantık `bootstrap.py` içindedir; `.ps1` betikleri
 > yalnızca onun ince sarmalayıcılarıdır ve macOS/Linux'taki `run.sh` / `Makefile` ile
 > **birebir aynı** işi yapar (port, profil ve `.env` sözleşmesi ortaktır).
@@ -54,7 +54,7 @@
   derlemesine düşer. Backend'i `.env` içindeki `AURA_DEVICE=cuda|cpu` ile elle de zorlayabilirsiniz.
 - Kurulum sonrası `.\dev.ps1 doctor` çıktısında **"Cihaz (auto → cuda:0)  CUDA: <GPU adı>"**
   satırını görmelisiniz. Sadece CPU görünüyorsa GPU yok ya da sürücü eksik demektir.
-- **Geliştirme donanımı (AURA):** NVIDIA GeForce RTX 5070 Laptop GPU — **4.608 CUDA çekirdeği**
+- **Geliştirme donanımı (RoadGuard):** NVIDIA GeForce RTX 5070 Laptop GPU — **4.608 CUDA çekirdeği**
   (36 SM × 128), 8 GB VRAM, Compute Capability 12.0 (Blackwell), torch 2.8.0+cu128.
   Server profili CUDA FPS: **12,31** (yolo26l, imgsz 960), laptop profili: **14,72** (yolo26s, imgsz 640).
   Benchmark: `.\dev.ps1 video-test <video.mp4>` veya `python tools/bench.py --device cuda --profile server`.

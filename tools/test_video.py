@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Gerçek video test aracı — annotated mp4 + JSON özet (jüri/denetim kanıtı).
 
-Bir videoyu AURA pipeline'ından geçirir ve iki kanıt üretir:
+Bir videoyu RoadGuard pipeline'ından geçirir ve iki kanıt üretir:
 1. **Annotated mp4**: araç kutuları (risk=kırmızı), plaka (onaylı ✓ / kısmi ?),
    sürücü bayrakları (TELEFON/SİGARA/...), SWERVING işareti, kalibre hız.
    Görselleştirme hijyeni (hidden_prototip dersi): ham model çıktısı değil,
@@ -44,7 +44,7 @@ from aura.config import load_config  # noqa: E402
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         prog="python tools/test_video.py",
-        description="Videoyu AURA pipeline'ından geçir; annotated mp4 + JSON özet üret.",
+        description="Videoyu RoadGuard pipeline'ından geçir; annotated mp4 + JSON özet üret.",
         epilog=(
             "örnekler:\n"
             "  python tools/test_video.py --source ~/video_1.mp4\n"

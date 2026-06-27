@@ -1,4 +1,4 @@
-﻿# AURA — tüm servisleri kaldırır (Windows / PowerShell 5.1+).
+﻿# RoadGuard — tüm servisleri kaldırır (Windows / PowerShell 5.1+).
 # .venv yoksa önce bootstrap çağırır. Servis modülü yoksa uyarır ve atlar.
 # Not: '0.0.0.0' bind'i ilk çalıştırmada Windows Defender Güvenlik Duvarı onayı
 # isteyebilir (servis başına bir kez) — beklenen davranıştır, izin verin.
@@ -92,7 +92,7 @@ try {
   # Sunucu/profil dağıtımı: $env:AURA_PROFILE='server'; .\run.ps1  → config/profiles/server.yaml
   # (inference servisi load_config() içinde AURA_PROFILE env'ini otomatik okur — run.sh paritesi).
   $profileName = if ($env:AURA_PROFILE) { $env:AURA_PROFILE } else { "varsayılan" }
-  Write-Host "▶ AURA servisleri başlatılıyor  (profil: $profileName)"
+  Write-Host "▶ RoadGuard servisleri başlatılıyor  (profil: $profileName)"
   Start-Svc "QoD mock"      "services.qod_mock.main:app"      $qodPort
   Start-Svc "NV mock"       "services.nv_mock.main:app"       $nvPort
   Start-Svc "Inference API" "services.inference_api.main:app" $inferPort
