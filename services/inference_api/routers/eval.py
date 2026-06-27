@@ -56,8 +56,14 @@ def eval_run(
             )
             log.info("Eval tamamlandı.")
         except Exception as e:  # noqa: BLE001
+            # SEC: ham istisna metni (mutlak dosya yolları / iç yapı detayı) auth'suz
+            # GET /eval/results ile sızabilirdi → jenerik mesaj sakla; kök-neden yalnız
+            # sunucu log'unda kalır.
             log.warning("Eval harness henüz yok/başarısız: %s", e)
-            request.app.state.eval_results = {"status": "error", "error": str(e)}
+            request.app.state.eval_results = {
+                "status": "error",
+                "error": "eval çalıştırılamadı (ayrıntı sunucu log'unda)",
+            }
 
     background.add_task(_job)
     return {

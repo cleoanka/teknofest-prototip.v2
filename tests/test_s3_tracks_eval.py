@@ -217,7 +217,9 @@ def test_eval_run_harness_error_path_sets_error_then_export_empty(client, monkey
     assert r.status_code == 200 and r.json()["status"] == "queued"
     # _job hata yakaladı → error state.
     res = client.get("/eval/results").json()
-    assert res["status"] == "error" and "harness patladi" in res["error"]
+    # SEC: ham istisna metni ('harness patladi') auth'suz /eval/results'a SIZMAMALI;
+    # yalnız jenerik mesaj döner (kök-neden sunucu log'unda).
+    assert res["status"] == "error" and "harness patladi" not in res["error"]
     # error state'te export markdown'u '# Eval sonucu yok' olmalı.
     exp = client.get("/eval/results/export")
     assert exp.status_code == 200

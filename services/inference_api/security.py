@@ -18,7 +18,7 @@ import os
 import re
 from pathlib import Path
 
-from fastapi import Header, HTTPException, status
+from fastapi import Header, HTTPException, Query, status
 
 from aura.config import ROOT
 
@@ -51,6 +51,44 @@ def verify_token(x_aura_token: str | None = Header(default=None)) -> None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Gecersiz veya eksik {_TOKEN_HEADER}",
+            headers={"WWW-Authenticate": _TOKEN_HEADER},
+        )
+
+
+def _read_auth_enabled() -> bool:
+    """Okuma-ucu korumasi yalnız ``AURA_API_TOKEN`` VE ``AURA_API_PROTECT_READS``
+    set ise aktiftir.
+
+    Varsayilan (bayrak yok): okuma uclari ACIK kalir → co-located dashboard ve
+    ``test_read_endpoints_unauthenticated_ok`` sozlesmesi korunur. Uretimde PII
+    (canli plaka/goruntu) korumasi icin opt-in; tasarim ilkesiyle (DEMO-KORUMA,
+    ENV-GATED) tutarli.
+    """
+    if _expected_token() is None:
+        return False
+    flag = os.environ.get("AURA_API_PROTECT_READS", "").strip().lower()
+    return flag not in ("", "0", "false", "no", "off")
+
+
+def verify_token_read(
+    x_aura_token: str | None = Header(default=None),
+    token: str | None = Query(default=None),
+) -> None:
+    """OPT-IN okuma-ucu auth (PII koruma; SEC-001 genisletmesi).
+
+    ``AURA_API_TOKEN`` + ``AURA_API_PROTECT_READS`` set ISE: ``X-AURA-Token``
+    basligi VEYA ``?token=`` query-param (MJPEG ``<img>`` baslik gonderemez) beklenen
+    token ile birebir eslesmeli; aksi halde 401. Bayraklardan biri yoksa no-op
+    (varsayilan demo + dashboard + acik-okuma sozlesmesi BOZULMAZ).
+    """
+    if not _read_auth_enabled():
+        return
+    expected = _expected_token()
+    supplied = x_aura_token or token
+    if not supplied or supplied != expected:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=f"Gecersiz veya eksik token ({_TOKEN_HEADER} veya ?token=); okuma korumasi acik",
             headers={"WWW-Authenticate": _TOKEN_HEADER},
         )
 

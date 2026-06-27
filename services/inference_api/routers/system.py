@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 
 from aura import __version__
+from services.inference_api.security import verify_token_read
 
 router = APIRouter(tags=["system"])
 
@@ -23,7 +24,7 @@ def health(request: Request):
 
 
 @router.get("/info")
-def info(request: Request):
+def info(request: Request, _=Depends(verify_token_read)):
     sm = request.app.state.stream
     cfg = sm.cfg
     return {

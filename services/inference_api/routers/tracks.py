@@ -4,13 +4,15 @@ from __future__ import annotations
 
 from collections import deque
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
+
+from services.inference_api.security import verify_token_read
 
 router = APIRouter(tags=["tracks"])
 
 
 @router.get("/tracks")
-def list_tracks(request: Request):
+def list_tracks(request: Request, _=Depends(verify_token_read)):
     sm = request.app.state.stream
     if not sm.pipeline:
         return {"tracks": [], "count": 0}
@@ -19,7 +21,7 @@ def list_tracks(request: Request):
 
 
 @router.get("/tracks/{track_id}")
-def get_track(track_id: int, request: Request):
+def get_track(track_id: int, request: Request, _=Depends(verify_token_read)):
     sm = request.app.state.stream
     # Sözleşme (KASITLI): pipeline yokken tekil sorgu 404 döner (o track YOK).
     # list_tracks/track_history ise "koleksiyon boş" semantiğiyle 200+boş döner.
@@ -32,7 +34,7 @@ def get_track(track_id: int, request: Request):
 
 
 @router.get("/tracks/{track_id}/history")
-def track_history(track_id: int, request: Request):
+def track_history(track_id: int, request: Request, _=Depends(verify_token_read)):
     sm = request.app.state.stream
     if not sm.pipeline:
         return {"track_id": track_id, "history": []}

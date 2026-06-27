@@ -253,12 +253,16 @@ class Accumulator:
 
     # --- yardımcılar ------------------------------------------------------- #
     def active_tracks(self) -> list[TrackRecord]:
-        with self._lock:  # CA-002: prune'un del'iyle eş-zamanlı tutarlı snapshot
-            return list(self.tracks.values())
+        with self._lock:  # CA-002: kilit altında DERİN-KOPYA snapshot
+            # Pipeline iş parçacığı update_track'te kayıt alanlarını (plate/driver/speed)
+            # KİLİT DIŞINDA mutasyona uğratır; okuyucu (REST/dashboard) referansı alıp
+            # model_dump ederken yırtık okuma görürdü. Donmuş kopya bunu kapatır.
+            return [r.model_copy(deep=True) for r in self.tracks.values()]
 
     def get(self, track_id: int) -> TrackRecord | None:
         with self._lock:
-            return self.tracks.get(track_id)
+            r = self.tracks.get(track_id)
+            return r.model_copy(deep=True) if r is not None else None
 
     def prune(self, frame_idx: int, max_age: int = 30) -> None:
         with self._lock:  # CA-002: silme okuyucularla serileşsin (size-change yarışı yok)
