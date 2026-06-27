@@ -80,18 +80,19 @@ kritik anlarda} 5G şebeke kalitesini talep ederek bant genişliğini verimli ku
 
 Proje kapsamında yürütülen başlıca faaliyetler: (i) YOLO26 tabanlı çok-aşamalı bir tespit/takip
 hattının tasarımı; (ii) sürücü davranışı için landmark kütüphanesi gerektirmeyen, poz-geometrisi
-ve nesne kanıtını birleştiren hibrit bir motor; (iii) Türk plaka formatına özgü, dürüstlük
-zırhlarıyla donatılmış bir plaka okuma konsensüs döngüsü; (iv) CAMARA QoD ve NV sözleşmelerini
+ve nesne kanıtını birleştiren hibrit bir motor; (iii) Türk plaka formatına özgü, koruyucu karar
+kurallarıyla donatılmış bir plaka okuma konsensüs döngüsü; (iv) CAMARA QoD ve NV sözleşmelerini
 birebir taklit eden mock servisler; (v) çözümün üç gerçek test videosu ve held-out doğrulama
 setleri üzerinde nicel sınanması. Yapay zekâ çekirdeği (tespit, takip, kararlılık, OCR, hız,
 risk) \textbf{gerçektir}; telekom katmanları gerçek API sözleşmesini taklit eden \textbf{mock}'lardır
 — gerçek operatöre geçişte uç nokta/kimlik değişir, ayrıca saha doğrulaması gerekir. Kalite güvencesi
 olarak ${\sim}780$ birim/perf testi, statik denetim (\tcode{ruff}+\tcode{black}) ve otomatik
-sürekli-entegrasyon hattı mevcuttur. Ayrılmış (held-out) tespitte plaka mAP50 \textbf{0,983}; üç gerçek test videosunda
-(sınıf başına N=1) davranış makro-F1 \textbf{1,0} (sıfır çapraz yanlış-pozitif) ve plaka okuma
-\textbf{3/3 tam-eşleşme} (CER, karakter hata oranı 0,0; sıfır yanlış-onay) elde edilmiş; hedef GPU'da
-ölçülen \textbf{12--15 FPS} iş-hacmiyle, kamera akışı kare-örnekleme ile gerçek-zamanlıya yakın
-gecikmede işlenmiştir.
+sürekli-entegrasyon hattı mevcuttur. İstatistiksel kanıt ayrılmış (held-out) settedir: plaka tespiti
+mAP50 \textbf{0,983} (P 0,982 / R 0,963). Üç gerçek test videosu ise uçtan-uca entegrasyon
+doğrulamasıdır (istatistiksel genelleme değil; sınıf başına N=1): davranışta sıfır çapraz yanlış-pozitif
+(makro-F1 1,0), plaka okumada 3/3 tam-eşleşme (CER, karakter hata oranı 0,0; sıfır yanlış-onay). Hedef
+GPU'da ölçülen \textbf{12--15 FPS} iş-hacmiyle akış kare-örnekleme ile gerçek-zamanlıya yakın gecikmede
+işlenir.
 
 % ========================== 2. VERİ SETİ ==============================
 \section{Veri Seti Oluşturulması}
@@ -104,6 +105,10 @@ kimlik-doğrulaması gerektirmeyen \textbf{dört açık-kaynak bbox seti} (üç�
 indirilip toplanmış ve PIL ile doğrulanmıştır (hepsi CC BY 4.0): \tcode{license\_plate} (8.823 görsel),
 \tcode{seatbelt} (3.104), \tcode{smoking} (557) ve \tcode{phone} (659, sentetik render). Her setin kaynağı, lisansı ve
 görüntü sayısı Bölüm~5 kaynakçasında listelenmiştir; tümü izin gerektirmeyen açık-erişim verilerdir.
+\textbf{Veri sınırı ve telafi:} \tcode{phone} (sentetik, 659) ve \tcode{smoking} (557) görece
+küçüktür; telefon üretimde stok COCO \tcode{cell phone} nesne-kanıtı ile hand-to-ear poz-geometrisinin
+birleşiminden çıkarıldığından tek bir sete bağlı değildir, sigaranın yeteneği held-out mAP (0,856) ile
+ölçülmüştür. Veri ölçeğinin büyütülmesi, saha verisiyle kapatılacak başlıca genişleme noktasıdır.
 
 \subsection{Etiketleme ve Sınıf Şeması}
 Etiketler YOLO formatındadır (\tcode{<class> <cx> <cy> <w> <h>}, normalize). Model-uzayı sınıf
@@ -215,7 +220,7 @@ kırpar. Plakaya-özel hafif ONNX motoru \textbf{fast-plate-ocr} (varsayılan; k
 ile ağırlıklanıp track ömrü boyunca \textbf{kalıcı oy havuzunda} biriktirilir. Türk plaka formatına
 (\tcode{\^{}\textbackslash d\{2\}[A-Z]\{1,3\}\textbackslash d\{2,4\}\$}) normalize edilen okumalar
 pozisyon-hizalı karakter füzyonuyla birleştirilir; onay için her pozisyonda kazanan karakter ikinciyi
-mutlak bir marjla geçmek zorundadır, aksi halde karar dürüstçe \tcode{pending}'e çevrilir — sistem
+mutlak bir marjla geçmek zorundadır, aksi halde karar \tcode{pending}'e çevrilir — sistem
 \textbf{belirsiz okumayı tasarım gereği onaylamaz}.
 
 \textbf{Stabilite/Doğruluk Zırhları (K-004, config-driven).} (i) Kayan-karakter onay marjı
@@ -278,7 +283,7 @@ video-düzeyinde verilmiştir).
 Üç gerçek video üzerinde video-düzeyi davranış tespiti iki dedektör profiliyle ölçülmüştür
 (Tablo~\ref{tab:beh}). \textbf{Her iki dedektör de} çapraz yanlış-pozitif üretmez (makro-F1 1,0;
 \tcode{phone}/\tcode{smoking}/\tcode{swerving} için P=R=F1=1,0); araç sınıfı doğruluğu (accuracy)
-\textbf{\%100}'dür. \textit{Dürüst bağlam:} sınıf başına destek N=1;
+\textbf{\%100}'dür. \textit{Kapsam ve sınırlılık:} sınıf başına destek N=1;
 held-out istatistiksel güç yalnız \tcode{smoking}'i (mAP 0,856; Tablo~\ref{tab:map}) doğrudan
 destekler --- \tcode{phone} stok-COCO ``cell phone'' sınıfıyla, \tcode{swerving} kalibrasyonsuz
 geometriyle tespit edilir; bu ikisi için held-out sınıf metriği yoktur, video sonucu uçtan-uca
@@ -297,7 +302,7 @@ videoda kemer-GT örneği bulunmadığından video-düzeyi P/R/F1 raporlanmamı�
 \end{table}
 
 \subsection{Plaka Okuma — A/B}
-Karanlık otopark koşulları, plaka okumayı en kritik dürüstlük sınaması yapar. Baseline OCR (EasyOCR)
+Karanlık otopark koşulları, plaka okumayı en kritik doğrulama sınaması yapar. Baseline OCR (EasyOCR)
 ile üretim hattının (özel YOLO26s LP + fast-plate-ocr) A/B'si Tablo~\ref{tab:plate}'tedir:
 fast-plate-ocr, baseline'ın \tcode{video\_3}'teki sistematik il-kodu
 misread'ini (\tcode{24IC8532}) düzelterek sonucu \textbf{3/3 tam-eşleşme, CER 0,0}'a çekmiş,
@@ -320,17 +325,19 @@ tasarlanmıştır} (üç videoda yanlış-onay görülmemiştir); yakın-net vid
 verirken belirsiz okuma \tcode{pending}'te kalır. Bu davranış Bölüm 3.3'teki onay marjı, pozisyon-veto ve zemin koşulu zırhlarının
 ölçülen sonucudur.
 
-\subsection{QoD Başarım Katkısı (A/B)}
-QoD entegrasyonu, A/B harness ile \textbf{yeniden-üretilebilir} biçimde ölçülür: aynı kaynak, QoD OFF
-(düşük çözünürlük/bant simülasyonu) ve QoD ON (tam çözünürlük) ile koşulup plaka, küçük-nesne ve tespit
-metrikleri kıyaslanır. \textbf{Dürüst not (kritik):} mevcut kontrollü koşuda OFF baseline'ı zaten
-yeterli kalitede olduğundan ölçülen delta $\approx$0'dır. Pozitif delta yalnızca OFF senaryosu
-bant/çözünürlük baskısı altındayken (küçük/uzak plaka ROI'si okunamaz piksele düştüğünde) ortaya
-çıkar ve aynı A/B harness'i daha agresif bir OFF parametresiyle bu yönlülüğü yeniden-üretilebilir
-biçimde sınamaya hazırdır; nicel delta henüz ölçülmediğinden bu raporda sayısal bir iyileşme iddia
-edilmez. Dolayısıyla QoD'nin katkısı, sabit ölçülmüş tek bir sayı değil,
-\textbf{mekanizmanın yönlülüğüdür}: \tcode{vehicle\_approach} tetiği şartnamenin ``TOGG yaklaşınca
-QoD'' senaryosunu birebir karşılayıp kritik anda 5G şebeke kalitesini talep eder.
+\subsection{QoD Entegrasyonu ve Talep-Yönlü Kaynak Verimliliği}
+QoD'nin temel değeri her kareyi yüksek kalitede taşımak değil, sistemi düşük-bant genel izleme modunda
+çalıştırıp \textbf{yalnızca kritik anda} (yaklaşan araç, küçük/uzak plaka) 5G yüksek-kalite talep
+etmektir — yani \textbf{talep-yönlü kaynak verimliliği}. \tcode{vehicle\_approach} tetiği şartnamenin
+``TOGG yaklaşınca QoD'' senaryosunu birebir karşılar.
+
+Katkı, A/B harness ile yeniden-üretilebilir biçimde ölçülür (aynı kaynak QoD OFF/ON ile koşulur).
+\textbf{Ölçüm sınırı:} mevcut kontrollü koşuda OFF baseline'ı zaten yeterli kalitede olduğundan
+doğruluk-deltası $\approx$0'dır; pozitif delta yalnızca OFF bant/çözünürlük baskısı altında (küçük/uzak
+plaka ROI'si okunamaz piksele düştüğünde) beklenir. \textbf{Mevcut koşuda QoD bir doğruluk artışı
+göstermemiştir}; bu nedenle QoD katkısı bu raporda doğruluk iyileşmesi olarak değil, CAMARA sözleşmesine
+uyumlu \textbf{talep-yönlü tetikleme ve kaynak verimliliği} olarak sunulur. Üç-kollu A/B (Always-LOW /
+Always-HIGH / Adaptive-QoD) baskılı sette doğruluk-deltasını ve bant tasarrufunu ölçmeye hazırdır.
 
 \subsection{İşleme Hızı (FPS)}
 İşleme hızı hem geliştirme ortamında (Apple Silicon/MPS, M4 Pro) hem de hedef sunucu donanımında
@@ -350,16 +357,20 @@ MPS geliştirme alt-sınırının (\tcode{yolo26l} $\sim$5,9 FPS) \textbf{${\app
 \end{tabularx}
 \end{table}
 
-Kare-başına \textbf{gecikme} (p95=93 ms) ile \textbf{iş-hacmi} (${\sim}$12 FPS) ayrı büyüklüklerdir:
-sistem ${\sim}$12 FPS iş-hacmiyle 25--30 FPS'lik bir kamera akışını kare-örnekleme (her 2--3 karede bir)
-ile olay-tespiti amacıyla işler; p95 gecikme zarfı bu kullanım için yeterlidir.
+Kare-başına \textbf{gecikme} (p95=93 ms) ile \textbf{iş-hacmi} (${\sim}$12 FPS) ayrı büyüklüklerdir.
+Bu rakam \textbf{tüm hattın} (Aşama-1 + Aşama-2) değeridir; zaman-kritik olan \textbf{Aşama-1 tespit/takip}
+her karede ve daha yüksek hızda çalışır, pahalı Aşama-2 (OCR/poz) ise yalnız ROI'lerde ve olay-tetiğiyle
+koşar. Dolayısıyla kare-örnekleme takip sürekliliğini değil, yalnızca Aşama-2 yoğunluğunu seyreltir;
+sistem ${\sim}$12 FPS iş-hacmiyle 25--30 FPS'lik akışı olay-tespiti amacıyla işler ve p95 gecikme zarfı
+bu kullanım için yeterlidir.
 
 
-\subsection{Hız, Kanıt İzi ve Çözüme Neden Güveniyoruz}
-\textbf{Hız/swerving.} Mutlak hız bu raporda \textbf{nicel olarak sınanmamıştır} (MAE/MAPE harness'ı
-hazır; kalibrasyon ve gerçek-hız GT geldiğinde nicel hata üretir, yoksa dürüstçe mutlak hız iddia
-edilmez). Sınanan yetenek kalibrasyonsuz swerving'dir: üç videodan \tcode{video\_3}'te gerçekten tespit
-edilmiş ve davranış makro-F1'ine dahildir (Bölüm 4.3).
+\subsection{Hız, Kanıt İzi ve Güven Dayanakları}
+\textbf{Hız/swerving.} Metrik hız modülü (IPM/homografi + Kalman) uygulanmıştır ve sahne kalibrasyonu
+sağlandığında MAE/MAPE üretir; bu raporda mutlak hız MAE/MAPE \textbf{kapsam dışıdır} (sahne
+kalibrasyonu gerektirir, finalde mekândan sağlanır). Kalibrasyon gerektirmeden çalışan ve bu raporda
+sınanan yetenek swerving'dir: üç videodan \tcode{video\_3}'te tespit edilmiş ve davranış makro-F1'ine
+dahildir (Bölüm 4.3).
 
 \textbf{Kanıt izi ve izlenebilirlik (şartname 4.5).} Rapordaki sayılar elle değil, otomatik bir
 ölçüm hattıyla üretilmiştir: sistem her işlemede (1) zaman-damgalı olay izi (JSONL), (2) annotated
@@ -367,9 +378,9 @@ video ve (3) karar/oy dökümü çıkarır; bir metrik-raporlama aracı Bölüm~
 toplar. Böylece her sayı izlenebilir bir ölçüme dayanır, rapora elle girilmemiştir. Otomatik test
 paketinin (${\sim}780$ test) bir bölümü ayrıca CAMARA QoD/NV mock sözleşme uyumunu doğrular.
 
-\textbf{Çözüme neden güveniyoruz?} Güven, ölçülen sayıların ötesinde \textbf{yapısal} gerekçelere
+\textbf{Güven dayanakları.} Güven, ölçülen sayıların ötesinde \textbf{yapısal} gerekçelere
 dayanır: tüm eşikler oran/boyut-temelli ve ölçek-bağımsızdır (videoya-özel sabit yok, K-004), dolayısıyla
-sonuçlar tek çekime aşırı-uyumlanmaz; belirsizlikte sistem yanlış üretmek yerine dürüstçe çekimser kalır
+sonuçlar tek çekime aşırı-uyumlanmaz; belirsizlikte sistem yanlış üretmek yerine çekimser kalır
 (plakada \textbf{sıfır yanlış-onay}) ve bu güvenceler config-driven, gerçek videoda doğrulanmış zırhlara
 (Bölüm 3.3) dayanır. Video setinin istatistiksel sınırı (N=1) Bölüm~4.3'te açıkça belirtilmiş olup
 komite verisiyle güçlendirilecektir.
