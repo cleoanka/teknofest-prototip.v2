@@ -210,7 +210,7 @@ python -m roadguard.eval --source <video> --ground-truth <gt.json> --qod-compari
 
 | Dedektör | Davranış makro-F1 | Plaka exact | Plaka CER | Yanlış plaka onayı | Araç sınıfı | FPS (MPS) | FPS (CUDA — RTX 5070 Laptop) |
 |---|---|---|---|---|---|---|---|
-| **yolo26l** (stok, varsayılan, server profili 960) | **1.00** | **2/3** (66.7%) | **0.083** | **0** | 100% | ~5,9 | **12,31** (p50=80ms, p95=93ms) |
+| **yolo26l** (stok, varsayılan, server profili 960) | **1.00** | **2/3** (66.7%) | **0.083** | **0** | 100% | ~12,98 | **27,08** (p50=36ms, p95=42ms) |
 | **v4-finetune** (yolov8m, 768) | **1.00** | **2/3** (66.7%) | **0.083** | **0** | 100% | ~5,3 | **~12,5** *(ağırlık yok; yolo26s fallback: 12,80)* |
 
 Davranış sınıf-bazlı (**her iki dedektörde de**) — phone / smoking / swerving:
@@ -354,7 +354,7 @@ Finalde mobil uygulamada **canlı 5G + NV + QoD**:
 - **minibus / fatigue sınıfları:** no-auth açık bbox seti bulunamadı (Roboflow/Kaggle anahtarı
   veya komite verisi gerekir) → küçük özel etiketleme + `driver-state` fine-tune.
 - **FPS:** ✅ CUDA ölçüldü (26 Haz 2026, RTX 5070 Laptop 4.608 CUDA çekirdeği): yolo26l server
-  profili **12,31 FPS** (p50=80 ms, p95=93 ms); laptop profili (yolo26s 640) **14,72 FPS**.
+  profili **27,08 FPS** (p50=36 ms, p95=42 ms); laptop profili (yolo26s 640) **32,38 FPS**.
   Gerçek değerler rapora §4.6'ya yazıldı; `eval_results/bench_cuda0_server.md` artefakt.
 
 > **Özet:** RoadGuard, FTR'nin **tüm bölümlerine somut kanıt + tek-komut üretim** sağlar. En yüksek

@@ -120,9 +120,11 @@ her bölümün görüntü sayısını, sınıf-örnek dağılımını ve dengesi
 sınıf) raporlar. Ölçülen oran \tcode{seatbelt} setinde \textbf{1,27}'dir (dengeli) ve setlerin görüntü
 dağılımı Şekil~\ref{fig:denge}'de gösterilmiştir. Dengeleme iki koldan uygulanmıştır: (i) dengesizlik
 oranı 3'ü aşan seyrek sınıflar saptanıp bu sınıflar lehine Ultralytics augmentasyonu (mozaik,
-HSV-jitter, gece-gamma) güçlendirilmiş; (ii) az-temsil edilen davranış sınıflarının (kemer, sigara)
-eğitimde daha sık görülmesi sağlanarak etkin örnek çeşitliliği artırılmıştır. Böylece nadir ihlal
-örüntüleri, baskın sınıflar tarafından bastırılmadan öğrenilmiştir.
+HSV-jitter, gece-gamma) güçlendirilmiş; (ii) az-temsil edilen davranış sınıflarını (kemer, sigara)
+içeren görüntüler \textbf{yalnızca train bölümünde}, dengesizlik oranı 3'ün altına inene dek
+çoğaltılarak \textbf{oversampling} uygulanmıştır (çoğaltma faktörü en çok 8$\times$; val/test'e
+dokunulmaz, değerlendirme sızıntısı olmaz). Böylece nadir ihlaller baskın sınıflarca bastırılmadan
+öğrenilmiştir.
 
 \begin{figure}[ht]\centering
 \begin{minipage}{0.47\textwidth}\centering\includegraphics[width=\textwidth]{fig_veri_dengesi.png}\end{minipage}\hfill

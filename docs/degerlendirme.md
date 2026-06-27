@@ -102,7 +102,7 @@ python -m roadguard.eval --metrics-report --summaries eval_results/ab   # → ev
     1/3 exact + 2 yanlış-onay üretiyordu; conservative confirm eşiğiyle düzeldi. v4 ikincil
     track'lerde biraz daha temiz kırpık üretir (ikincil not; plaka doğruluğu eşit).
 
-- **Araç sınıfı doğruluğu:** %100 (her iki dedektör). **FPS (MPS, M4 Pro):** ~5.9 (yolo26l) /
+- **Araç sınıfı doğruluğu:** %100 (her iki dedektör). **FPS (MPS, M4 Pro):** ~12.98 (yolo26l) /
   ~5.3 (v4) — MPS alt-sınırı; CUDA sunucuda belirgin daha yüksektir.
 
 - **Eğitim hattı doğrulaması (uçtan uca):** açık `coco128` setinde `yolo26s` ile 5 epoch

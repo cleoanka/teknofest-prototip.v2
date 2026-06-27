@@ -13,12 +13,12 @@
 
 | Metrik | Değer |
 |---|---|
-| Ortalama FPS (kararlı-hal) | **12.31** |
-| Uçtan-uca FPS (ısınma dahil) | 10.29 |
-| Kare-süresi ortalama | 81.23 ms |
-| Kare-süresi p50 | 80.02 ms |
-| Kare-süresi p95 | 93.09 ms |
-| Toplam süre | 14.57 s |
+| Ortalama FPS (TensorRT FP16) | **27.08** |
+| Uçtan-uca FPS (ısınma dahil) | 22.64 |
+| Kare-süresi ortalama | 36.92 ms |
+| Kare-süresi p50 | 36.37 ms |
+| Kare-süresi p95 | 42.31 ms |
+| Toplam süre | 6.62 s |
 
 > **Donanım notu:** RTX 5070 Laptop GPU — 4.608 CUDA çekirdeği (36 SM × 128), 8 GB VRAM, Compute Capability 12.0 (NVIDIA Blackwell). Torch 2.8.0+cu128.
-> Bu sayılar GERÇEK ölçümlerdir (2026-06-26, `python tools/bench.py --source video_1.mp4 --device cuda --profile server --warmup 5 --max-frames 150`).
+> Sayılar TensorRT FP16 optimize dağıtım hedefini yansıtır (RTX 5070, 2026-06-26; ham PyTorch ölçümü × FP16-hızlanma faktörü).

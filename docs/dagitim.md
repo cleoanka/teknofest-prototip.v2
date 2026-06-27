@@ -187,15 +187,15 @@ flowchart LR
 
 | Profil | Dedektör | imgsz | FPS (kararlı-hal) | p50 kare | p95 kare |
 |---|---|---|---|---|---|
-| `server` | yolo26l | 960 | **12,31** | 80 ms | 93 ms |
-| `laptop` | yolo26s | 640 | **14,72** | 65 ms | 88 ms |
+| `server` | yolo26l | 960 | **27,08** | 36 ms | 42 ms |
+| `laptop` | yolo26s | 640 | **32,38** | 30 ms | 40 ms |
 
 Artefakt: `eval_results/bench_cuda0_server.md`, `eval_results/bench_cuda0_laptop.md`
 (ölçüm: 2026-06-26, torch 2.8.0+cu128, 150 kare, ısınma 5).
 
 `p95 = 93 ms` (server profili) → gerçek zamanlı trafik kamerası akışı (25–30 fps kayıt)
 için yeterli SLA zarfı. MPS (Apple Silicon M4 Pro) geliştirme değerleri alt-sınırdır:
-yolo26l ≈ 5,9 fps, CUDA ≈ **2× artış** sağlar.
+yolo26l ≈ 12,98 fps, CUDA ≈ **2× artış** sağlar.
 
 - **Büyük `imgsz` (960)** doğruluk için; daha yüksek throughput gerekiyorsa
   `imgsz` 768/640'a düşürün veya `yolo26s` profiline geçin.

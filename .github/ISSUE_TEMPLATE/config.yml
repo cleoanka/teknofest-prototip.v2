@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🛡️ Güvenlik açığı bildirimi
+    url: https://github.com/cleoanka/teknofest-prototip.v2/blob/main/SECURITY.md
+    about: Güvenlik açıklarını herkese açık issue yerine SECURITY.md'deki yolla bildir.
