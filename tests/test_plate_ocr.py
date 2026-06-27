@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from aura.plate.ocr import PaddleOCRReader, _PaddleAdapter
+from roadguard.plate.ocr import PaddleOCRReader, _PaddleAdapter
 
 
 # --- PaddleOCR sürüm-robust __init__ (W1 adversaryal düzeltmesi) ---------- #

@@ -51,7 +51,7 @@
 ### 🟢 NVIDIA GPU notları
 - GPU'yu doğrulamak için: `nvidia-smi` (sürücü kuruluysa GPU adı + sürücü/CUDA sürümü listeler).
 - `bootstrap.py`, `nvidia-smi` varsa otomatik **CUDA (cu128)** PyTorch kurar; yoksa **CPU**
-  derlemesine düşer. Backend'i `.env` içindeki `AURA_DEVICE=cuda|cpu` ile elle de zorlayabilirsiniz.
+  derlemesine düşer. Backend'i `.env` içindeki `ROADGUARD_DEVICE=cuda|cpu` ile elle de zorlayabilirsiniz.
 - Kurulum sonrası `.\dev.ps1 doctor` çıktısında **"Cihaz (auto → cuda:0)  CUDA: <GPU adı>"**
   satırını görmelisiniz. Sadece CPU görünüyorsa GPU yok ya da sürücü eksik demektir.
 - **Geliştirme donanımı (RoadGuard):** NVIDIA GeForce RTX 5070 Laptop GPU — **4.608 CUDA çekirdeği**
@@ -64,7 +64,7 @@ flowchart TD
     A["bootstrap.py"] --> B{"nvidia-smi<br/>var mı?"}
     B -- "Evet" --> C["CUDA (cu128)<br/>PyTorch kur"]
     B -- "Hayır" --> D["CPU derlemesi<br/>PyTorch kur"]
-    E[".env AURA_DEVICE=cuda|cpu"] -. "elle zorla" .-> B
+    E[".env ROADGUARD_DEVICE=cuda|cpu"] -. "elle zorla" .-> B
     C --> F["doctor: Cihaz (auto → cuda:0)"]
     D --> G["doctor: yalnız CPU"]
 ```
@@ -152,10 +152,10 @@ milestone) uyarır ve atlar. **Ctrl-C** ile tüm servisleri durdurur.
 
 ### 🎚️ Profiller
 Profil, çalışma zamanı davranışını seçer (`config/profiles/*.yaml`, `default.yaml` üzerine
-derin-merge). Inference servisi `AURA_PROFILE` env'ini otomatik okur (`run.sh` paritesi):
+derin-merge). Inference servisi `ROADGUARD_PROFILE` env'ini otomatik okur (`run.sh` paritesi):
 ```powershell
-$env:AURA_PROFILE = "server"; .\run.ps1     # yolo26l, CUDA, imgsz 960 — sunucu/maks. doğruluk
-$env:AURA_PROFILE = "laptop"; .\run.ps1     # yolo26s, imgsz 640 — hafif/geliştirme
+$env:ROADGUARD_PROFILE = "server"; .\run.ps1     # yolo26l, CUDA, imgsz 960 — sunucu/maks. doğruluk
+$env:ROADGUARD_PROFILE = "laptop"; .\run.ps1     # yolo26s, imgsz 640 — hafif/geliştirme
 ```
 
 | Profil | Dedektör | Cihaz | imgsz | Hedef |
@@ -167,18 +167,18 @@ $env:AURA_PROFILE = "laptop"; .\run.ps1     # yolo26s, imgsz 640 — hafif/geli�
 ### 🔧 PowerShell ortam değişkeni sözdizimi
 Bash'teki `VAR=deger komut` Windows'ta çalışmaz. PowerShell'de değişkeni **önce** ayarlayın:
 ```powershell
-# Bash:   AURA_INFERENCE_PORT=9090 ./run.sh
+# Bash:   ROADGUARD_INFERENCE_PORT=9090 ./run.sh
 # PowerShell:
-$env:AURA_INFERENCE_PORT = "9090"; .\run.ps1
+$env:ROADGUARD_INFERENCE_PORT = "9090"; .\run.ps1
 
 # CPU'ya zorla (GPU'yu yok say)
-$env:AURA_DEVICE = "cpu"; .\run.ps1
+$env:ROADGUARD_DEVICE = "cpu"; .\run.ps1
 
 # Geçerli oturumda bir değişkeni temizle
-Remove-Item Env:\AURA_PROFILE
+Remove-Item Env:\ROADGUARD_PROFILE
 ```
-Yaygın değişkenler: `AURA_PROFILE`, `AURA_DEVICE`, `AURA_INFERENCE_PORT`,
-`AURA_QOD_MOCK_PORT`, `AURA_NV_MOCK_PORT`. Kalıcı değerler için `.env` dosyasını düzenleyin
+Yaygın değişkenler: `ROADGUARD_PROFILE`, `ROADGUARD_DEVICE`, `ROADGUARD_INFERENCE_PORT`,
+`ROADGUARD_QOD_MOCK_PORT`, `ROADGUARD_NV_MOCK_PORT`. Kalıcı değerler için `.env` dosyasını düzenleyin
 (`run.ps1` `.env`'i okur; oturumda elle set edilen değerler ezilmez — önce gelen kazanır).
 
 > [!NOTE]
@@ -229,7 +229,7 @@ Cihaz otomatik seçilir (`--device auto`).
 | `Python 3.10+ bulunamadı` | python.org'dan 3.10+ kurun, **"Add to PATH"** işaretli; yeni pencere açın |
 | Türkçe karakter bozuk / `UnicodeDecodeError` / `cp1254` | Betikler `PYTHONUTF8=1` + UTF-8 konsol ayarlar. Elle çağırıyorsanız: `$env:PYTHONUTF8 = "1"` ve `chcp 65001` |
 | `.ps1` betik parse hatası (`Unexpected token 'veya'` vb.) | PS1 dosyaları UTF-8 BOM'suz kaydedilmişse PS 5.1 CP1252 olarak okur ve Türkçe karakterleri bozar. `.ps1` dosyalarını UTF-8 BOM'lu kaydet: `[System.IO.File]::WriteAllText($p, [System.IO.File]::ReadAllText($p,[Text.Encoding]::UTF8), (New-Object Text.UTF8Encoding($true)))` |
-| Port dolu (`[10048]`) | `run.ps1` portu otomatik boşaltır; yine de çakışırsa `$env:AURA_INFERENCE_PORT="9090"; .\run.ps1` |
+| Port dolu (`[10048]`) | `run.ps1` portu otomatik boşaltır; yine de çakışırsa `$env:ROADGUARD_INFERENCE_PORT="9090"; .\run.ps1` |
 | Güvenlik duvarı izin penceresi | `0.0.0.0` bind'i için normaldir (servis başına bir kez) — izin verin |
 | `.venv bulunamadı` (dev.ps1) | Önce `.\setup.ps1 --dev` çalıştırın |
 | Ağırlık eksik → `mock` mod | `git lfs pull` veya `.\setup.ps1`; doctor "ağırlık ✓" göstermeli |

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from aura.accumulator import Accumulator
-from aura.schema import (
+from roadguard.accumulator import Accumulator
+from roadguard.schema import (
     AnnotationFrame,
     BBox,
     DriverState,
@@ -26,7 +26,12 @@ def test_core_models_defaults():
 
 def test_make_event_and_annotation():
     e = make_event(7, "SPEED", {"value_kmh": 50}, ts=123.0)
-    assert e.type == "SPEED" and e.track_id == 7 and e.ts == 123.0 and e.source == "aura-inference"
+    assert (
+        e.type == "SPEED"
+        and e.track_id == 7
+        and e.ts == 123.0
+        and e.source == "roadguard-inference"
+    )
     a = AnnotationFrame(frame_id=3, tracks=[{"track_id": 1}])
     assert a.frame_id == 3 and a.tracks[0]["track_id"] == 1
 

@@ -6,9 +6,9 @@ Mock-mod, model gerektirmez. Kenar durumlar: limit→farklı-limit görünür ka
 
 from __future__ import annotations
 
-from aura.detection.detector import Sign
-from aura.scene.sign_tracker import SignTracker
-from aura.schema import BBox
+from roadguard.detection.detector import Sign
+from roadguard.scene.sign_tracker import SignTracker
+from roadguard.schema import BBox
 
 
 def _sign(cls: str, conf: float = 0.9) -> Sign:

@@ -1,11 +1,11 @@
-"""FTR §4 metrik raporu (aura/eval/report.py) birim testleri."""
+"""FTR §4 metrik raporu (roadguard/eval/report.py) birim testleri."""
 
 from __future__ import annotations
 
 import json
 
-from aura.eval import metrics as M
-from aura.eval.report import (
+from roadguard.eval import metrics as M
+from roadguard.eval.report import (
     behavior_metrics,
     build_report,
     gt_label,

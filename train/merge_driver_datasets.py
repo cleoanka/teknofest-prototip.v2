@@ -35,7 +35,7 @@ for _s in (sys.stdout, sys.stderr):
     except (AttributeError, ValueError):
         pass
 
-log = logging.getLogger("aura.train.merge")
+log = logging.getLogger("roadguard.train.merge")
 
 IMG_EXT = {".jpg", ".jpeg", ".png", ".bmp"}
 # Roboflow split adı → bizim pipeline'ın beklediği ad (prepare_dataset ile uyumlu).

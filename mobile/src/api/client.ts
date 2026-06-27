@@ -1,9 +1,9 @@
 // RoadGuard mobil API istemcisi — NV doğrulama + event/annotation WS + QoD config + status.
-// Sözleşme tipleri ./types.ts'tedir (aura/schema.py ile birebir).
+// Sözleşme tipleri ./types.ts'tedir (roadguard/schema.py ile birebir).
 import { API_URL, NV_URL, WS_ANNOTATIONS_URL, WS_EVENTS_URL } from "../config";
 import type {
   AnnotationFrame,
-  AuraEvent,
+  RoadGuardEvent,
   StreamStatus,
   VerifyResponse,
 } from "./types";
@@ -11,7 +11,7 @@ import type {
 export type {
   AnnotationFrame,
   AnnotationTrack,
-  AuraEvent,
+  RoadGuardEvent,
   PlateStatus,
   StreamStatus,
 } from "./types";
@@ -46,10 +46,10 @@ export async function verifyNumber(
 
 // --------------------------------------------------------------------------- //
 // WebSocket yardımcıları — otomatik yeniden bağlanma + temiz kapatma.
-// connect* fonksiyonları bir "AuraSocket" döndürür: .close() ile elle kapatılır;
+// connect* fonksiyonları bir "RoadGuardSocket" döndürür: .close() ile elle kapatılır;
 // bağlantı koparsa (manuel kapatma değilse) artan gecikmeyle yeniden dener.
 // --------------------------------------------------------------------------- //
-export interface AuraSocket {
+export interface RoadGuardSocket {
   close: () => void;
 }
 
@@ -57,7 +57,7 @@ function connectJsonWs<T>(
   url: string,
   onMessage: (data: T) => void,
   onState?: (open: boolean) => void,
-): AuraSocket {
+): RoadGuardSocket {
   let ws: WebSocket | null = null;
   let closedByUser = false;
   let retry = 0;
@@ -99,19 +99,19 @@ function connectJsonWs<T>(
   };
 }
 
-// Canlı AuraEvent akışı (WS /stream/events).
+// Canlı RoadGuardEvent akışı (WS /stream/events).
 export function connectEvents(
-  onEvent: (e: AuraEvent) => void,
+  onEvent: (e: RoadGuardEvent) => void,
   onState?: (open: boolean) => void,
-): AuraSocket {
-  return connectJsonWs<AuraEvent>(WS_EVENTS_URL, onEvent, onState);
+): RoadGuardSocket {
+  return connectJsonWs<RoadGuardEvent>(WS_EVENTS_URL, onEvent, onState);
 }
 
 // Kare-başına annotation akışı (WS /stream/annotations) — kartların canlı kaynağı.
 export function connectAnnotations(
   onFrame: (f: AnnotationFrame) => void,
   onState?: (open: boolean) => void,
-): AuraSocket {
+): RoadGuardSocket {
   return connectJsonWs<AnnotationFrame>(WS_ANNOTATIONS_URL, onFrame, onState);
 }
 

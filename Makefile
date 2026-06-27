@@ -22,10 +22,10 @@ train:          ## Eğitim CLI yardımı
 	$(PY) -m train --help
 
 eval:           ## Değerlendirme — örnek video + QoD A/B
-	$(PY) -m aura.eval --source data/samples/ornek.mp4 --ground-truth data/samples/ornek_gt.json --qod-comparison
+	$(PY) -m roadguard.eval --source data/samples/ornek.mp4 --ground-truth data/samples/ornek_gt.json --qod-comparison
 
 metrics:        ## FTR §4 metrik raporu (test_video özetlerinden P/R/F1; --summaries DIR)
-	$(PY) -m aura.eval --metrics-report --summaries eval_results/ab
+	$(PY) -m roadguard.eval --metrics-report --summaries eval_results/ab
 
 test:           ## Unit testler (integration skip)
 	$(PY) -m pytest -m "not integration"

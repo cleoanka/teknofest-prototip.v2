@@ -64,10 +64,10 @@ try {
     "lint"       { & $PY -m ruff check . @Rest; exit $LASTEXITCODE }
     "format"     { & $PY -m black . @Rest; exit $LASTEXITCODE }
     "doctor"     { & $PY tools/doctor.py @Rest; exit $LASTEXITCODE }
-    "metrics"    { & $PY -m aura.eval --metrics-report --summaries eval_results/ab @Rest; exit $LASTEXITCODE }
+    "metrics"    { & $PY -m roadguard.eval --metrics-report --summaries eval_results/ab @Rest; exit $LASTEXITCODE }
     "train"      { & $PY -m train --help @Rest; exit $LASTEXITCODE }
     "eval"       {
-      & $PY -m aura.eval --source data/samples/ornek.mp4 `
+      & $PY -m roadguard.eval --source data/samples/ornek.mp4 `
         --ground-truth data/samples/ornek_gt.json --qod-comparison @Rest
       exit $LASTEXITCODE
     }

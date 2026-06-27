@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import math
 
-from aura.schema import BBox
-from aura.speed.estimator import SpeedEstimator
+from roadguard.schema import BBox
+from roadguard.speed.estimator import SpeedEstimator
 
 
 def _bbox(cx: float, w: float = 100.0) -> BBox:

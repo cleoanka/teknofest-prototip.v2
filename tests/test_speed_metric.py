@@ -6,10 +6,10 @@ analitik bilinir. Bu, formül ve BİRİM doğruluğunu kamera/sahne belirsizliğ
 
 from __future__ import annotations
 
-from aura.config import load_config
-from aura.schema import BBox
-from aura.speed.calibration import KalmanSpeed1D, ScaleField, plate_ppm
-from aura.speed.estimator import SpeedEstimator
+from roadguard.config import load_config
+from roadguard.schema import BBox
+from roadguard.speed.calibration import KalmanSpeed1D, ScaleField, plate_ppm
+from roadguard.speed.estimator import SpeedEstimator
 
 FRAME = (720, 1280, 3)
 

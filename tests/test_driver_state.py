@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from aura.driver_state import build_driver_classifier
-from aura.driver_state.mock import MockDriverClassifier
+from roadguard.driver_state import build_driver_classifier
+from roadguard.driver_state.mock import MockDriverClassifier
 
 
 def _cabin(color) -> np.ndarray:

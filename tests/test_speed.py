@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from aura.config import load_config
-from aura.schema import BBox
-from aura.speed.estimator import SpeedEstimator
+from roadguard.config import load_config
+from roadguard.schema import BBox
+from roadguard.speed.estimator import SpeedEstimator
 
 FRAME = (360, 640, 3)
 

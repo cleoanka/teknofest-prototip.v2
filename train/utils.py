@@ -13,21 +13,21 @@ import shutil
 from collections import Counter
 from pathlib import Path
 
-log = logging.getLogger("aura.train")
+log = logging.getLogger("roadguard.train")
 
 ROOT = Path(__file__).resolve().parent.parent
 IMG_EXT = {".jpg", ".jpeg", ".png", ".bmp"}
 
 
 def resolve_device(device: str | None):
-    """Eğitim için cihaz çöz. 'auto' → aura.device (CUDA→MPS→CPU) ile AÇIKÇA seç.
+    """Eğitim için cihaz çöz. 'auto' → roadguard.device (CUDA→MPS→CPU) ile AÇIKÇA seç.
 
     ultralytics'in kendi 'auto'su (None) macOS'ta MPS'i çoğu zaman atlayıp CPU'da
-    sürünüyor; bu yüzden auto'da aura.device.resolve_device kullanılır (gerçek cihaz).
+    sürünüyor; bu yüzden auto'da roadguard.device.resolve_device kullanılır (gerçek cihaz).
     Açık değer ('cpu'/'mps'/'cuda') aynen geçer.
     """
     if device in (None, "auto", ""):
-        from aura.device import resolve_device as _rd  # lazy: torch importu
+        from roadguard.device import resolve_device as _rd  # lazy: torch importu
 
         dev = _rd("auto")
         log.info("Eğitim cihazı (auto → çözüldü): %s", dev)

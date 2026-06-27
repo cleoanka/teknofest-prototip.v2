@@ -14,7 +14,7 @@ from pathlib import Path
 
 from train.utils import dataset_stats, print_dataset_report
 
-log = logging.getLogger("aura.train.dataset")
+log = logging.getLogger("roadguard.train.dataset")
 IMG_EXT = {".jpg", ".jpeg", ".png", ".bmp"}
 DEFAULT_CLASSES = ["car", "truck", "bus", "minibus"]
 

@@ -92,7 +92,7 @@ flowchart LR
 
 ```bash
 # tripwire ile değerlendirme
-.venv/bin/python -m aura --source saha.mp4   # config'te mode: tripwire
+.venv/bin/python -m roadguard --source saha.mp4   # config'te mode: tripwire
 ```
 
 ---

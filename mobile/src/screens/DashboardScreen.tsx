@@ -12,8 +12,8 @@ import {
   connectEvents,
   getStatus,
   type AnnotationTrack,
-  type AuraEvent,
-  type AuraSocket,
+  type RoadGuardEvent,
+  type RoadGuardSocket,
 } from "../api/client";
 import { useQod } from "../hooks/useQod";
 import { EventRow } from "../ui/EventRow";
@@ -33,19 +33,19 @@ const STALE_FRAMES = 60;
 
 export default function DashboardScreen({ phone }: Props) {
   const [tracks, setTracks] = useState<AnnotationTrack[]>([]);
-  const [events, setEvents] = useState<AuraEvent[]>([]);
+  const [events, setEvents] = useState<RoadGuardEvent[]>([]);
   const [annOpen, setAnnOpen] = useState(false);
   const [evOpen, setEvOpen] = useState(false);
   const [tab, setTab] = useState<Tab>("vehicles");
 
   const qod = useQod();
-  const annRef = useRef<AuraSocket | null>(null);
-  const evRef = useRef<AuraSocket | null>(null);
+  const annRef = useRef<RoadGuardSocket | null>(null);
+  const evRef = useRef<RoadGuardSocket | null>(null);
   // track_id → en son görüldüğü frame_id (eskiyenleri ayıklamak için).
   const lastSeen = useRef<Map<number, number>>(new Map());
 
   const handleEvent = useCallback(
-    (e: AuraEvent) => {
+    (e: RoadGuardEvent) => {
       setEvents((prev) => [e, ...prev].slice(0, 120));
       qod.onEvent(e); // QoD histerezis makinesi
     },

@@ -16,10 +16,10 @@
 #   ref/url     : kaggle slug'ı veya doğrudan indirme URL'i (bilgilendirme; manuel)
 #   license     : veri seti lisansı (FTR §5 kaynakçaya yazılır)
 #   images      : ~yaklaşık görüntü sayısı (denge planlaması için)
-#   class_map   : kaynak-sınıf-adı -> RoadGuard kanonik adı (aura.taxonomy ile tutarlı).
-#                 Boş bırakılırsa fetch, aura.taxonomy.canonical ile otomatik çözer.
+#   class_map   : kaynak-sınıf-adı -> RoadGuard kanonik adı (roadguard.taxonomy ile tutarlı).
+#                 Boş bırakılırsa fetch, roadguard.taxonomy.canonical ile otomatik çözer.
 #
-# class_map'teki kanonik adlar aura/taxonomy.py CLASS_ALIASES çıktısıyla UYUMLU
+# class_map'teki kanonik adlar roadguard/taxonomy.py CLASS_ALIASES çıktısıyla UYUMLU
 # olmalıdır (smoking, no_seatbelt_evidence, minibus ...). İndirme sonrası etiket
 # remap'i train.merge_driver_datasets (sürücü-durum) veya manuel split ile yapılır.
 # ---------------------------------------------------------------------------
@@ -29,10 +29,10 @@ version: 1
 targets:
   # --- Sürücü-durum (Stage-2) eksik sınıfları ----------------------------- #
   cigarette:
-    aura_class: smoking          # RoadGuard şemasında davranış bayrağı 'smoking'
+    roadguard_class: smoking          # RoadGuard şemasında davranış bayrağı 'smoking'
     notes: >-
       Sigara nesnesi; RoadGuard taksonomisinde 'smoking' davranışına eşlenir
-      (aura.taxonomy: cigarette -> smoking). Yakın-çekim setleri domain-uyumsuz
+      (roadguard.taxonomy: cigarette -> smoking). Yakın-çekim setleri domain-uyumsuz
       olabilir; trafik/kabin-içi footage tercih edilir (bkz. driver_merge.json).
     sources:
       - kind: roboflow
@@ -58,11 +58,11 @@ targets:
           cigarette: smoking
 
   seatbelt:
-    aura_class: no_seatbelt_evidence   # kemer NESNESİ; ihlal Katman B'de türetilir
+    roadguard_class: no_seatbelt_evidence   # kemer NESNESİ; ihlal Katman B'de türetilir
     notes: >-
       Kemer ŞERİDİ (kemer VAR) tespiti. 'no_seatbelt' İHLALİ DriverStateEngine'de
       kemerin yokluğundan türetilir; nesne sınıfı doğrudan ihlal değildir
-      (aura.taxonomy: seatbelt -> no_seatbelt_evidence). Pozisyon-veto/zemin-koşulu
+      (roadguard.taxonomy: seatbelt -> no_seatbelt_evidence). Pozisyon-veto/zemin-koşulu
       zırhları GEVŞETİLMEZ.
     sources:
       - kind: roboflow
@@ -84,7 +84,7 @@ targets:
           seatbelt: seatbelt
 
   fatigue:
-    aura_class: fatigue
+    roadguard_class: fatigue
     notes: >-
       Yorgunluk bir DETECTION sınıfı olarak öğrenilir (kapalı göz / esneme /
       baş düşmesi); MediaPipe/landmark kullanılmaz (mimari kararı). Açık set
@@ -93,9 +93,9 @@ targets:
 
   # --- Araç (Stage-1) eksik sınıfı --------------------------------------- #
   minibus:
-    aura_class: minibus
+    roadguard_class: minibus
     notes: >-
-      Minibüs/dolmuş; bazı setler 'van' der (aura.taxonomy: van -> minibus).
+      Minibüs/dolmuş; bazı setler 'van' der (roadguard.taxonomy: van -> minibus).
       İstanbul dolmuş seti domain açısından en uyumlu olandır.
     sources:
       - kind: roboflow
@@ -123,7 +123,7 @@ targets:
 
   # --- Plaka (Stage-1) --------------------------------------------------- #
   license_plate:
-    aura_class: license_plate
+    roadguard_class: license_plate
     notes: >-
       Plaka tespiti (Stage-1). Plaka onay zırhları (pozisyon-veto / zemin-koşulu)
       veriyle DEĞİL pipeline'da uygulanır; bu set yalnız LP-dedektör fine-tune'u

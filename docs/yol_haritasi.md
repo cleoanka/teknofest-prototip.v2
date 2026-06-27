@@ -32,7 +32,7 @@
 > [!IMPORTANT]
 > **DURUM:** İki adımla giderildi.
 > - **(a)** **OCR motoru `fast-plate-ocr`** varsayılan oldu (plakaya-özel hafif ONNX); 3 gerçek videoda EasyOCR'ın video_3 il-kodu misread'ini (3→2, T→I) kurtardı → **3/3 exact-match, CER 0.0** (bkz. `docs/degerlendirme.md`).
-> - **(b)** **`custom_license_plate`** (YOLO26s, held-out mAP50 0.983) sıkı LP-kırpık varsayılan dedektör oldu (A/B 3/3 korundu). Aşağıdaki Gemini-önerili hat (dewarp/PaddleOCR) artık opsiyonel iyileştirmedir; OCR motoru `aura/plate/ocr.py:build_ocr` arkasında soyut kalır.
+> - **(b)** **`custom_license_plate`** (YOLO26s, held-out mAP50 0.983) sıkı LP-kırpık varsayılan dedektör oldu (A/B 3/3 korundu). Aşağıdaki Gemini-önerili hat (dewarp/PaddleOCR) artık opsiyonel iyileştirmedir; OCR motoru `roadguard/plate/ocr.py:build_ocr` arkasında soyut kalır.
 
 **Özgün sorun (arşiv):** Karanlık/açılı otopark footage'ında EasyOCR il-kodunu tutarlı yanlış okuyordu (3→0/2); oy-mantığı bunu kurtaramıyordu (dürüstlük zırhları yanlış onayı `pending`e çevirir ama doğruyu üretemez).
 
@@ -60,7 +60,7 @@ flowchart TD
 3. **OCR (EasyOCR yerine/yanında):** **PaddleOCR PP-OCRv4** (`PaddlePaddle/PaddleOCR`) — bloklu Latin metinde EasyOCR'dan belirgin sağlam; alternatif **LPRNet** (plakaya özel, küçük TR setiyle fine-tune) veya **TrOCR** (transformer, bulanıkta az halüsinasyon).
 
 > [!TIP]
-> **Entegrasyon notu:** RoadGuard'ın plaka hattı (`aura/plate/reader.py`) zaten LP-dedektör + ön-işleme + oy havuzu modüler; OCR motoru `aura/plate/ocr.py:build_ocr` arkasında soyut → PaddleOCR adaptörü eklenebilir (mevcut EasyOCR yolu korunarak). Bu, A/B'deki tek zayıf metriği kapatır.
+> **Entegrasyon notu:** RoadGuard'ın plaka hattı (`roadguard/plate/reader.py`) zaten LP-dedektör + ön-işleme + oy havuzu modüler; OCR motoru `roadguard/plate/ocr.py:build_ocr` arkasında soyut → PaddleOCR adaptörü eklenebilir (mevcut EasyOCR yolu korunarak). Bu, A/B'deki tek zayıf metriği kapatır.
 
 ---
 
@@ -128,7 +128,7 @@ RoadGuard tarafında karşılıkları: `qod` (yaklaşma tetiği), `nv_mock`, `mo
 ![durum](https://img.shields.io/badge/durum-A%C3%87IK-yellow?style=flat-square)
 
 - ⏳ FTR son teslim **28.06.2026'ya ERTELENDİ** (kullanıcı 17 Haz'da teyit etti; eski şartname PDF'indeki 14.06 ve Gemini'nin 22.06 tahmini geçersiz — bağlayıcı tarih 28.06).
-- 🟡 Yani **FTR hâlâ açık** → `ftr.md` doldurulabilir taslağı + `aura.eval --metrics-report` + `train dataset --report` çıktıları rapora doğrudan girer (en yüksek puanlı §2 ve §4 hazır).
+- 🟡 Yani **FTR hâlâ açık** → `ftr.md` doldurulabilir taslağı + `roadguard.eval --metrics-report` + `train dataset --report` çıktıları rapora doğrudan girer (en yüksek puanlı §2 ve §4 hazır).
 - 📅 Diğer tarihler: finalistler 31.07.2026, final Ağu–Eyl 2026 (KYS/mail'den teyit edin).
 
 ---

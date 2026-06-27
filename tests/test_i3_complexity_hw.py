@@ -15,17 +15,17 @@ from __future__ import annotations
 
 import os
 
-os.environ.setdefault("AURA_AUTOSTART", "0")
-os.environ.setdefault("AURA_CAMERA_PROBE", "0")
+os.environ.setdefault("ROADGUARD_AUTOSTART", "0")
+os.environ.setdefault("ROADGUARD_CAMERA_PROBE", "0")
 os.environ.setdefault("AI_MODE", "mock")
 
 import types  # noqa: E402
 
 import numpy as np  # noqa: E402
 
-from aura.config import load_config  # noqa: E402
-from aura.detection.yolo import YOLO26Detector  # noqa: E402
-from aura.speed.calibration import MetricSpeedEstimator  # noqa: E402
+from roadguard.config import load_config  # noqa: E402
+from roadguard.detection.yolo import YOLO26Detector  # noqa: E402
+from roadguard.speed.calibration import MetricSpeedEstimator  # noqa: E402
 from services.inference_api.state import StreamManager  # noqa: E402
 
 

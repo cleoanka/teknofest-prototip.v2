@@ -50,8 +50,8 @@ gerçek bir YZ çekirdeği ile, bu çekirdeği **5G QoD** (CAMARA Quality-on-Dem
   (`ocr_engine: easyocr|paddleocr|fastplate`). Ölçüm K-004 uyumlu: oran-bazlı, videoya-özel sabit yok.
 - **ID-merkezli iki-katmanlı sürücü motoru:** Katman A (pose-hibrit model) + Katman B
   (`DriverStateEngine` per-track 16/8 zaman-oylaması) → tek-kare FP'leri eler, araç çıkınca tampon düşer.
-- **FTR'ye hazır metrikler:** `python -m aura.eval --metrics-report` → video-düzeyi
-  **P/R/F1 + plaka exact-match/CER + FPS** (dedektör A/B); `python -m aura.eval --map`
+- **FTR'ye hazır metrikler:** `python -m roadguard.eval --metrics-report` → video-düzeyi
+  **P/R/F1 + plaka exact-match/CER + FPS** (dedektör A/B); `python -m roadguard.eval --map`
   doğrulama setinde **mAP**; hız mutlak-GT **MAE/MAPE** (kalibre kareler). `eval_results/`.
   Ölçülen (held-out): davranış makro-F1 **1.0** (3 video), araç sınıfı **%100**,
   stok `yolo26l` COCO-val2017 **mAP50-95 0.537 / mAP50 0.709** (5000 görsel).
@@ -137,7 +137,7 @@ Puanlama: **%40 YZ · %40 QoD · %20 rapor** (FTR son teslim 28.06.2026).
 ./setup.sh                       # bağımlılıklar + model ağırlıkları + örnek veri + smoke (tek komut)
 python tools/doctor.py           # ortam/hazırlık kontrolü (bağımlılık, cihaz, ağırlık, profil)
 ./run.sh                         # inference :8080, QoD mock :8081, NV mock :8082
-AURA_PROFILE=server ./run.sh     # sunucu profili (yolo26l, CUDA, büyük imgsz)
+ROADGUARD_PROFILE=server ./run.sh     # sunucu profili (yolo26l, CUDA, büyük imgsz)
 ```
 
 ### Windows (PowerShell 5.1+)
@@ -238,19 +238,19 @@ profilleriyle** seçilir (`--profile`). Detay: [`docs/mimari.md`](docs/mimari.md
 |---|---|
 | `python bootstrap.py --help` | Kurulum seçenekleri |
 | `python tools/doctor.py` | Ortam/hazırlık sağlık kontrolü (bağımlılık, cihaz, ağırlık, profil) |
-| `python -m aura --help` | Ana inference pipeline (`--profile`, `--save-events` JSONL kanıt izi) |
+| `python -m roadguard --help` | Ana inference pipeline (`--profile`, `--save-events` JSONL kanıt izi) |
 | `python tools/test_video.py --help` | Gerçek video testi → annotated mp4 + JSON kanıt (`--profile` ile A/B) |
-| `python -m aura.eval --metrics-report` | FTR §4 metrik raporu (P/R/F1 + plaka CER + FPS + dedektör A/B) |
-| `python -m aura.eval --map` | Doğrulama setinde mAP (`eval_results/map_*.json`) |
-| `python -m aura.eval --qod-comparison` | QoD A/B delta (şartname %40 QoD kanıtı) |
+| `python -m roadguard.eval --metrics-report` | FTR §4 metrik raporu (P/R/F1 + plaka CER + FPS + dedektör A/B) |
+| `python -m roadguard.eval --map` | Doğrulama setinde mAP (`eval_results/map_*.json`) |
+| `python -m roadguard.eval --qod-comparison` | QoD A/B delta (şartname %40 QoD kanıtı) |
 | `python tools/bench.py --help` | Video + profil → ortalama FPS + p50/p95 kare-süresi (`eval_results/bench_<device>.md`) |
 | `python -m train --help` | YOLO26 eğitimi (detector / driver-state / dataset `--report`) |
-| `python -m aura.synthetic` | Sentetik örnek video + ground-truth üret |
+| `python -m roadguard.synthetic` | Sentetik örnek video + ground-truth üret |
 | `make help` | Geliştirme kısayolları (`make doctor` / `metrics` / `test`) |
 
 **Config profilleri** (`config/profiles/*.yaml`, `default.yaml` üzerine derin-merge):
 `--profile server` (yolo26l/CUDA/imgsz960) · `laptop` (yolo26s/MPS) · `v4-finetune`
-(11-sınıf fine-tune). `AURA_PROFILE` env ile de seçilir.
+(11-sınıf fine-tune). `ROADGUARD_PROFILE` env ile de seçilir.
 
 Tüm `--help` çıktıları: [`docs/cli_referans.md`](docs/cli_referans.md).
 Tüm API endpoint'leri: [`docs/api_referans.md`](docs/api_referans.md).
@@ -261,7 +261,7 @@ Tüm API endpoint'leri: [`docs/api_referans.md`](docs/api_referans.md).
 
 | Dizin | İçerik |
 |---|---|
-| `aura/` | YZ çekirdeği (preprocessing, detection, stability, driver_state, plate, speed, accumulator, qod, events, pipeline, eval) |
+| `roadguard/` | YZ çekirdeği (preprocessing, detection, stability, driver_state, plate, speed, accumulator, qod, events, pipeline, eval) |
 | `services/` | `inference_api` (FastAPI) + `qod_mock` + `nv_mock` |
 | `dashboard/` | Vanilla JS + Canvas profesyonel web arayüzü |
 | `mobile/` | Expo (React Native) iskeleti |

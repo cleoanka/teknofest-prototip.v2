@@ -91,15 +91,15 @@ def test_default_manifest_parses_and_covers_target_classes():
     # Görevde adı geçen tüm hedef sınıflar manifestte tanımlı olmalı.
     for cls in ("cigarette", "seatbelt", "fatigue", "minibus", "license_plate"):
         assert cls in targets, cls
-        assert "aura_class" in targets[cls]
+        assert "roadguard_class" in targets[cls]
 
 
-def test_build_plan_maps_to_aura_taxonomy():
+def test_build_plan_maps_to_roadguard_taxonomy():
     m = load_manifest(DEFAULT_MANIFEST)
     plan = build_plan(m, only_class="cigarette")
     assert plan, "cigarette için en az bir kaynak olmalı"
-    # cigarette -> smoking (aura.taxonomy ile tutarlı)
-    assert all(step["aura_class"] == "smoking" for step in plan)
+    # cigarette -> smoking (roadguard.taxonomy ile tutarlı)
+    assert all(step["roadguard_class"] == "smoking" for step in plan)
     assert all("smoking" in step["class_map"].values() for step in plan)
     # Her kaynak lisans taşımalı (FTR §5 kaynakça).
     assert all(step["license"] for step in plan)
@@ -121,7 +121,7 @@ def test_build_plan_unknown_class_raises():
 
 
 def test_seatbelt_keeps_raw_class_no_false_warning():
-    # seatbelt NESNESİ ham tutulur; aura_class=no_seatbelt_evidence olduğundan
+    # seatbelt NESNESİ ham tutulur; roadguard_class=no_seatbelt_evidence olduğundan
     # taksonomi uyarısı BASTIRILIR (bilinçli karar, yanlış-pozitif değil).
     m = load_manifest(DEFAULT_MANIFEST)
     plan = build_plan(m, only_class="seatbelt")
@@ -137,7 +137,7 @@ def test_unknown_source_class_warns(tmp_path):
         "version: 1\n"
         "targets:\n"
         "  test:\n"
-        "    aura_class: smoking\n"
+        "    roadguard_class: smoking\n"
         "    sources:\n"
         "      - kind: roboflow\n"
         "        name: t\n"
@@ -146,7 +146,7 @@ def test_unknown_source_class_warns(tmp_path):
         "        version: 1\n"
         "        license: CC0\n"
         "        class_map:\n"
-        "          zibidi_class: foobar\n",  # zibidi_class taksonomide yok, foobar != aura_class
+        "          zibidi_class: foobar\n",  # zibidi_class taksonomide yok, foobar != roadguard_class
         encoding="utf-8",
     )
     plan = build_plan(load_manifest(mf), only_class="test")
@@ -169,7 +169,7 @@ def test_custom_manifest_taxonomy_warning_surfaces(tmp_path):
         "version: 1\n"
         "targets:\n"
         "  test:\n"
-        "    aura_class: phone\n"
+        "    roadguard_class: phone\n"
         "    sources:\n"
         "      - kind: roboflow\n"
         "        name: t\n"

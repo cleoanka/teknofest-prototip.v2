@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request
 
-from aura import __version__
+from roadguard import __version__
 from services.inference_api.security import verify_token_read
 
 router = APIRouter(tags=["system"])

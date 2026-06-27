@@ -1,6 +1,6 @@
 # =============================================================================
 # PROFİL: server — maksimum doğruluk, sunucu/GPU dağıtımı (edge değil)
-# Kullanım:  python -m aura --profile server   |   AURA_PROFILE=server ...
+# Kullanım:  python -m roadguard --profile server   |   ROADGUARD_PROFILE=server ...
 # default.yaml ÜZERİNE derin-merge edilir; yalnız farklılıklar burada.
 #
 # Hedef: yarışma sunucusunda en yüksek YZ doğruluğu. CUDA varsa otomatik seçilir

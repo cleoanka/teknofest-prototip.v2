@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from aura.config import (
+from roadguard.config import (
     Config,
     _apply_env_overrides,
     _deep_merge,
@@ -65,14 +65,14 @@ def test_unknown_profile_is_ignored_gracefully():
 
 
 def test_env_profile(monkeypatch):
-    monkeypatch.setenv("AURA_PROFILE", "laptop")
+    monkeypatch.setenv("ROADGUARD_PROFILE", "laptop")
     cfg = load_config()
     assert cfg.profile == "laptop"
     assert "yolo26s" in cfg.get("models.detector.path")
 
 
 def test_explicit_profile_beats_env(monkeypatch):
-    monkeypatch.setenv("AURA_PROFILE", "laptop")
+    monkeypatch.setenv("ROADGUARD_PROFILE", "laptop")
     cfg = load_config(profile="server")
     assert cfg.profile == "server"
 
@@ -132,14 +132,14 @@ def test_is_synthetic_source_false_for_camera():
 # --------------------------------------------------------------------------- #
 def test_apply_env_overrides_ai_mode_and_device(monkeypatch):
     monkeypatch.setenv("AI_MODE", "mock")
-    monkeypatch.setenv("AURA_DEVICE", "cpu")
+    monkeypatch.setenv("ROADGUARD_DEVICE", "cpu")
     data = _apply_env_overrides({})
     assert data["runtime"]["ai_mode"] == "mock"
     assert data["runtime"]["device"] == "cpu"
 
 
 def test_apply_env_overrides_port_int_parse(monkeypatch):
-    monkeypatch.setenv("AURA_INFERENCE_PORT", "8123")
+    monkeypatch.setenv("ROADGUARD_INFERENCE_PORT", "8123")
     data = _apply_env_overrides({})
     assert data["services"]["inference_api"] == 8123
     assert isinstance(data["services"]["inference_api"], int)
@@ -147,15 +147,15 @@ def test_apply_env_overrides_port_int_parse(monkeypatch):
 
 def test_apply_env_overrides_non_numeric_port_ignored(monkeypatch):
     # rakam-değil değer (isdigit False) → atlanır, kazara str yazılmaz
-    monkeypatch.setenv("AURA_QOD_MOCK_PORT", "abc")
+    monkeypatch.setenv("ROADGUARD_QOD_MOCK_PORT", "abc")
     data = _apply_env_overrides({})
     assert "qod_mock" not in data.get("services", {})
 
 
 def test_apply_env_overrides_no_env_no_change(monkeypatch):
     monkeypatch.delenv("AI_MODE", raising=False)
-    monkeypatch.delenv("AURA_DEVICE", raising=False)
-    for k in ("AURA_INFERENCE_PORT", "AURA_QOD_MOCK_PORT", "AURA_NV_MOCK_PORT"):
+    monkeypatch.delenv("ROADGUARD_DEVICE", raising=False)
+    for k in ("ROADGUARD_INFERENCE_PORT", "ROADGUARD_QOD_MOCK_PORT", "ROADGUARD_NV_MOCK_PORT"):
         monkeypatch.delenv(k, raising=False)
     data = _apply_env_overrides({"services": {}})
     assert data == {"services": {}}

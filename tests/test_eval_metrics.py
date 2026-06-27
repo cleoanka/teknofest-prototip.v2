@@ -1,4 +1,4 @@
-"""aura/eval/metrics.py kenar-durum + hata-yolu birim testleri (model gerektirmez).
+"""roadguard/eval/metrics.py kenar-durum + hata-yolu birim testleri (model gerektirmez).
 
 İnceleme test_gaps'i kapatır: mae/mape None-dalları + tutarlı None-eleme,
 detection_rate/small_object_rate kısa per_frame + den==0 + area_frac dalları.
@@ -7,7 +7,7 @@ Tüm testler saf-sözlük; cv2/torch/model çağrılmaz.
 
 from __future__ import annotations
 
-from aura.eval import metrics as M
+from roadguard.eval import metrics as M
 
 
 # --------------------------------------------------------------------------- #

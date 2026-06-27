@@ -11,9 +11,9 @@ from __future__ import annotations
 
 import numpy as np
 
-from aura.config import load_config
-from aura.plate.reader import PlateReader
-from aura.schema import BBox
+from roadguard.config import load_config
+from roadguard.plate.reader import PlateReader
+from roadguard.schema import BBox
 
 FRAME = (720, 1280, 3)
 _ASPECT = 520.0 / 120.0  # TR Tip-1 plaka en/boy ≈ 4.33
@@ -72,7 +72,7 @@ def test_no_plate_unaffected():
 
 
 def _build():
-    from aura.speed.estimator import SpeedEstimator as _SE
+    from roadguard.speed.estimator import SpeedEstimator as _SE
 
     est = _SE(_metric_cfg())
     est.fps = 25.0

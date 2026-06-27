@@ -21,7 +21,7 @@
 
 1. [Kuşbakışı: RoadGuard nedir, parçalar nasıl bağlanır](#1-kuşbakışı)
 2. [`bootstrap.py` — tek komutla kurulum](#2-bootstrappy)
-3. [`aura/pipeline/pipeline.py` — çekirdek orkestratör](#3-pipeline)
+3. [`roadguard/pipeline/pipeline.py` — çekirdek orkestratör](#3-pipeline)
 4. [Stage-1 · `detection/` — tespit + takip](#4-detection)
 5. [Stage-2a · `driver_state/` — sürücü davranışı](#5-driver_state)
 6. [Stage-2b · `plate/` — plaka okuma](#6-plate)
@@ -48,7 +48,7 @@ flowchart TB
     subgraph SETUP["Kurulum"]
         BOOT["bootstrap.py<br/>venv · torch · ağırlık · smoke"]
     end
-    subgraph REAL["GERÇEK — YZ Çekirdeği (aura/)"]
+    subgraph REAL["GERÇEK — YZ Çekirdeği (roadguard/)"]
         PIPE["Pipeline (orkestratör)<br/>ön-işleme → YOLO26+ByteTrack → ROI<br/>→ sürücü ∥ plaka ∥ hız → accumulator → event"]
     end
     subgraph SVC["Servisler (services/)"]
@@ -142,13 +142,13 @@ atomik `replace` ile yerine konur; ağ hatasında **üstel geri-çekilmeli** (2s
 ---
 
 <a name="3-pipeline"></a>
-## 3. `aura/pipeline/pipeline.py` — çekirdek orkestratör
+## 3. `roadguard/pipeline/pipeline.py` — çekirdek orkestratör
 
 ### Ne yapar
 Tüm algı alt-modüllerini **tek akışta** birleştirir. `__init__` her aşama nesnesini **bir kez**
 kurar; sonra her kare `process_frame()` içinde bu hazır nesnelerden geçer (kare başına yeniden
 kurulum yok). Pipeline upstream/downstream'i (kamera/dashboard) bilmez — yalnızca iki-kanal
-çıktı yayar: **`AnnotationFrame`** (kare başına bbox, çizim için) ve **`AuraEvent`** (durum değişimleri).
+çıktı yayar: **`AnnotationFrame`** (kare başına bbox, çizim için) ve **`RoadGuardEvent`** (durum değişimleri).
 
 ### Nasıl çalışır — bir karenin yolculuğu (`process_frame`)
 
@@ -368,7 +368,7 @@ homografi modülü), **disabled** (yalnız bayraklar).
 
 ### Ne yapar
 Tüm algı modüllerinin kare-kare çıktısını **ID-merkezli kalıcı `TrackRecord`'larda** biriktirir,
-**durum değişimlerinde `AuraEvent` üretir** ve config-tabanlı **risk kurallarını** uygular. Yan
+**durum değişimlerinde `RoadGuardEvent` üretir** ve config-tabanlı **risk kurallarını** uygular. Yan
 bileşenler: **SignTracker** (tabela → aktif hız limiti) ve **16/8 kararlılık** (titrek tespitleri
 yumuşatan StabilityTracker + alan-ağırlıklı TrackClassVoter).
 
@@ -433,7 +433,7 @@ Model/boru-hattı başarımını **ölçülebilir kanıta** çevirir: video-düz
 ON/OFF delta** tablosu.
 
 ### Nasıl çalışır
-`python -m aura.eval` üç bağımsız boru hattına dallanır:
+`python -m roadguard.eval` üç bağımsız boru hattına dallanır:
 - **`--metrics-report`** (report.py): `--summaries` dizinindeki test_video özet JSON'ları + `<stem>_gt.json`
   GT okunur. Her video çoklu-track/çoklu-frame **tek ikili etiket vektörüne** indirgenir
   (`pred_from_summary`: bir davranış `min_frames` eşiğini geçen track varsa True). Özetler dedektöre
@@ -468,7 +468,7 @@ Pipeline'ın altyapı çekirdeği. **Hiçbir eşik/flag koda gömülmez — tek 
   pipeline). `auto`'da macOS için MPS denenir.
 - **`schema.py`** — Pydantic v2 çekirdek sözleşmeleri: `PlateState`, `DriverState` (`active_flags()`
   yalnız ihlalleri döner; kemerin **görülmesi** ihlal değil), `SpeedState`, `BBox`, ID-merkezli
-  `TrackRecord`, stream sözleşmeleri `AuraEvent`/`AnnotationFrame`.
+  `TrackRecord`, stream sözleşmeleri `RoadGuardEvent`/`AnnotationFrame`.
 - **`taxonomy.py`** — model-uzayı ↔ RoadGuard kanonik-uzayı eşlemesini **tek noktada** yapar (`CLASS_ALIASES`,
   `canonical`) → model değişince pipeline/şema/config sözleşmesi değişmesin.
 - **`preprocessing/preprocess.py`** — şu an M2 **pass-through** (arayüz sabit, filtreler sonraki
@@ -510,7 +510,7 @@ config'e takılabilir `best.pt` üretir**. Ayrıca eksik-sınıf verisini manife
 ### Nasıl çalışır
 `python -m train <komut>` dört alt-komut: `detector`, `driver-state`, `dataset`, `fetch`. **torch/
 ultralytics importları lazy** → `--help`/`dataset`/`fetch` ağır ML bağımlılığı olmadan çalışır.
-Eğitimin kalbi `run_finetune`: cihaz çöz (`auto`'da `aura.device`, macOS MPS düşüşü için) → `model.train`
+Eğitimin kalbi `run_finetune`: cihaz çöz (`auto`'da `roadguard.device`, macOS MPS düşüşü için) → `model.train`
 → (varsa) `model.val` → `summarize_metrics` (P/R/F1/mAP) → `export_best` (`best.pt` → `weights/` +
 `.metrics.json`). `prepare_dataset` deterministik (seed=42) **train/val/test split** + `data.yaml` +
 **veri-dengeleme raporu** (dengesizlik oranı > 3 ise uyarı — FTR §2). `fetch` `datasets.yaml`
@@ -533,7 +533,7 @@ tutarsızlığını **sessizce düzeltmez, planda uyarı basar** (onur).
 ### Dizin haritası
 | Dizin | İçerik |
 |---|---|
-| `aura/` | YZ çekirdeği (preprocessing, detection, driver_state, plate, speed, accumulator, scene, stability, qod, events, identity, eval, pipeline, core) |
+| `roadguard/` | YZ çekirdeği (preprocessing, detection, driver_state, plate, speed, accumulator, scene, stability, qod, events, identity, eval, pipeline, core) |
 | `services/` | `inference_api` (:8080) + `qod_mock` (:8081) + `nv_mock` (:8082) |
 | `dashboard/` | Vanilla JS + Canvas + WS arayüzü (build yok) |
 | `mobile/` | Expo (React Native) — NV sessiz giriş + canlı tespit panosu |
@@ -549,8 +549,8 @@ tutarsızlığını **sessizce düzeltmez, planda uyarı basar** (onur).
 python bootstrap.py          # tek komutla kurulum (idempotent)
 python tools/doctor.py       # ortam/hazırlık sağlık kontrolü
 ./run.sh                     # inference :8080 · QoD :8081 · NV :8082
-# profiller: AURA_PROFILE=server|laptop  (yolo26l/CUDA vs yolo26s/MPS)
-python -m aura.eval --metrics-report   # FTR §4 metrikleri
+# profiller: ROADGUARD_PROFILE=server|laptop  (yolo26l/CUDA vs yolo26s/MPS)
+python -m roadguard.eval --metrics-report   # FTR §4 metrikleri
 ```
 
 ### 🛡️ Onur zırhı (K-004) — her yerde tekrar eden ilke
@@ -563,6 +563,6 @@ python -m aura.eval --metrics-report   # FTR §4 metrikleri
 
 ---
 
-*Bu belge `aura/pipeline/pipeline.py` ve `bootstrap.py`'nin tam okunması + 10 alt-sistemin koddan
+*Bu belge `roadguard/pipeline/pipeline.py` ve `bootstrap.py`'nin tam okunması + 10 alt-sistemin koddan
 analiziyle (uydurma yok, K-004) hazırlanmıştır. Detaylı API/config için her dizinin kendi `README.md`'si
 ve `docs/mimari.md` kaynaktır.*

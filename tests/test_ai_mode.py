@@ -8,9 +8,9 @@ footage/kamera/URL kaynağında ise gerçek YOLO kullanır.
 
 from __future__ import annotations
 
-from aura.config import SAMPLE_VIDEO, is_synthetic_source
-from aura.detection.detector import resolve_ai_mode
-from aura.driver_state.classifier import resolve_driver_mode
+from roadguard.config import SAMPLE_VIDEO, is_synthetic_source
+from roadguard.detection.detector import resolve_ai_mode
+from roadguard.driver_state.classifier import resolve_driver_mode
 
 
 def test_is_synthetic_source_bundled_sample(cfg):
@@ -30,8 +30,8 @@ def test_is_synthetic_source_rtsp_url(cfg):
 
 def test_auto_uses_mock_on_synthetic_even_with_weights(cfg, monkeypatch, tmp_path):
     """Ağırlık + ultralytics var ama kaynak sentetik → mock (yoksa 0 bbox olurdu)."""
-    import aura.detection.detector as det
-    import aura.driver_state.classifier as drv
+    import roadguard.detection.detector as det
+    import roadguard.driver_state.classifier as drv
 
     weight = tmp_path / "w.pt"
     weight.write_bytes(b"x")  # "ağırlık mevcut" simülasyonu
@@ -47,7 +47,7 @@ def test_auto_uses_mock_on_synthetic_even_with_weights(cfg, monkeypatch, tmp_pat
 
 def test_auto_uses_real_on_real_source_with_weights(cfg, monkeypatch, tmp_path):
     """Gerçek kaynak (URL/kamera) + ağırlık → gerçek YOLO."""
-    import aura.detection.detector as det
+    import roadguard.detection.detector as det
 
     weight = tmp_path / "w.pt"
     weight.write_bytes(b"x")
@@ -59,7 +59,7 @@ def test_auto_uses_real_on_real_source_with_weights(cfg, monkeypatch, tmp_path):
 
 
 def test_auto_falls_back_to_mock_without_weights(cfg, monkeypatch):
-    import aura.detection.detector as det
+    import roadguard.detection.detector as det
 
     monkeypatch.setattr(det, "_ultralytics_available", lambda: True)
     cfg.data["models"]["detector"]["path"] = "weights/__nonexistent__.pt"

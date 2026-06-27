@@ -1,4 +1,4 @@
-> 📂 **aura/** · Gerçek YZ Mikroservisi · [⬅ repo kökü](../../README.md)
+> 📂 **roadguard/** · Gerçek YZ Mikroservisi · [⬅ repo kökü](../../README.md)
 
 # `inference_api/` — Gerçek YZ Mikroservisi (:8080)
 
@@ -22,7 +22,7 @@ FastAPI. RoadGuard pipeline'ını arka plan thread'inde koşturur ve **iki-kanal
 
 - `GET /stream/video` → MJPEG (ham veya `?bbox=true` ile server-side çizimli)
 - `WS /stream/annotations` → kare başına bbox koordinatları (dashboard canvas çizer)
-- `WS /stream/events` → `AuraEvent` stream'i (durum değişimleri)
+- `WS /stream/events` → `RoadGuardEvent` stream'i (durum değişimleri)
 
 Dashboard bbox toggle'ı **client-side** yapar (canvas temizle/çiz) → sunucuya gidiş-geliş yok.
 
@@ -31,7 +31,7 @@ flowchart LR
     P["RoadGuard pipeline<br/>(arka plan thread)"] --> SM["StreamManager<br/>(state.py)"]
     SM -->|MJPEG| V["GET /stream/video<br/>ham veya ?bbox=true"]
     SM -->|bbox koordinatları| A["WS /stream/annotations"]
-    SM -->|AuraEvent| E["WS /stream/events"]
+    SM -->|RoadGuardEvent| E["WS /stream/events"]
     A --> C["Dashboard canvas<br/>(client-side toggle)"]
     V --> C
     classDef src fill:#009688,stroke:#00695c,color:#fff;
@@ -70,8 +70,8 @@ flowchart LR
 
 | Değişken | Etki |
 |---|---|
-| `AURA_AUTOSTART=0` | Başlangıçta otomatik stream başlatma (varsayılan 1) |
-| `AURA_CAMERA_PROBE=0` | `/cameras` donanım taramasını atla (CI/başsız) |
+| `ROADGUARD_AUTOSTART=0` | Başlangıçta otomatik stream başlatma (varsayılan 1) |
+| `ROADGUARD_CAMERA_PROBE=0` | `/cameras` donanım taramasını atla (CI/başsız) |
 
 ---
 

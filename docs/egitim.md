@@ -217,7 +217,7 @@ python -m train detector --data coco128.yaml --weights weights/yolo26s.pt --epoc
 - **§5 Kaynakça:** `python -m train fetch` planının sonundaki lisans özeti (CC BY 4.0 / CC0 …)
   + `train/datasets.yaml` kaynak listesi açık-kaynak veri atıflarını verir.
 - **§4 Sınama (20p):** eğitim sonrası `*.metrics.json` (mAP/P/R/F1) + üç video metriği
-  (`python -m aura.eval --metrics-report`) rapora tablo olarak girer. Detay: `ftr.md` §4.
+  (`python -m roadguard.eval --metrics-report`) rapora tablo olarak girer. Detay: `ftr.md` §4.
 
 ---
 

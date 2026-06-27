@@ -1,4 +1,4 @@
-> 📂 **aura/train/** · Model Eğitimi · [⬅ repo kökü](../README.md)
+> 📂 **roadguard/train/** · Model Eğitimi · [⬅ repo kökü](../README.md)
 
 <div align="center">
 

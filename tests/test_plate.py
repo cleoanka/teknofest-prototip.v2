@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from aura.plate.reader import PlateReader
-from aura.schema import BBox
+from roadguard.plate.reader import PlateReader
+from roadguard.schema import BBox
 
 FRAME_SHAPE = (360, 640, 3)
 

@@ -16,8 +16,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from aura.plate.reader import PlateReader
-from aura.schema import BBox
+from roadguard.plate.reader import PlateReader
+from roadguard.schema import BBox
 
 FRAME_SHAPE = (360, 640, 3)
 
@@ -106,7 +106,7 @@ def _center_bbox():
 
 
 def _reader(ocr, qod=None, **er):
-    from aura.config import load_config
+    from roadguard.config import load_config
 
     r = PlateReader(load_config(), qod=qod, ocr=ocr)
     # Enjekte-OCR LP/early-read'i kapatır (ocr is None şartı); mekanizmayı test için aç.

@@ -4,10 +4,10 @@ Tasarim ilkesi (DEMO-KORUMA): tum sertlestirmeler ENV-GATED. Varsayilan
 (env set degil) durumda davranis yerel demoyla birebir aynidir; uretim/saha
 icin ilgili ortam degiskenleri set edilince koruma devreye girer.
 
-- SEC-001: ``AURA_API_TOKEN`` set ise mutasyon uclari ``X-AURA-Token`` ister.
-  CORS allowlist ``AURA_CORS_ORIGINS`` ile yapilandirilir (varsayilan localhost).
+- SEC-001: ``ROADGUARD_API_TOKEN`` set ise mutasyon uclari ``X-RoadGuard-Token`` ister.
+  CORS allowlist ``ROADGUARD_CORS_ORIGINS`` ile yapilandirilir (varsayilan localhost).
 - SEC-002: kaynak (camera index | rtsp:// | ROOT altinda dosya) dogrulamasi;
-  http://, file:// ve serbest semalar varsayilan kapali, ``AURA_ALLOW_NET_SOURCE``
+  http://, file:// ve serbest semalar varsayilan kapali, ``ROADGUARD_ALLOW_NET_SOURCE``
   ile acilir → SSRF kapatilir.
 - SEC-003: ground_truth path-traversal guard (izinli dizine resolve + commonpath).
 """
@@ -20,9 +20,9 @@ from pathlib import Path
 
 from fastapi import Header, HTTPException, Query, status
 
-from aura.config import ROOT
+from roadguard.config import ROOT
 
-_TOKEN_HEADER = "X-AURA-Token"
+_TOKEN_HEADER = "X-RoadGuard-Token"
 _CAMERA_INDEX_RE = re.compile(r"^\d{1,2}$")
 
 # Path-traversal guard'lari icin izinli kok dizin (repo koku, sunucu sabiti).
@@ -33,21 +33,21 @@ _ALLOWED_ROOT = ROOT.resolve()
 
 
 def _expected_token() -> str | None:
-    """Beklenen token; ``AURA_API_TOKEN`` bos/unset ise None (auth kapali)."""
-    tok = os.environ.get("AURA_API_TOKEN")
+    """Beklenen token; ``ROADGUARD_API_TOKEN`` bos/unset ise None (auth kapali)."""
+    tok = os.environ.get("ROADGUARD_API_TOKEN")
     return tok if tok else None
 
 
-def verify_token(x_aura_token: str | None = Header(default=None)) -> None:
+def verify_token(x_roadguard_token: str | None = Header(default=None)) -> None:
     """ENV-GATED token auth (FastAPI dependency).
 
-    ``AURA_API_TOKEN`` set DEGILSE: hicbir kontrol yok (yerel demo bozulmaz).
-    Set ISE: ``X-AURA-Token`` basligi token ile birebir eslesmeli, aksi halde 401.
+    ``ROADGUARD_API_TOKEN`` set DEGILSE: hicbir kontrol yok (yerel demo bozulmaz).
+    Set ISE: ``X-RoadGuard-Token`` basligi token ile birebir eslesmeli, aksi halde 401.
     """
     expected = _expected_token()
     if expected is None:
         return
-    if not x_aura_token or x_aura_token != expected:
+    if not x_roadguard_token or x_roadguard_token != expected:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Gecersiz veya eksik {_TOKEN_HEADER}",
@@ -56,7 +56,7 @@ def verify_token(x_aura_token: str | None = Header(default=None)) -> None:
 
 
 def _read_auth_enabled() -> bool:
-    """Okuma-ucu korumasi yalnız ``AURA_API_TOKEN`` VE ``AURA_API_PROTECT_READS``
+    """Okuma-ucu korumasi yalnız ``ROADGUARD_API_TOKEN`` VE ``ROADGUARD_API_PROTECT_READS``
     set ise aktiftir.
 
     Varsayilan (bayrak yok): okuma uclari ACIK kalir → co-located dashboard ve
@@ -66,17 +66,17 @@ def _read_auth_enabled() -> bool:
     """
     if _expected_token() is None:
         return False
-    flag = os.environ.get("AURA_API_PROTECT_READS", "").strip().lower()
+    flag = os.environ.get("ROADGUARD_API_PROTECT_READS", "").strip().lower()
     return flag not in ("", "0", "false", "no", "off")
 
 
 def verify_token_read(
-    x_aura_token: str | None = Header(default=None),
+    x_roadguard_token: str | None = Header(default=None),
     token: str | None = Query(default=None),
 ) -> None:
     """OPT-IN okuma-ucu auth (PII koruma; SEC-001 genisletmesi).
 
-    ``AURA_API_TOKEN`` + ``AURA_API_PROTECT_READS`` set ISE: ``X-AURA-Token``
+    ``ROADGUARD_API_TOKEN`` + ``ROADGUARD_API_PROTECT_READS`` set ISE: ``X-RoadGuard-Token``
     basligi VEYA ``?token=`` query-param (MJPEG ``<img>`` baslik gonderemez) beklenen
     token ile birebir eslesmeli; aksi halde 401. Bayraklardan biri yoksa no-op
     (varsayilan demo + dashboard + acik-okuma sozlesmesi BOZULMAZ).
@@ -84,7 +84,7 @@ def verify_token_read(
     if not _read_auth_enabled():
         return
     expected = _expected_token()
-    supplied = x_aura_token or token
+    supplied = x_roadguard_token or token
     if not supplied or supplied != expected:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -94,12 +94,12 @@ def verify_token_read(
 
 
 def cors_origins() -> list[str]:
-    """CORS allowlist (varsayilan localhost; ``AURA_CORS_ORIGINS`` ile genislet).
+    """CORS allowlist (varsayilan localhost; ``ROADGUARD_CORS_ORIGINS`` ile genislet).
 
     Dashboard same-origin sunuldugu icin varsayilan localhost listesi yerel
     demoyu bozmaz; '*' kullanilmaz.
     """
-    extra = os.environ.get("AURA_CORS_ORIGINS", "")
+    extra = os.environ.get("ROADGUARD_CORS_ORIGINS", "")
     origins = [
         "http://localhost:8080",
         "http://127.0.0.1:8080",
@@ -114,7 +114,7 @@ def cors_origins() -> list[str]:
 
 
 def _net_sources_allowed() -> bool:
-    return os.environ.get("AURA_ALLOW_NET_SOURCE", "0") not in ("0", "", "false", "False")
+    return os.environ.get("ROADGUARD_ALLOW_NET_SOURCE", "0") not in ("0", "", "false", "False")
 
 
 def _contained_in(path: Path, base: Path) -> bool:
@@ -133,7 +133,7 @@ def validate_source(source):
       (b) ``rtsp://`` URL'leri,
       (c) ROOT altina resolve edilip disari cikmadigi teyit edilen dosya yolu.
     Varsayilan KAPALI: ``http://``/``https://``/``file://`` ve diger semalar
-    (``AURA_ALLOW_NET_SOURCE`` set ise ``http(s)/rtmp/rtp`` acilir).
+    (``ROADGUARD_ALLOW_NET_SOURCE`` set ise ``http(s)/rtmp/rtp`` acilir).
 
     Dogrulama gecerse girdi DEGISTIRILMEDEN dondurulur (API sozlesmesi: echo ve
     StreamManager.start/run_eval argumanlari ham deger kalir). None/bos → None.

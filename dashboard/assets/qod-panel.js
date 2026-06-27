@@ -61,7 +61,7 @@ export class QodPanel {
     // Renkleri chart'ın kendi (güncel) verisinden okur → güncellemede bayatlamaz.
     const DELTA_INDEX = 2;
     const valueLabels = {
-      id: "auraValueLabels",
+      id: "roadguardValueLabels",
       afterDatasetsDraw(chart) {
         const { ctx } = chart;
         ctx.save();

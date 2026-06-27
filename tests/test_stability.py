@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from aura.stability import StabilityTracker
+from roadguard.stability import StabilityTracker
 
 
 def test_8_consecutive_accepted(cfg):

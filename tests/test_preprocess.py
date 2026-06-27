@@ -1,4 +1,4 @@
-"""aura/preprocessing/preprocess.py — config bayrak okuma + pass-through (M2).
+"""roadguard/preprocessing/preprocess.py — config bayrak okuma + pass-through (M2).
 
 Filtre implementasyonları sonraki iterasyonda gelecek; bu test arayüzün sabit
 kaldığını ve flag'lerin config'ten doğru okunduğunu çitler (downstream etkilenmez).
@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from aura.config import Config
-from aura.preprocessing.preprocess import Preprocessor
+from roadguard.config import Config
+from roadguard.preprocessing.preprocess import Preprocessor
 
 
 def test_flags_default_false():

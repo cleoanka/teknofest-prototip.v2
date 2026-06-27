@@ -26,8 +26,8 @@ Gece başlangıcında saptanan somut arızalar (hepsi kod/araçla doğrulandı):
 |---|---|---|---|
 | D1 | `bootstrap.py` paket kurulumunda çöküyordu | `pip install -e .[dev]` → `ruff (from versions: none)` | PyPI'a geçici ağ/önbellek hatası; bootstrap'te yeniden-deneme yok |
 | D2 | Ağırlık indirmeleri yarıda kesiliyordu | `Connection reset by peer` / `read timed out` | Tek denemeli indirme; `weights/` boş kalınca pipeline sessizce mock'a düşüyor |
-| D3 | `--source` ile verilen gerçek video, `ai_mode: auto`'da **mock**'ta işlenebiliyordu | `aura/__main__.py` `--source`'u cfg'ye yazmıyor; `resolve_ai_mode` config'teki sentetik örneğe bakıyor | CLI argümanı ile config'in kopukluğu |
-| D4 | `--device auto` macOS'ta MPS'i hiç seçmiyordu | `aura/device.py` auto yolu yalnız CUDA'yı deniyor | Eksik MPS dalı → 4K videoda CPU'da sürünme |
+| D3 | `--source` ile verilen gerçek video, `ai_mode: auto`'da **mock**'ta işlenebiliyordu | `roadguard/__main__.py` `--source`'u cfg'ye yazmıyor; `resolve_ai_mode` config'teki sentetik örneğe bakıyor | CLI argümanı ile config'in kopukluğu |
+| D4 | `--device auto` macOS'ta MPS'i hiç seçmiyordu | `roadguard/device.py` auto yolu yalnız CUDA'yı deniyor | Eksik MPS dalı → 4K videoda CPU'da sürünme |
 | D5 | Sürücü davranışı (telefon/sigara) eventi **hiç** üretilmiyordu | Stok COCO `yolo26l`'de sınıf adları `cell phone` vb.; config `phone/smoking/...` bekliyor | Eğitilmiş driver-state ağırlığı yok + sınıf adı eşleşmesi sessizce boş dönüyor |
 | D6 | Plaka hiç `confirmed` olamıyordu | 150-kare koşuda 11 × `PLATE_REJECTED`; oylar `041C8532 / 34TC8532 / 8532` varyantlarına dağılıyor | OCR karakter hataları (3→0, T→1) düzeltilmeden ham metinle oylama; 7'lik buffer her turda sıfırlanıyor |
 | D7 | Swerving/dikkatsiz sürüş tespiti **yok** | Kod taraması: yanal hareket hiçbir yerde izlenmiyor (`SpeedEstimator` yalnız dikey `cy` saklıyor) | Modül hiç yazılmamış |
@@ -52,7 +52,7 @@ Gece başlangıcında saptanan somut arızalar (hepsi kod/araçla doğrulandı):
 
 ## 2. Git Onarımı
 
-- [x] **Adli inceleme:** dört repoda (`v1`, `v2`, `hidden_prototip`, `~/aura`) reflog + fsck + unpushed taraması → **kayıp/pushlanmamış commit YOK**. `~/aura` (M1–M16) geçmişi v2'nin içinde birebir mevcut (ae8e62d v2'de ata).
+- [x] **Adli inceleme:** dört repoda (`v1`, `v2`, `hidden_prototip`, `~/roadguard`) reflog + fsck + unpushed taraması → **kayıp/pushlanmamış commit YOK**. `~/roadguard` (M1–M16) geçmişi v2'nin içinde birebir mevcut (ae8e62d v2'de ata).
 - [x] **Ev dizini stray reposu:** `~/.git` (tek commit'lik kazara repo, remote'suz) güvenli yedeğe taşınır → `~/stray-home-git-backup.git`. Ev dizini artık repo değil.
 - [x] **git-lfs kurulumu** (brew) + `git lfs install`.
 - [x] **v1 onarımı:** index reset + çalışma ağacı restore + `git lfs pull` → 136 dosya ve **yolguvenligi_types_v4.pt** (52 MB, sha256 doğrulandı) geri geldi.
@@ -68,8 +68,8 @@ Gece başlangıcında saptanan somut arızalar (hepsi kod/araçla doğrulandı):
 
 ## 4. Çekirdek Hata Düzeltmeleri (P0)
 
-- [x] **D3:** `aura/__main__.py` → `--source` değeri `cfg.runtime.source`'a yazılır (auto kararı artık gerçek kaynağa göre). Aynı düzeltme `services/inference_api` `StreamManager.start()` yoluna.
-- [x] **D4:** `aura/device.py` → `auto`: CUDA → **MPS** → CPU sırası (Apple Silicon'da `torch.backends.mps.is_available()`).
+- [x] **D3:** `roadguard/__main__.py` → `--source` değeri `cfg.runtime.source`'a yazılır (auto kararı artık gerçek kaynağa göre). Aynı düzeltme `services/inference_api` `StreamManager.start()` yoluna.
+- [x] **D4:** `roadguard/device.py` → `auto`: CUDA → **MPS** → CPU sırası (Apple Silicon'da `torch.backends.mps.is_available()`).
 - [x] **Ağırlık yolu CWD-bağımsız:** `detection/yolo.py`, `driver_state/yolo.py` model yolunu repo köküne göre çözer (hidden_prototip `_resolve_model_path` deseni).
 - [x] **Sınıf adı takma-isim haritası:** `cell phone→phone`, `cigarette→smoking` vb. — stok/fine-tune model adları tek noktada normalize edilir (hidden'ın iki-uzaylı taksonomi dersi).
 
@@ -81,7 +81,7 @@ Gece başlangıcında saptanan somut arızalar (hepsi kod/araçla doğrulandı):
 
 ### 5.2 Pose-tabanlı sürücü davranışı (YENİ — v1 geometrisinin YOLO26'ya portu)
 - v1 sigara/telefonu MediaPipe geometrisiyle çözmüştü (sigara recall %59, telefon %61, FP %0 — ölçülmüş). MediaPipe Python 3.13'te yok **ve** v2 mimari kararı "MediaPipe yasak" diyor. Çözüm: **`yolo26s-pose.pt`** (COCO 17 keypoint) ile aynı kanıtlanmış geometri — mimari karar korunur (saf YOLO26).
-- [x] Yeni modül `aura/driver_state/pose.py`: sürücü ROI'sinde pose → bilek-ağız / bilek-kulak **göreli yakınlık** kıyası (v1 K-012 dersi: mutlak eşik değil oran; `d_ear < 0.40×yüz-genişliği` telefon, `d_mouth < d_ear` ve ağıza yakın → sigara adayı). **Uygulamada eklenen kural:** kulak keypoint'i görünmüyorsa karar YOK (dürüst çekimserlik) — kulaksız geometri video_2'de telefonu sigara sanıyordu.
+- [x] Yeni modül `roadguard/driver_state/pose.py`: sürücü ROI'sinde pose → bilek-ağız / bilek-kulak **göreli yakınlık** kıyası (v1 K-012 dersi: mutlak eşik değil oran; `d_ear < 0.40×yüz-genişliği` telefon, `d_mouth < d_ear` ve ağıza yakın → sigara adayı). **Uygulamada eklenen kural:** kulak keypoint'i görünmüyorsa karar YOK (dürüst çekimserlik) — kulaksız geometri video_2'de telefonu sigara sanıyordu.
 - [x] **Hibrit ROI nesne kanıtı (uygulamada eklendi):** v4 dedektörü sürücü ROI'sinde de koşar; `phone` NESNESİ tespiti geometriden üstündür (hoparlörde konuşma = el ağız önünde → geometri tek başına 'sigara' derdi). Gerçek video_2 ölçümü: telefon bilek keypoint'i conf 0.21 (görünmez) ama v4 phone nesnesi 0.35-0.37 ✓.
 - [x] v1'in **latch** dersi: phone nesnesi son görülmeden sonra 25 kare geçerli sayılır (nesne her karede yakalanmaz; sigara FP'sine dönüşmez). Sustain karşılığı pipeline'daki 16/8 süzgeci.
 - [x] v4 dedektörünün `phone` sınıfı tam-kare tespitleri de araca düşüyorsa **füzyon** edilir (`fuse_detections`).
@@ -89,7 +89,7 @@ Gece başlangıcında saptanan somut arızalar (hepsi kod/araçla doğrulandı):
 - [x] ROI ön-işleme (v1 dersi): kısa kenarı 320px'e büyüt + gamma/CLAHE parlatma → camın arkasındaki sürücüde keypoint bulunabilirliği artar.
 
 ### 5.3 Swerving / dikkatsiz sürüş tespiti (YENİ — v1 fikrinin ölçek-bağımsız hali)
-- [x] `aura/speed/estimator.py` yanal (cx) geçmiş tutar. **Nihai algoritma (3 iterasyonda rafine edildi):** ZigZag ekstremum sayacı — seri mevcut uç noktadan `amp_ratio × O ANKİ araç genişliği` kadar geri dönünce yön-değişimi sayılır; ≥`min_flips` (2) → `SpeedState.swerving`. Monoton hareket (yaklaşma perspektif kayması, tek şerit değişimi) yapısal olarak 0 üretir; pencere saniye cinsinden (fps-bağımsız). İlk iki deneme (adım-bazlı gürültü kapısı; doğrusal/parabolik trend çıkarma) gerçek 50fps verisinde sinyali kaçırdı/S-eğrisinde FP verdi — sentetik beş yörünge şekli + 3 gerçek video yörüngesiyle doğrulandı (video_3: 3 dönüş ✓, video_1/2: 0 ✓).
+- [x] `roadguard/speed/estimator.py` yanal (cx) geçmiş tutar. **Nihai algoritma (3 iterasyonda rafine edildi):** ZigZag ekstremum sayacı — seri mevcut uç noktadan `amp_ratio × O ANKİ araç genişliği` kadar geri dönünce yön-değişimi sayılır; ≥`min_flips` (2) → `SpeedState.swerving`. Monoton hareket (yaklaşma perspektif kayması, tek şerit değişimi) yapısal olarak 0 üretir; pencere saniye cinsinden (fps-bağımsız). İlk iki deneme (adım-bazlı gürültü kapısı; doğrusal/parabolik trend çıkarma) gerçek 50fps verisinde sinyali kaçırdı/S-eğrisinde FP verdi — sentetik beş yörünge şekli + 3 gerçek video yörüngesiyle doğrulandı (video_3: 3 dönüş ✓, video_1/2: 0 ✓).
 - [x] 16/8 kararlılık süzgecinden geçirilir; `Accumulator._cond`'a `speed.swerving` tokenı; `config` risk kuralı `swerving_vehicle` [high] → `RISK_ALERT`.
 - [x] QoD tetikleyicisine swerving kritik koşulu eklenir.
 
@@ -107,14 +107,14 @@ Gece başlangıcında saptanan somut arızalar (hepsi kod/araçla doğrulandı):
 - [x] Sweet spot x aralığı genişletildi (0.18–0.85): yanal/çapraz yaklaşan araç (video_3) eski 0.30–0.70 bölgesine hiç girmiyordu.
 
 ### 5.6 QoD yaklaşma tetiği (şartname boşluğu — FTR izlenebilirlik §1)
-- [x] Şartnamenin asıl senaryosu "TOGG aracının **yaklaştığını** algılayınca QoD": bbox alan büyüme oranı sürekli pozitif + alan eşiği → `vehicle_approach` kritik tetiği (`aura/qod/client.py` + config). v1 qod_trigger A-koşulunun portu.
+- [x] Şartnamenin asıl senaryosu "TOGG aracının **yaklaştığını** algılayınca QoD": bbox alan büyüme oranı sürekli pozitif + alan eşiği → `vehicle_approach` kritik tetiği (`roadguard/qod/client.py` + config). v1 qod_trigger A-koşulunun portu.
 
 ### 5.7 Video test aracı (hidden'dan port — jüri/demo kanıtı)
 - [x] `tools/test_video.py`: videoyu pipeline'dan geçirir → **annotated mp4** + **JSON özet** (eventler, plaka oyları, sürücü bayrak süreleri, swerving kareleri, FPS). `--help`'li, README'li. Ham plaka kutuları çizilmez (hidden görselleştirme hijyeni), yalnız onaylı sonuçlar.
-- [x] `python -m aura`'ya `--save-events PATH` (JSONL) bayrağı.
+- [x] `python -m roadguard`'ya `--save-events PATH` (JSONL) bayrağı.
 
 ### 5.8 Değerlendirme
-- [x] `data/samples/` altına 3 test videosu için GT iskeleti (`video_N_gt.json`) — plaka + davranış etiketi; `aura.eval` ile koşulabilir.
+- [x] `data/samples/` altına 3 test videosu için GT iskeleti (`video_N_gt.json`) — plaka + davranış etiketi; `roadguard.eval` ile koşulabilir.
 - [x] Hız: `value_kmh`'ın güvenilmez olduğu durumda (kalibrasyon ısınmamış / scale_confidence düşük) eventlerde `calibrated:false` etiketi netleştirilir.
 
 ## 6. Doğrulama Protokolü (hile yok — K-004)

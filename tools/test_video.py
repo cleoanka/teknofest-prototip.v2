@@ -38,7 +38,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from aura.config import load_config  # noqa: E402
+from roadguard.config import load_config  # noqa: E402
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -167,7 +167,9 @@ def main(argv: list[str] | None = None) -> int:
     out_video = Path(args.output) if args.output else out_dir / f"{src.stem}_annotated.mp4"
     out_json = Path(args.json_path) if args.json_path else out_dir / f"{src.stem}_summary.json"
 
-    from aura.pipeline.pipeline import Pipeline  # ağır importlar argümanlar doğrulandıktan sonra
+    from roadguard.pipeline.pipeline import (
+        Pipeline,  # ağır importlar argümanlar doğrulandıktan sonra
+    )
 
     pipe = Pipeline(cfg)
 
@@ -235,7 +237,7 @@ def main(argv: list[str] | None = None) -> int:
         raw_valid_w: dict[str, float] = {}
         pool = pipe.plate._pools.get(rec.track_id)
         if pool is not None:
-            from aura.plate.normalize import normalize_tr as _nt
+            from roadguard.plate.normalize import normalize_tr as _nt
 
             for _txt, _w in pool.raw_reads:
                 _c, _fx = _nt(_txt)

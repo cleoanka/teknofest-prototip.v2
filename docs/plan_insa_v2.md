@@ -14,7 +14,7 @@
 
 > [!NOTE]
 > **Hedef kitle:** Bu dosyayı işleyecek otonom kodlama agent'ı (yapay zekâ kodlama aracı).
-> **Kaynak doğruluk:** TEKNOFEST 2026 "5G & Yapay Zekâ ile Akıllı Yol Güvenliği" Teknik Şartnamesi + `AURA_YZ_Mimarisi_v1.1.md`.
+> **Kaynak doğruluk:** TEKNOFEST 2026 "5G & Yapay Zekâ ile Akıllı Yol Güvenliği" Teknik Şartnamesi + `ROADGUARD_YZ_Mimarisi_v1.1.md`.
 > **Görev:** Şartnamenin gerektirdiği tüm sistemi — mobil + 5G API + YZ çekirdeği + profesyonel dashboard — GitHub'a yüklenmeye hazır, tek komutla ayağa kalkan, Windows/macOS uyumlu bir monorepo olarak üret.
 
 ---
@@ -23,9 +23,9 @@
 
 | Şartname zorunluluğu | Karşılayan bileşen | Puan ağırlığı |
 |---|---|---|
-| Araç / plaka / hız / araç-içi nesne tespiti | `aura/` YZ çekirdeği | %40 |
-| QoD yalnızca kritik anda; başarım artışı kanıtlanmalı | `aura/qod` + A/B eval harness | %40 |
-| Sürücü davranışı (telefon/sigara/kemer/yorgunluk) | `aura/driver_state` | %40 içinde |
+| Araç / plaka / hız / araç-içi nesne tespiti | `roadguard/` YZ çekirdeği | %40 |
+| QoD yalnızca kritik anda; başarım artışı kanıtlanmalı | `roadguard/qod` + A/B eval harness | %40 |
+| Sürücü davranışı (telefon/sigara/kemer/yorgunluk) | `roadguard/driver_state` | %40 içinde |
 | Number Verification sessiz doğrulama | `services/nv_mock` + mobil | — |
 | Tespitlerin mobil ekranda gösterimi | `mobile/` + event stream | — |
 | Modern mimari / rapor | repo yapısı + `docs/` + CI | %20 |
@@ -46,7 +46,7 @@
 1. **Tek komutla ayağa kalkar.** `./setup.sh` veya `.\setup.ps1` → bağımlılıklar, model ağırlıkları, örnek veri, servisler — hiçbir manuel adım olmadan hazır. İdempotent: ikinci çalıştırma tekrar kurmaz.
 2. **Cross-platform.** Windows (PowerShell 7+) ve macOS (zsh). Donanım backend'i otomatik seçilir: Apple Silicon→MPS, NVIDIA→CUDA, diğer→CPU. Path'ler `pathlib` ile platform-bağımsız.
 3. **Config-driven.** Hiçbir eşik/flag koda gömülmez. Tek `config/default.yaml` her şeyi yönetir. §8 opsiyonel modüller buradan toggle edilir.
-4. **CLI-first, `--help` her yerde.** Her `python -m aura.*` komutu `argparse` ile tam yardım metni sunar. `-h`/`--help` tutarlı, anlaşılır, örnekli.
+4. **CLI-first, `--help` her yerde.** Her `python -m roadguard.*` komutu `argparse` ile tam yardım metni sunar. `-h`/`--help` tutarlı, anlaşılır, örnekli.
 5. **Self-documenting.** Her dizin kendi `README.md`'sini taşır. Hiçbir modül "ne yapar + nasıl kullanılır" açıklaması olmadan bırakılmaz. Kod İngilizce, tüm `.md` Türkçe.
 6. **Decoupled mikroservis.** YZ pipeline'ı upstream (kamera) ve downstream'i (dashboard/mobil) bilmez; yalnızca event/annotation stream yayar.
 7. **GitHub-ready.** `.gitignore` (weights/, data/raw/, .venv/, node_modules/ hariç), `LICENSE`, `.env.example`, `CHANGELOG.md`, CI iskeleti.
@@ -70,7 +70,7 @@ teknofest-prototip/
 ├── setup.sh                         # macOS/Linux → python3 bootstrap.py
 ├── setup.ps1                        # Windows → python bootstrap.py
 ├── run.sh / run.ps1                 # Servisleri kaldırır (gerekirse bootstrap çağırır)
-├── pyproject.toml                   # aura paketi + bağımlılık grupları
+├── pyproject.toml                   # roadguard paketi + bağımlılık grupları
 │
 ├── config/
 │   ├── default.yaml                 # Tüm eşikler, flag'ler, §8 toggle'ları
@@ -83,9 +83,9 @@ teknofest-prototip/
 │   ├── yolo26l.pt                   # Stage-2: sürücü durumu (base, fine-tune bekleniyor)
 │   └── README.md                    # Ağırlık yönetimi ve SHA256 doğrulama
 │
-├── aura/                            # YZ çekirdeği (Python paketi)
+├── roadguard/                            # YZ çekirdeği (Python paketi)
 │   ├── __init__.py
-│   ├── __main__.py                  # python -m aura → pipeline başlatır
+│   ├── __main__.py                  # python -m roadguard → pipeline başlatır
 │   ├── preprocessing/
 │   ├── detection/
 │   ├── stability/
@@ -250,9 +250,9 @@ Her entry point `argparse` ile tam yardım sunar. Stil kuralları:
 - Uzun argüman adları `--kebab-case`.
 - Seçenekler `choices=` ile kısıtlanır, hata mesajı açıklayıcı olur.
 
-### 4.1 `python -m aura` (ana pipeline)
+### 4.1 `python -m roadguard` (ana pipeline)
 ```
-usage: python -m aura [-h] [--config PATH] [--source SOURCE]
+usage: python -m roadguard [-h] [--config PATH] [--source SOURCE]
                       [--device {auto,cpu,cuda,mps}] [--no-bbox]
                       [--log-level {DEBUG,INFO,WARNING}]
 
@@ -272,9 +272,9 @@ options:
                         Log seviyesi (varsayılan: INFO)
 
 örnekler:
-  python -m aura --source 0
-  python -m aura --source video.mp4 --device mps
-  python -m aura --source rtsp://10.0.0.5:8554/cam --log-level DEBUG
+  python -m roadguard --source 0
+  python -m roadguard --source video.mp4 --device mps
+  python -m roadguard --source rtsp://10.0.0.5:8554/cam --log-level DEBUG
 ```
 
 ### 4.2 `python -m train` (eğitim)
@@ -294,9 +294,9 @@ subcommands:
   python -m train dataset --input data/raw/ --output data/processed/
 ```
 
-### 4.3 `python -m aura.eval` (değerlendirme)
+### 4.3 `python -m roadguard.eval` (değerlendirme)
 ```
-usage: python -m aura.eval [-h] [--source SOURCE] [--ground-truth PATH]
+usage: python -m roadguard.eval [-h] [--source SOURCE] [--ground-truth PATH]
                            [--qod-comparison] [--output PATH]
 
 RoadGuard model değerlendirme — doğruluk metrikleri ve QoD A/B karşılaştırması
@@ -308,8 +308,8 @@ options:
   --output PATH         Rapor çıktı dizini (varsayılan: eval_results/)
 
 örnekler:
-  python -m aura.eval --source data/samples/test.mp4 --ground-truth data/samples/gt.json
-  python -m aura.eval --source test.mp4 --ground-truth gt.json --qod-comparison
+  python -m roadguard.eval --source data/samples/test.mp4 --ground-truth data/samples/gt.json
+  python -m roadguard.eval --source test.mp4 --ground-truth gt.json --qod-comparison
 ```
 
 ### 4.4 `python bootstrap.py`
@@ -371,7 +371,7 @@ options:
 |--------|------|----------|
 | `GET` | `/stream/video` | MJPEG stream — `?bbox=true\|false` param ile bbox toggle |
 | `WS` | `/stream/annotations` | Gerçek zamanlı annotation verisi (bbox koordinatları, label'lar) |
-| `WS` | `/stream/events` | Gerçek zamanlı `AuraEvent` JSON stream'i |
+| `WS` | `/stream/events` | Gerçek zamanlı `RoadGuardEvent` JSON stream'i |
 
 > [!TIP]
 > **İki-kanal tasarımı:** Dashboard `/stream/video` ile raw/annotated MJPEG alır VE `/stream/annotations` üzerinden bbox koordinatlarını alır. Canvas üzerinde client-side çizim yapılır. Bu şekilde bbox toggle için sunucuya git-gel olmaz — client karar verir.
@@ -477,7 +477,7 @@ class TrackRecord(BaseModel):
     qod_profile: str | None
     risk_flags: list[str]
 
-class AuraEvent(BaseModel):
+class RoadGuardEvent(BaseModel):
     event_id: str
     ts: float
     track_id: int
@@ -486,7 +486,7 @@ class AuraEvent(BaseModel):
         "DRIVER_STATE", "SPEED", "QOD_TRIGGER", "QOD_RELEASE", "RISK_ALERT"
     ]
     payload: dict
-    source: str = "aura-inference"
+    source: str = "roadguard-inference"
 
 class AnnotationFrame(BaseModel):
     frame_id: int
@@ -545,14 +545,14 @@ Unit test: flicker senaryosu (7/16 → ret, 8/16 → kabul).
 - `backend: mock` → `services/qod_mock`, `backend: camara` → Turkcell endpoint.
 
 ### 6.9 `events/` + `pipeline/`
-Event emitter: `AuraEvent`'leri ve `AnnotationFrame`'leri WS/SSE üzerinden yayar.
+Event emitter: `RoadGuardEvent`'leri ve `AnnotationFrame`'leri WS/SSE üzerinden yayar.
 Pipeline orkestratörü: preprocessing → detection+track → ROI → stability ⊗ (driver_state ∥ plate) → speed → accumulator → events + annotations.
 
 ---
 
 ## 7. 🧩 §8 Opsiyonel Modüller
 
-`aura/optional/`'da, `config.optional_modules.*` ile toggle (default kapalı). Kapalıyken hiçbir import bile yapılmaz — lazy loading pattern kullanılır.
+`roadguard/optional/`'da, `config.optional_modules.*` ile toggle (default kapalı). Kapalıyken hiçbir import bile yapılmaz — lazy loading pattern kullanılır.
 
 - `zero_waste_payload.py` — downstream'e tam kare değil yalnızca ROI + yapısal metin.
 - `super_resolution.py` — ESRGAN tabanlı, OCR öncesi uzak plaka upscaling.
@@ -686,7 +686,7 @@ Dashboard CSS'i CSS custom properties (dark theme default, light theme toggle) i
 
 ---
 
-## 10. 📊 Değerlendirme (`aura/eval.py`)
+## 10. 📊 Değerlendirme (`roadguard/eval.py`)
 
 > [!IMPORTANT]
 > Puanın %80'i doğrudan burada ölçülüyor.
@@ -752,7 +752,7 @@ Her `.md` aşağıdaki yapıyı takip eder:
 
 ## 13. 🏛️ `mimari.md` v2.0 Tamamlama
 
-`AURA_YZ_Mimarisi_v1.1.md`'nin içeriği korunur, üstüne eklenir:
+`ROADGUARD_YZ_Mimarisi_v1.1.md`'nin içeriği korunur, üstüne eklenir:
 
 - §1–7 (YZ katmanı): değişmez, yalnızca küçük netleştirmeler.
 - **Yeni §8:** Sistem mimarisi — NV akışı, QoD gateway, event+annotation stream sözleşmesi, dashboard ve mobil tüketimi, mock↔gerçek sınırı diyagramı.
@@ -849,7 +849,7 @@ tests/
 ├── test_accumulator.py      # risk kuralı kombinasyonları
 ├── test_qod.py              # histerezis, tetikleyici koşulları
 ├── test_api_contracts.py    # /cameras, /stream/start, NV verify, QoD session
-├── test_events.py           # AuraEvent şema doğrulama
+├── test_events.py           # RoadGuardEvent şema doğrulama
 └── README.md
 ```
 
@@ -868,7 +868,7 @@ tests/
 - [ ] MJPEG stream + Canvas annotation overlay eş zamanlı akıyor.
 - [ ] QoD mock çalışıyor; A/B harness ölçülebilir delta üretiyor; dashboard'da Chart.js ile görünüyor.
 - [ ] NV mock ile mobil sessiz giriş çalışıyor.
-- [ ] `python -m aura --help`, `python -m train --help`, `python -m aura.eval --help`, `python bootstrap.py --help` eksiksiz yardım metni gösteriyor.
+- [ ] `python -m roadguard --help`, `python -m train --help`, `python -m roadguard.eval --help`, `python bootstrap.py --help` eksiksiz yardım metni gösteriyor.
 - [ ] `GET /docs` OpenAPI arayüzü tüm endpoint'leri gösteriyor.
 - [ ] Train pipeline çalışıyor; çıktı ağırlık config ile inference'a swap'lanıyor.
 - [ ] §8 toggle'ları config'ten açılıp kapanıyor; kapalıyken import bile yapılmıyor.
@@ -886,12 +886,12 @@ tests/
 | Şartname | Bileşen |
 |---|---|
 | Number Verification sessiz doğrulama | `services/nv_mock` + `POST /verify` + `mobile/` |
-| QoD yalnızca kritik anda + başarım kanıtı | `aura/qod` + `qod_mock` + `GET /eval/results` + dashboard QoD paneli |
+| QoD yalnızca kritik anda + başarım kanıtı | `roadguard/qod` + `qod_mock` + `GET /eval/results` + dashboard QoD paneli |
 | Araç / plaka / hız tespiti | `detection` + `plate` + `speed` + `accumulator` |
 | Araç içi nesne / sürücü davranışı (4 sınıf) | `driver_state` (YOLO26l, 4 class, no-landmark) |
 | Tespitlerin mobil ekranda gösterimi | `mobile/` + `WS /stream/events` |
-| Doğruluk/hassasiyet (%40) | `train/` + `aura/eval` metrikleri |
-| QoD entegrasyonu (%40) | `aura/qod` + A/B harness + delta tablosu |
+| Doğruluk/hassasiyet (%40) | `train/` + `roadguard/eval` metrikleri |
+| QoD entegrasyonu (%40) | `roadguard/qod` + A/B harness + delta tablosu |
 | Modern mimari/rapor (%20) | Repo yapısı + CI + kapsamlı `docs/` |
 
 ---
@@ -918,7 +918,7 @@ flowchart TD
 ```
 
 1. Repo iskeleti + `bootstrap.py` + `config/default.yaml` + `weights/` auto-download + smoke test.
-2. Pydantic sözleşmeleri (`TrackRecord`, `AuraEvent`, `AnnotationFrame`) + pipeline iskeleti (boş modüller, akış doğru).
+2. Pydantic sözleşmeleri (`TrackRecord`, `RoadGuardEvent`, `AnnotationFrame`) + pipeline iskeleti (boş modüller, akış doğru).
 3. `detection/` + ByteTrack + ROI crop → `accumulator/` → en kısa uçtan-uca.
 4. `stability/` (16/8) + `driver_state/`.
 5. `plate/` (sweet spot + voting + OCR) + QoD kalite tetiği.

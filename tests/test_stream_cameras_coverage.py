@@ -16,16 +16,16 @@ from __future__ import annotations
 
 import os
 
-os.environ.setdefault("AURA_AUTOSTART", "0")
-os.environ.setdefault("AURA_CAMERA_PROBE", "0")
+os.environ.setdefault("ROADGUARD_AUTOSTART", "0")
+os.environ.setdefault("ROADGUARD_CAMERA_PROBE", "0")
 os.environ.setdefault("AI_MODE", "mock")
 
 import asyncio  # noqa: E402
 
 import numpy as np  # noqa: E402
 
-from aura.config import load_config  # noqa: E402
-from aura.schema import AnnotationFrame  # noqa: E402
+from roadguard.config import load_config  # noqa: E402
+from roadguard.schema import AnnotationFrame  # noqa: E402
 from services.inference_api.routers import cameras as cam_mod  # noqa: E402
 from services.inference_api.state import StreamManager  # noqa: E402
 
@@ -83,13 +83,13 @@ def test_name_for_non_darwin_uses_generic(monkeypatch):
 
 # --- cameras: enumerate_cameras probe dalları ----------------------------- #
 def test_enumerate_cameras_probe_disabled(monkeypatch):
-    monkeypatch.setenv("AURA_CAMERA_PROBE", "0")
+    monkeypatch.setenv("ROADGUARD_CAMERA_PROBE", "0")
     assert cam_mod.enumerate_cameras() == []
 
 
 def test_enumerate_cameras_opened_and_closed(monkeypatch):
     """Probe açık: açılan indeksler CameraInfo'ya dönüşür, kapalılar atlanır."""
-    monkeypatch.setenv("AURA_CAMERA_PROBE", "1")
+    monkeypatch.setenv("ROADGUARD_CAMERA_PROBE", "1")
     monkeypatch.setattr(cam_mod.platform, "system", lambda: "Linux")
 
     class _FakeCap:
@@ -120,7 +120,7 @@ def test_enumerate_cameras_opened_and_closed(monkeypatch):
 
 def test_enumerate_cameras_zero_dims_defaults(monkeypatch):
     """get() 0 döndürürse 640x480 default'a düşülür (`or` dalı)."""
-    monkeypatch.setenv("AURA_CAMERA_PROBE", "1")
+    monkeypatch.setenv("ROADGUARD_CAMERA_PROBE", "1")
     monkeypatch.setattr(cam_mod.platform, "system", lambda: "Linux")
 
     class _Cap:
@@ -143,7 +143,7 @@ def test_enumerate_cameras_zero_dims_defaults(monkeypatch):
 
 def test_enumerate_cameras_swallows_cv2_exception(monkeypatch):
     """VideoCapture fırlatırsa except pass → o indeks atlanır, çökme yok."""
-    monkeypatch.setenv("AURA_CAMERA_PROBE", "1")
+    monkeypatch.setenv("ROADGUARD_CAMERA_PROBE", "1")
     monkeypatch.setattr(cam_mod.platform, "system", lambda: "Linux")
 
     def _boom(i):

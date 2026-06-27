@@ -1,4 +1,4 @@
-"""aura/device.py cihaz çözümü — torch'u mock'layarak CUDA/MPS/CPU dalları.
+"""roadguard/device.py cihaz çözümü — torch'u mock'layarak CUDA/MPS/CPU dalları.
 
 CI cihazı CPU-only ya da MPS-only olabilir; gerçek GPU'ya bağımlı kalmamak için
 ``torch.cuda`` / ``torch.backends.mps`` monkeypatch'lenir. Hiçbir gerçek model
@@ -12,7 +12,7 @@ import types
 
 import pytest
 
-import aura.device as dev
+import roadguard.device as dev
 
 
 @pytest.fixture(autouse=True)

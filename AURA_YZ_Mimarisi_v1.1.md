@@ -148,7 +148,7 @@ Hız ve yörünge analizinde anormallik veya tehlike sezildiğinde anında devre
 Hız ölçümü doğrudan kamera kurulum parametrelerine bağımlıdır. Bu modül, sahaya özgü kalibrasyon şartlarına göre üç moddan biriyle çalışır:
 
 > **Güncelleme (v2.2+):** Varsayılan mod artık `metric` (oto-kalibrasyon) olup manuel kalibrasyon
-> dosyası gerektirmez — ayrıntı için `docs/mimari.md` / `AURA_Repo_Detayli_Anlatim.md` §2.
+> dosyası gerektirmez — ayrıntı için `docs/mimari.md` / `ROADGUARD_Repo_Detayli_Anlatim.md` §2.
 
 | Mod | Şart | Açıklama |
 |-----|------|----------|

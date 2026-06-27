@@ -6,7 +6,7 @@ için hangi açık veri setinin nereden, hangi lisansla çekileceğinin PLANINI 
 gösterir. Gerçek indirme yalnız `--run` ile yapılır (roboflow kaynakları için
 `train.roboflow_pull` çağrılır; kaggle/url kaynakları MANUEL — yalnız talimat basılır).
 
-Sınıf-remap'i `aura.taxonomy` ile tutarlıdır: manifestteki `class_map` değerleri
+Sınıf-remap'i `roadguard.taxonomy` ile tutarlıdır: manifestteki `class_map` değerleri
 (hedef kanonik adlar) taksonomi sözlüğüyle çapraz-kontrol edilir; tutarsızlık
 PLANDA uyarı olarak işaretlenir (ONUR: belirsizlikte sessizce düzeltmez).
 
@@ -22,9 +22,9 @@ from pathlib import Path
 
 import yaml
 
-from aura.taxonomy import canonical
+from roadguard.taxonomy import canonical
 
-log = logging.getLogger("aura.train.fetch")
+log = logging.getLogger("roadguard.train.fetch")
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_MANIFEST = Path(__file__).resolve().parent / "datasets.yaml"
@@ -40,8 +40,8 @@ def load_manifest(path: Path) -> dict:
     return data
 
 
-def _canonical_for(source: dict, aura_class: str) -> dict[str, str]:
-    """Kaynak class_map'ini çöz: verilmişse onu, yoksa aura.taxonomy ile türet.
+def _canonical_for(source: dict, roadguard_class: str) -> dict[str, str]:
+    """Kaynak class_map'ini çöz: verilmişse onu, yoksa roadguard.taxonomy ile türet.
 
     Dönen sözlük {kaynak_sınıf_adı: kanonik_ad}. class_map boşsa hedef sınıfın
     kendi adı taksonomiden geçirilir (örn. cigarette -> smoking).
@@ -50,16 +50,16 @@ def _canonical_for(source: dict, aura_class: str) -> dict[str, str]:
     if cmap:
         return {str(k): str(v) for k, v in cmap.items()}
     # class_map yok → hedef sınıf adından taksonomi ile türet (bilgilendirici).
-    return {aura_class: canonical(aura_class)}
+    return {roadguard_class: canonical(roadguard_class)}
 
 
-def _taxonomy_warnings(class_map: dict[str, str], aura_class: str) -> list[str]:
-    """class_map'i aura.taxonomy ile çapraz-kontrol et; tutarsızlıkları topla.
+def _taxonomy_warnings(class_map: dict[str, str], roadguard_class: str) -> list[str]:
+    """class_map'i roadguard.taxonomy ile çapraz-kontrol et; tutarsızlıkları topla.
 
     Kaynak sınıf adının taksonomideki kanonik karşılığı, manifestteki hedefle
     çelişiyorsa uyarı üretir (ONUR: sessiz düzeltme yok, planda görünür kılınır).
 
-    İstisna: hedefin aura_class'ı taksonomi kanoniğine zaten eşitse (ör. seatbelt
+    İstisna: hedefin roadguard_class'ı taksonomi kanoniğine zaten eşitse (ör. seatbelt
     NESNESİ -> no_seatbelt_evidence; ihlal Katman B'de türetilir), kaynak sınıfın
     HAM adını eğitim sınıfı olarak tutmak BİLİNÇLİ bir karardır; uyarı bastırılır.
     """
@@ -68,24 +68,24 @@ def _taxonomy_warnings(class_map: dict[str, str], aura_class: str) -> list[str]:
         canon = canonical(src_name)
         if canon == src_name:
             # Taksonomi src_name'i TANIMIYOR (canonical bilinmeyeni aynen döndürür).
-            # Hedef sınıfa (aura_class) bilinçli eşlenmişse (örn. minibus->minibus,
+            # Hedef sınıfa (roadguard_class) bilinçli eşlenmişse (örn. minibus->minibus,
             # dolmus->minibus) sorun yok. Aksi halde eşleme DOĞRULANAMAZ → uyar
             # (ONUR: bilinmeyen sınıf sessizce 'temiz' sayılmasın; planda görünür).
-            if mapped != aura_class:
+            if mapped != roadguard_class:
                 warns.append(
-                    f"kaynak sınıf '{src_name}' aura/taxonomy.py'de TANIMSIZ ve '{mapped}' "
-                    f"hedef sınıf '{aura_class}' değil → eşleme doğrulanamadı "
+                    f"kaynak sınıf '{src_name}' roadguard/taxonomy.py'de TANIMSIZ ve '{mapped}' "
+                    f"hedef sınıf '{roadguard_class}' değil → eşleme doğrulanamadı "
                     f"(CLASS_ALIASES'a ekleyin ya da class_map'i düzeltin)"
                 )
             continue
         if canon == mapped:
             continue  # taksonomi src_name'i hedefle uyumlu çözüyor → sorun yok
         # Hedef sınıf, src_name'in kanoniğini zaten ÜSTLENMİŞ → ham adı tutmak bilinçli.
-        if aura_class == canon:
+        if roadguard_class == canon:
             continue
         warns.append(
             f"taksonomi '{src_name}' -> '{canon}' diyor ama manifest '{mapped}' "
-            f"(aura/taxonomy.py ile teyit edin)"
+            f"(roadguard/taxonomy.py ile teyit edin)"
         )
     return warns
 
@@ -104,21 +104,21 @@ def build_plan(manifest: dict, only_class: str | None = None) -> list[dict]:
     for tgt_name, tgt in targets.items():
         if only_class is not None and tgt_name != only_class:
             continue
-        aura_class = str((tgt or {}).get("aura_class", tgt_name))
+        roadguard_class = str((tgt or {}).get("roadguard_class", tgt_name))
         sources = (tgt or {}).get("sources") or []
         for src in sources:
-            class_map = _canonical_for(src, aura_class)
+            class_map = _canonical_for(src, roadguard_class)
             plan.append(
                 {
                     "target": tgt_name,
-                    "aura_class": aura_class,
+                    "roadguard_class": roadguard_class,
                     "kind": src.get("kind", "?"),
                     "name": src.get("name", "?"),
                     "license": src.get("license", "?"),
                     "images": src.get("images"),
                     "source": src,
                     "class_map": class_map,
-                    "warnings": _taxonomy_warnings(class_map, aura_class),
+                    "warnings": _taxonomy_warnings(class_map, roadguard_class),
                 }
             )
     return plan
@@ -146,7 +146,7 @@ def print_plan(plan: list[dict], base: Path) -> None:
     for step in plan:
         by_target.setdefault(step["target"], []).append(step)
     for tgt, steps in by_target.items():
-        print(f"\n  hedef sınıf: {tgt}  (RoadGuard: {steps[0]['aura_class']})")
+        print(f"\n  hedef sınıf: {tgt}  (RoadGuard: {steps[0]['roadguard_class']})")
         for step in steps:
             out = _output_dir(step, base)
             n = step["images"]

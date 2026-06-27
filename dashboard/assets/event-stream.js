@@ -1,4 +1,4 @@
-// WS tüketici — /stream/events (AuraEvent) ve /stream/annotations (AnnotationFrame).
+// WS tüketici — /stream/events (RoadGuardEvent) ve /stream/annotations (AnnotationFrame).
 // Kopmada otomatik yeniden bağlanır.
 
 export class EventStream {

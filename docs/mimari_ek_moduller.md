@@ -4,7 +4,7 @@
 
 <div align="center">
 
-![Konum](https://img.shields.io/badge/konum-aura%2Foptional%2F-blue?style=flat-square)
+![Konum](https://img.shields.io/badge/konum-roadguard%2Foptional%2F-blue?style=flat-square)
 ![Default](https://img.shields.io/badge/default-kapal%C4%B1-lightgrey?style=flat-square)
 ![Yükleme](https://img.shields.io/badge/y%C3%BCkleme-lazy-orange?style=flat-square)
 ![Toggle](https://img.shields.io/badge/toggle-config.optional__modules.*-green?style=flat-square)
@@ -12,9 +12,9 @@
 </div>
 
 > [!NOTE]
-> Bu modüller `aura/optional/` altındadır, **default kapalıdır** ve
+> Bu modüller `roadguard/optional/` altındadır, **default kapalıdır** ve
 > `config.optional_modules.*` ile toggle edilir. **Kapalıyken import bile edilmez**
-> (lazy loading — `aura/optional/loader.py:get_optional`). Ana mimari (`docs/mimari.md`)
+> (lazy loading — `roadguard/optional/loader.py:get_optional`). Ana mimari (`docs/mimari.md`)
 > yalnızca buraya referans verir; sistemin çekirdek davranışı bu modüllerden bağımsızdır.
 
 ---
@@ -22,7 +22,7 @@
 ## 🔒 Lazy loading sözleşmesi
 
 ```python
-from aura.optional.loader import get_optional
+from roadguard.optional.loader import get_optional
 mod = get_optional(cfg, "super_resolution")   # flag false → None, import YOK
 if mod is not None:
     roi = mod.enhance(roi)
@@ -55,7 +55,7 @@ gönderilmez; yalnızca küçük ROI görüntüsü + ID'ye bağlı yapısal meti
 |------|-------|
 | **Toggle** | `optional_modules.zero_waste_payload: true` |
 | **Etki** | Pipeline her track için `build_payload(track, plate_roi)` çağırır; sonuç annotation'a `zwp` alanı olarak eklenir (yapısal metin + base64 plaka JPEG). |
-| **Entegrasyon** | `aura/pipeline/pipeline.py` (annotation üretiminde). |
+| **Entegrasyon** | `roadguard/pipeline/pipeline.py` (annotation üretiminde). |
 
 ---
 
@@ -68,7 +68,7 @@ OCR'a girmeden önce yapay zeka tabanlı upscaling ile netleştirilir.
 |------|-------|
 | **Toggle** | `optional_modules.super_resolution: true` |
 | **Etki** | `PlateReader` sweet-spot içindeki plaka ROI'sini OCR öncesi `enhance()` ile büyütür → küçük plakalar `min_pixel_height` eşiğini geçer, kalite tetiği azalır. |
-| **Entegrasyon** | `aura/plate/reader.py`. |
+| **Entegrasyon** | `roadguard/plate/reader.py`. |
 
 > [!IMPORTANT]
 > Gerçek ESRGAN ağırlığı yapılandırılmadığında yüksek kaliteli bicubic upscale'e
@@ -87,7 +87,7 @@ OCR'a girmeden önce yapay zeka tabanlı upscaling ile netleştirilir.
 | **Kalibrasyon** | `speed.calibration_file` (örn. `config/calibration/ornek_kamera.yaml`) içindeki `ipm.src_points` (normalize ekran köşeleri) → `ipm.dst_points_m` (metre). |
 | **Etki** | `SpeedEstimator` ipm modunda her track'in alt-orta noktasını dünya koordinatına çevirir; ardışık karelerdeki yer değiştirmeden hız (km/h) üretir. |
 | **Düşüş** | Kalibrasyon yoksa `ipm_speed` `None` döner → `disabled` davranışı (`relative_velocity_flag`). Sistem kendi sınırını tanır. |
-| **Entegrasyon** | `aura/speed/estimator.py:_ipm`. |
+| **Entegrasyon** | `roadguard/speed/estimator.py:_ipm`. |
 
 ```mermaid
 flowchart LR

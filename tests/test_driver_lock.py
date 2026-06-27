@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from aura.detection.detector import Person
-from aura.identity.driver_lock import DriverLock
-from aura.schema import BBox
+from roadguard.detection.detector import Person
+from roadguard.identity.driver_lock import DriverLock
+from roadguard.schema import BBox
 
 
 def _vehicle() -> BBox:

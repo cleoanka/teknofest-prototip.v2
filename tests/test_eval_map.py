@@ -1,4 +1,4 @@
-"""İstatistiksel mAP harness (aura/eval/map_eval.py) birim testleri.
+"""İstatistiksel mAP harness (roadguard/eval/map_eval.py) birim testleri.
 
 ultralytics gerçek modeli yerine sahte bir ``YOLO`` enjekte ederek
 ``run_map``'in box.map/map50/mp/mr okuyup md+json ürettiğini doğrular;
@@ -13,8 +13,8 @@ import types
 
 import pytest
 
-from aura.eval.map_eval import run_map
-from aura.eval.report import render_markdown
+from roadguard.eval.map_eval import run_map
+from roadguard.eval.report import render_markdown
 
 
 class _FakeBox:
@@ -148,7 +148,7 @@ def test_render_markdown_includes_map_when_present():
 # --------------------------------------------------------------------------- #
 # _class_table / _find_pr_curve dal kapsamı (sürüm-kırılgan yardımcılar)
 # --------------------------------------------------------------------------- #
-from aura.eval.map_eval import _class_table, _find_pr_curve, _safe_float  # noqa: E402
+from roadguard.eval.map_eval import _class_table, _find_pr_curve, _safe_float  # noqa: E402
 
 
 def test_safe_float_invalid_returns_none():

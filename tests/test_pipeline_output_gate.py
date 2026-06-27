@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from aura.detection.detector import Detection, Person
-from aura.schema import BBox
+from roadguard.detection.detector import Detection, Person
+from roadguard.schema import BBox
 
 
 class _ScriptedDetector:
@@ -58,7 +58,7 @@ def _person_in_vehicle(track_id):
 
 
 def _build_pipeline(cfg):
-    from aura.pipeline import Pipeline
+    from roadguard.pipeline import Pipeline
 
     p = Pipeline(cfg)
     return p

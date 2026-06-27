@@ -26,11 +26,11 @@ RoadGuard'ın çalışma zamanı davranışı `config/profiles/*.yaml` ile seçi
 üzerine **derin-merge**). Sunucu için **`server`** profili:
 
 ```bash
-AURA_PROFILE=server ./run.sh                      # servisler (env ile profil)
-python -m aura --profile server --source rtsp://kamera   # CLI ile profil
+ROADGUARD_PROFILE=server ./run.sh                      # servisler (env ile profil)
+python -m roadguard --profile server --source rtsp://kamera   # CLI ile profil
 ```
 ```powershell
-$env:AURA_PROFILE = "server"; .\run.ps1           # Windows eşdeğeri (env ile profil)
+$env:ROADGUARD_PROFILE = "server"; .\run.ps1           # Windows eşdeğeri (env ile profil)
 ```
 
 | Profil | Dedektör | Cihaz | imgsz | Hedef |
@@ -67,17 +67,17 @@ python tools/doctor.py             # "Cihaz (auto → cuda:0)  CUDA: <GPU>" gör
 ## 🛰️ 3. Servisleri çalıştırma
 
 ```bash
-AURA_PROFILE=server ./run.sh
+ROADGUARD_PROFILE=server ./run.sh
 #   inference  → :8080  (dashboard + OpenAPI /docs + WS /stream/events)
 #   QoD mock   → :8081
 #   NV mock    → :8082
 ```
 
-Portlar env ile değişir: `AURA_INFERENCE_PORT`, `AURA_QOD_MOCK_PORT`, `AURA_NV_MOCK_PORT`.
+Portlar env ile değişir: `ROADGUARD_INFERENCE_PORT`, `ROADGUARD_QOD_MOCK_PORT`, `ROADGUARD_NV_MOCK_PORT`.
 
 ```mermaid
 flowchart TD
-    RUN["AURA_PROFILE=server ./run.sh"] --> INF["inference :8080<br/>dashboard + /docs + WS /stream/events"]
+    RUN["ROADGUARD_PROFILE=server ./run.sh"] --> INF["inference :8080<br/>dashboard + /docs + WS /stream/events"]
     RUN --> QOD["QoD mock :8081"]
     RUN --> NV["NV mock :8082"]
 ```
@@ -89,9 +89,9 @@ flowchart TD
 Description=RoadGuard Inference API
 After=network.target
 [Service]
-WorkingDirectory=/opt/aura
-Environment=AURA_PROFILE=server
-ExecStart=/opt/aura/.venv/bin/python -m uvicorn services.inference_api.main:app --host 0.0.0.0 --port 8080
+WorkingDirectory=/opt/roadguard
+Environment=ROADGUARD_PROFILE=server
+ExecStart=/opt/roadguard/.venv/bin/python -m uvicorn services.inference_api.main:app --host 0.0.0.0 --port 8080
 Restart=always
 [Install]
 WantedBy=multi-user.target
@@ -102,7 +102,7 @@ WantedBy=multi-user.target
 Linux dışı sunucuda aynı servisler `run.ps1` ile kalkar (profil + GPU dahil):
 
 ```powershell
-$env:AURA_PROFILE = "server"; .\run.ps1
+$env:ROADGUARD_PROFILE = "server"; .\run.ps1
 #   inference :8080 / QoD :8081 / NV :8082  (CUDA otomatik seçilir)
 ```
 
@@ -118,16 +118,16 @@ systemd yerine Windows'ta planlı görev kullanın — yükseltilmiş bir PowerS
 
 ```powershell
 $action  = New-ScheduledTaskAction  -Execute "powershell.exe" `
-  -Argument "-NoProfile -ExecutionPolicy Bypass -File C:\opt\aura\run.ps1" `
-  -WorkingDirectory "C:\opt\aura"
+  -Argument "-NoProfile -ExecutionPolicy Bypass -File C:\opt\roadguard\run.ps1" `
+  -WorkingDirectory "C:\opt\roadguard"
 $trigger = New-ScheduledTaskTrigger -AtStartup
-$env_v   = @{ AURA_PROFILE = "server" }   # profil için run.ps1 .env'i de okur
+$env_v   = @{ ROADGUARD_PROFILE = "server" }   # profil için run.ps1 .env'i de okur
 Register-ScheduledTask -TaskName "RoadGuard Inference" -Action $action -Trigger $trigger `
   -RunLevel Highest -Description "RoadGuard servisleri (inference/qod/nv)"
 ```
 
 > [!TIP]
-> Profili kalıcı kılmak için `.env` içine `AURA_PROFILE=server` yazmak en güvenlisidir;
+> Profili kalıcı kılmak için `.env` içine `ROADGUARD_PROFILE=server` yazmak en güvenlisidir;
 > `run.ps1` `.env`'i otomatik yükler. Servis olarak kalıcı barındırma için NSSM veya
 > Windows Service sarmalayıcısı da kullanılabilir.
 
@@ -143,21 +143,21 @@ edilince koruma devreye girer.
 
 | Ortam değişkeni | Varsayılan | Etki |
 |---|---|---|
-| `AURA_API_TOKEN` | (yok) | Set ise **mutasyon** uçları (`/stream/start\|stop`, `/config`, `/eval/run`) `X-AURA-Token` başlığı ister; yanlış/eksik → 401. |
-| `AURA_API_PROTECT_READS` | (yok) | `AURA_API_TOKEN` **ile birlikte** set ise **PII okuma** uçlarını da korur: `/tracks*`, `/info` (`X-AURA-Token` başlığı) ve `/stream/video` MJPEG (`?token=` query-param — `<img>` başlık gönderemez). Set değilse okuma uçları açık kalır (co-located dashboard sözleşmesi). |
-| `AURA_ALLOW_NET_SOURCE` | (yok) | Set değilse `http://`/`file://`/serbest şema kaynaklar reddedilir (SSRF guard); yalnız kamera index / `rtsp://` / kök-altı dosya. |
-| `AURA_CORS_ORIGINS` | `localhost:8080` | CORS allowlist (virgülle ayrık genişletme; asla wildcard değil). |
+| `ROADGUARD_API_TOKEN` | (yok) | Set ise **mutasyon** uçları (`/stream/start\|stop`, `/config`, `/eval/run`) `X-RoadGuard-Token` başlığı ister; yanlış/eksik → 401. |
+| `ROADGUARD_API_PROTECT_READS` | (yok) | `ROADGUARD_API_TOKEN` **ile birlikte** set ise **PII okuma** uçlarını da korur: `/tracks*`, `/info` (`X-RoadGuard-Token` başlığı) ve `/stream/video` MJPEG (`?token=` query-param — `<img>` başlık gönderemez). Set değilse okuma uçları açık kalır (co-located dashboard sözleşmesi). |
+| `ROADGUARD_ALLOW_NET_SOURCE` | (yok) | Set değilse `http://`/`file://`/serbest şema kaynaklar reddedilir (SSRF guard); yalnız kamera index / `rtsp://` / kök-altı dosya. |
+| `ROADGUARD_CORS_ORIGINS` | `localhost:8080` | CORS allowlist (virgülle ayrık genişletme; asla wildcard değil). |
 
 ```ini
 # systemd üretim örneği — token + PII okuma koruması açık
-Environment=AURA_API_TOKEN=degistir-bunu-uzun-rastgele
-Environment=AURA_API_PROTECT_READS=1
-Environment=AURA_CORS_ORIGINS=https://panel.kurum.gov.tr
+Environment=ROADGUARD_API_TOKEN=degistir-bunu-uzun-rastgele
+Environment=ROADGUARD_API_PROTECT_READS=1
+Environment=ROADGUARD_CORS_ORIGINS=https://panel.kurum.gov.tr
 ```
 
 > [!IMPORTANT]
-> `AURA_API_PROTECT_READS` açıkken tarayıcı dashboard'u canlı plaka/görüntüyü görebilmek için
-> token'ı taşımalıdır (fetch çağrılarında `X-AURA-Token`, MJPEG `<img>`'de `?token=`). Bu opt-in
+> `ROADGUARD_API_PROTECT_READS` açıkken tarayıcı dashboard'u canlı plaka/görüntüyü görebilmek için
+> token'ı taşımalıdır (fetch çağrılarında `X-RoadGuard-Token`, MJPEG `<img>`'de `?token=`). Bu opt-in
 > kapalıyken (varsayılan) dashboard değişiklik gerektirmez. Mutlak PII güvencesi için ayrıca
 > ters-proxy / ağ ACL / VPN katmanı önerilir.
 

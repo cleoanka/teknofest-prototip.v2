@@ -17,8 +17,8 @@
 
 > [!IMPORTANT]
 > **v2.3 yenileri:** çalıştırılabilirler `--profile {server,laptop,v4-finetune}` kabul eder
-> (config profili; `AURA_PROFILE` env ile de). Yeni komutlar: `python tools/doctor.py`
-> (ortam sağlık kontrolü), `python -m aura.eval --metrics-report` (FTR §4 P/R/F1 + dedektör A/B),
+> (config profili; `ROADGUARD_PROFILE` env ile de). Yeni komutlar: `python tools/doctor.py`
+> (ortam sağlık kontrolü), `python -m roadguard.eval --metrics-report` (FTR §4 P/R/F1 + dedektör A/B),
 > `python -m train dataset --report` (veri-dengeleme). `--help` çıktısı her zaman günceldir.
 
 ---
@@ -29,12 +29,12 @@
 | --- | --- |
 | [bootstrap.py](#bootstrappy) | kurulum |
 | `python tools/doctor.py` | ortam/sağlık kontrolü (v2.3) |
-| [python -m aura](#python--m-aura) | inference pipeline (`--profile`) |
+| [python -m roadguard](#python--m-roadguard) | inference pipeline (`--profile`) |
 | [python tools/test_video.py](#python-toolstest_videopy) | gerçek video testi (annotated mp4 + JSON kanıt) |
-| [python -m aura.eval](#python--m-auraeval) | değerlendirme + QoD A/B + `--metrics-report` |
+| [python -m roadguard.eval](#python--m-roadguardeval) | değerlendirme + QoD A/B + `--metrics-report` |
 | [python -m train](#python--m-train) | eğitim (alt komutlar; doğrulama+metrik export) |
-| [python -m aura.synthetic](#python--m-aurasynthetic) | örnek veri |
-| [python -m aura.smoke](#python--m-aurasmoke) | smoke test |
+| [python -m roadguard.synthetic](#python--m-roadguardsynthetic) | örnek veri |
+| [python -m roadguard.smoke](#python--m-roadguardsmoke) | smoke test |
 | [python -m train.roboflow_pull](#python--m-trainroboflow_pull) | Roboflow |
 
 ### 🧭 Tipik akış
@@ -42,11 +42,11 @@
 ```mermaid
 flowchart LR
     A["bootstrap.py<br/>kurulum"] --> B["tools/doctor.py<br/>ortam/sağlık"]
-    B --> C["python -m aura<br/>inference pipeline"]
+    B --> C["python -m roadguard<br/>inference pipeline"]
     C --> D["tools/test_video.py<br/>annotated mp4 + JSON"]
-    D --> E["python -m aura.eval<br/>metrikler + QoD A/B"]
+    D --> E["python -m roadguard.eval<br/>metrikler + QoD A/B"]
     F["python -m train<br/>detector / driver-state / dataset"] -.-> C
-    G["aura.synthetic<br/>örnek veri"] -.-> D
+    G["roadguard.synthetic<br/>örnek veri"] -.-> D
     H["train.roboflow_pull<br/>veri seti"] -.-> F
 ```
 
@@ -77,10 +77,10 @@ options:
 
 ---
 
-## 🧠 python -m aura
+## 🧠 python -m roadguard
 
 ```
-usage: python -m aura [-h] [--config PATH] [--source SOURCE]
+usage: python -m roadguard [-h] [--config PATH] [--source SOURCE]
                       [--device {auto,cpu,cuda,mps}] [--no-bbox]
                       [--max-frames MAX_FRAMES] [--save-events PATH]
                       [--log-level {DEBUG,INFO,WARNING}]
@@ -103,9 +103,9 @@ options:
                         Log seviyesi (varsayılan: INFO)
 
 örnekler:
-  python -m aura --source 0
-  python -m aura --source video.mp4 --device mps
-  python -m aura --source rtsp://10.0.0.5:8554/cam --log-level DEBUG
+  python -m roadguard --source 0
+  python -m roadguard --source video.mp4 --device mps
+  python -m roadguard --source rtsp://10.0.0.5:8554/cam --log-level DEBUG
 ```
 
 ---
@@ -151,10 +151,10 @@ options:
 
 ---
 
-## 📊 python -m aura.eval
+## 📊 python -m roadguard.eval
 
 ```
-usage: python -m aura.eval [-h] [--source SOURCE]
+usage: python -m roadguard.eval [-h] [--source SOURCE]
                            [--ground-truth GROUND_TRUTH] [--qod-comparison]
                            [--output OUTPUT] [--config CONFIG]
 
@@ -171,8 +171,8 @@ options:
   --config CONFIG       Config dosyası
 
 örnekler:
-  python -m aura.eval --source data/samples/ornek.mp4 --ground-truth data/samples/ornek_gt.json
-  python -m aura.eval --source test.mp4 --ground-truth gt.json --qod-comparison
+  python -m roadguard.eval --source data/samples/ornek.mp4 --ground-truth data/samples/ornek_gt.json
+  python -m roadguard.eval --source test.mp4 --ground-truth gt.json --qod-comparison
 ```
 
 ---
@@ -277,10 +277,10 @@ options:
 
 ---
 
-## 🧪 python -m aura.synthetic
+## 🧪 python -m roadguard.synthetic
 
 ```
-usage: python -m aura.synthetic [-h] [--out OUT] [--frames FRAMES] [--fps FPS]
+usage: python -m roadguard.synthetic [-h] [--out OUT] [--frames FRAMES] [--fps FPS]
                                 [--width WIDTH] [--height HEIGHT]
 
 Sentetik trafik test videosu + ground-truth üret (deterministik).
@@ -294,15 +294,15 @@ options:
   --height HEIGHT  Yükseklik
 
 örnek:
-  python -m aura.synthetic --out data/samples --frames 90
+  python -m roadguard.synthetic --out data/samples --frames 90
 ```
 
 ---
 
-## 💨 python -m aura.smoke
+## 💨 python -m roadguard.smoke
 
 ```
-usage: python -m aura.smoke [-h] [--frames FRAMES]
+usage: python -m roadguard.smoke [-h] [--frames FRAMES]
 
 RoadGuard adaptif smoke test (kurulum + pipeline doğrulama).
 

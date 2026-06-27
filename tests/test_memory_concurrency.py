@@ -16,12 +16,12 @@ import threading
 
 import numpy as np
 
-from aura.accumulator import Accumulator
-from aura.events.emitter import EventEmitter
-from aura.plate.reader import PlateReader
-from aura.schema import AnnotationFrame, BBox, make_event
-from aura.stability.class_vote import TrackClassVoter
-from aura.stability.state_machine import StabilityTracker
+from roadguard.accumulator import Accumulator
+from roadguard.events.emitter import EventEmitter
+from roadguard.plate.reader import PlateReader
+from roadguard.schema import AnnotationFrame, BBox, make_event
+from roadguard.stability.class_vote import TrackClassVoter
+from roadguard.stability.state_machine import StabilityTracker
 
 
 class _FakeOCR:

@@ -11,8 +11,8 @@ from __future__ import annotations
 
 import os
 
-os.environ.setdefault("AURA_AUTOSTART", "0")
-os.environ.setdefault("AURA_CAMERA_PROBE", "0")
+os.environ.setdefault("ROADGUARD_AUTOSTART", "0")
+os.environ.setdefault("ROADGUARD_CAMERA_PROBE", "0")
 os.environ.setdefault("AI_MODE", "mock")
 
 import pytest  # noqa: E402
@@ -32,20 +32,20 @@ def client():
 
 @pytest.fixture
 def with_token(monkeypatch):
-    monkeypatch.setenv("AURA_API_TOKEN", _TOKEN)
+    monkeypatch.setenv("ROADGUARD_API_TOKEN", _TOKEN)
 
 
 @pytest.fixture
 def with_protect_reads(monkeypatch):
-    """OPT-IN PII okuma korumasi: token + AURA_API_PROTECT_READS birlikte set."""
-    monkeypatch.setenv("AURA_API_TOKEN", _TOKEN)
-    monkeypatch.setenv("AURA_API_PROTECT_READS", "1")
+    """OPT-IN PII okuma korumasi: token + ROADGUARD_API_PROTECT_READS birlikte set."""
+    monkeypatch.setenv("ROADGUARD_API_TOKEN", _TOKEN)
+    monkeypatch.setenv("ROADGUARD_API_PROTECT_READS", "1")
 
 
 # --- SEC-001: token auth (ENV-GATED) ------------------------------------- #
 def test_mutation_open_when_token_unset(client, monkeypatch):
     """Token UNSET → mutasyon uclari acik (yerel demo bozulmaz)."""
-    monkeypatch.delenv("AURA_API_TOKEN", raising=False)
+    monkeypatch.delenv("ROADGUARD_API_TOKEN", raising=False)
     r = client.patch("/config", json={"conf_threshold": 0.5})
     assert r.status_code == 200
     assert client.post("/stream/stop").status_code == 200
@@ -61,12 +61,12 @@ def test_mutation_401_when_token_set_and_missing(client, with_token):
 
 
 def test_mutation_401_when_token_wrong(client, with_token):
-    r = client.patch("/config", json={"conf_threshold": 0.4}, headers={"X-AURA-Token": "nope"})
+    r = client.patch("/config", json={"conf_threshold": 0.4}, headers={"X-RoadGuard-Token": "nope"})
     assert r.status_code == 401
 
 
 def test_mutation_200_when_token_correct(client, with_token):
-    h = {"X-AURA-Token": _TOKEN}
+    h = {"X-RoadGuard-Token": _TOKEN}
     assert client.patch("/config", json={"conf_threshold": 0.4}, headers=h).status_code == 200
     assert client.post("/stream/stop", headers=h).status_code == 200
     assert client.patch("/stream/config", json={"bbox_overlay": True}, headers=h).status_code == 200
@@ -86,7 +86,7 @@ def test_pii_reads_open_by_default_even_with_token(client, with_token):
 
 
 def test_protect_reads_optin_blocks_pii(client, with_protect_reads):
-    """OPT-IN (AURA_API_PROTECT_READS=1): token'siz PII okuma -> 401; header VEYA
+    """OPT-IN (ROADGUARD_API_PROTECT_READS=1): token'siz PII okuma -> 401; header VEYA
     ?token= query-param (MJPEG <img> baslik gonderemez) ile -> gecer."""
     # token YOK -> 401 (PII sizdirilmaz)
     assert client.get("/tracks").status_code == 401
@@ -94,7 +94,7 @@ def test_protect_reads_optin_blocks_pii(client, with_protect_reads):
     assert client.get("/info").status_code == 401
     assert client.get("/stream/video").status_code == 401
     # header token -> gecer
-    h = {"X-AURA-Token": _TOKEN}
+    h = {"X-RoadGuard-Token": _TOKEN}
     assert client.get("/tracks", headers=h).status_code == 200
     assert client.get("/info", headers=h).status_code == 200
     # MJPEG: query-param token -> gecer (200), yanlis -> 401
@@ -111,14 +111,14 @@ def test_cors_not_wildcard():
 
 
 def test_cors_env_extend(monkeypatch):
-    monkeypatch.setenv("AURA_CORS_ORIGINS", "https://demo.example.com")
+    monkeypatch.setenv("ROADGUARD_CORS_ORIGINS", "https://demo.example.com")
     assert "https://demo.example.com" in cors_origins()
 
 
 # --- SEC-002: SSRF source guard ------------------------------------------ #
 def test_ssrf_http_source_rejected(client, monkeypatch):
-    monkeypatch.delenv("AURA_API_TOKEN", raising=False)
-    monkeypatch.delenv("AURA_ALLOW_NET_SOURCE", raising=False)
+    monkeypatch.delenv("ROADGUARD_API_TOKEN", raising=False)
+    monkeypatch.delenv("ROADGUARD_ALLOW_NET_SOURCE", raising=False)
     r = client.post("/stream/start", json={"source": "http://169.254.169.254/latest/meta-data"})
     assert r.status_code == 400
     r2 = client.post("/eval/run", json={"source": "http://169.254.169.254/"})
@@ -126,13 +126,13 @@ def test_ssrf_http_source_rejected(client, monkeypatch):
 
 
 def test_ssrf_file_scheme_rejected(client, monkeypatch):
-    monkeypatch.delenv("AURA_API_TOKEN", raising=False)
+    monkeypatch.delenv("ROADGUARD_API_TOKEN", raising=False)
     r = client.post("/stream/start", json={"source": "file:///etc/passwd"})
     assert r.status_code == 400
 
 
 def test_source_traversal_rejected(client, monkeypatch):
-    monkeypatch.delenv("AURA_API_TOKEN", raising=False)
+    monkeypatch.delenv("ROADGUARD_API_TOKEN", raising=False)
     r = client.post("/stream/start", json={"source": "../../../../etc/passwd"})
     assert r.status_code == 400
 
@@ -147,26 +147,26 @@ def test_rtsp_allowed():
 
 
 def test_net_source_opt_in(monkeypatch):
-    monkeypatch.setenv("AURA_ALLOW_NET_SOURCE", "1")
+    monkeypatch.setenv("ROADGUARD_ALLOW_NET_SOURCE", "1")
     assert validate_source("http://example.com/x.mp4") == "http://example.com/x.mp4"
 
 
 # --- SEC-003: ground_truth path-traversal guard -------------------------- #
 def test_gt_traversal_rejected(client, monkeypatch):
-    monkeypatch.delenv("AURA_API_TOKEN", raising=False)
+    monkeypatch.delenv("ROADGUARD_API_TOKEN", raising=False)
     r = client.post("/eval/run", json={"ground_truth": "../../../../etc/passwd"})
     assert r.status_code == 400
 
 
 def test_gt_absolute_outside_rejected(client, monkeypatch):
-    monkeypatch.delenv("AURA_API_TOKEN", raising=False)
+    monkeypatch.delenv("ROADGUARD_API_TOKEN", raising=False)
     r = client.post("/eval/run", json={"ground_truth": "/etc/passwd"})
     assert r.status_code == 400
 
 
 def test_gt_inside_data_dir_accepted(client, monkeypatch):
     """data/ altindaki GT kabul edilir (queued)."""
-    monkeypatch.delenv("AURA_API_TOKEN", raising=False)
+    monkeypatch.delenv("ROADGUARD_API_TOKEN", raising=False)
     r = client.post("/eval/run", json={"ground_truth": "data/samples/ornek_gt.json"})
     assert r.status_code == 200
     assert r.json()["status"] == "queued"

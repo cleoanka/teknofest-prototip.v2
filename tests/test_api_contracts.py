@@ -6,8 +6,8 @@ import os
 import time
 from pathlib import Path
 
-os.environ.setdefault("AURA_AUTOSTART", "0")  # lifespan otomatik stream başlatmasın
-os.environ.setdefault("AURA_CAMERA_PROBE", "0")  # donanım kamerası taranmasın
+os.environ.setdefault("ROADGUARD_AUTOSTART", "0")  # lifespan otomatik stream başlatmasın
+os.environ.setdefault("ROADGUARD_CAMERA_PROBE", "0")  # donanım kamerası taranmasın
 os.environ.setdefault(
     "AI_MODE", "mock"
 )  # sentetik örnekte deterministik mock tespit (ağırlık olsa da)
@@ -24,7 +24,7 @@ SAMPLE = Path("data/samples/ornek.mp4")
 
 def _ensure_sample():
     if not SAMPLE.exists():
-        from aura.synthetic import generate
+        from roadguard.synthetic import generate
 
         generate(SAMPLE.parent, 90, 30, 640, 360)
 

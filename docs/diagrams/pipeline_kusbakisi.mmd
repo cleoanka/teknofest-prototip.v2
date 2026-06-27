@@ -1,5 +1,5 @@
 %% RoadGuard — Pipeline Kuşbakışı (ham video → çıktı)
-%% Kaynak: aura/pipeline/pipeline.py::Pipeline.process_frame + docs/mimari.md §1-8
+%% Kaynak: roadguard/pipeline/pipeline.py::Pipeline.process_frame + docs/mimari.md §1-8
 %% Gerçek akış: preprocessing → detection+track → ROI ⊗ stability → (driver ∥ plate)
 %%              → speed → ID-merkezli accumulator → event/annotation stream
 flowchart TD
@@ -29,7 +29,7 @@ flowchart TD
 
     SPEED["Hız (SpeedEstimator)<br/>metric oto-kalibrasyon (Kalman+EMA)<br/>+ swerving (ZigZag yanal yörünge)"]
     ACC["6. ID-merkezli Accumulator<br/>risk kuralları (speed.over_limit / swerving / driver)"]
-    EMIT["Event / Annotation stream (EventEmitter)<br/>AuraEvent (durum değişimi) ∥ AnnotationFrame (kare)"]
+    EMIT["Event / Annotation stream (EventEmitter)<br/>RoadGuardEvent (durum değişimi) ∥ AnnotationFrame (kare)"]
 
     DASH["Dashboard (canvas)"]
     MOB["Mobil (Expo)"]

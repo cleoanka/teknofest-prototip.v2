@@ -12,16 +12,16 @@ from types import SimpleNamespace
 
 import pytest
 
-from aura.config import load_config
-from aura.schema import BBox
-from aura.speed.calibration import (
+from roadguard.config import load_config
+from roadguard.schema import BBox
+from roadguard.speed.calibration import (
     KalmanSpeed1D,
     MetricSpeedEstimator,
     ScaleField,
     SpeedTrack,
     plate_ppm,
 )
-from aura.speed.estimator import SpeedEstimator
+from roadguard.speed.estimator import SpeedEstimator
 
 FRAME = (720, 1280, 3)
 
@@ -181,7 +181,7 @@ def test_ipm_enabled_exception_swallowed_when_import_fails(cfg, monkeypatch):
     cfg.data["speed"]["mode"] = "ipm"
     cfg.data.setdefault("optional_modules", {})["homography_ipm"] = True
     est = SpeedEstimator(cfg)
-    import aura.optional.homography_ipm as mod
+    import roadguard.optional.homography_ipm as mod
 
     def _boom(*a, **k):
         raise RuntimeError("ipm patladi")

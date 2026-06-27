@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from aura.config import load_config  # noqa: E402
+from roadguard.config import load_config  # noqa: E402
 
 
 @pytest.fixture
