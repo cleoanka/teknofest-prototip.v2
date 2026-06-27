@@ -32,7 +32,7 @@
 \captionsetup[figure]{name=Şekil}
 \captionsetup[table]{name=Tablo}
 \setlength{\parindent}{0pt}
-\setlength{\parskip}{1pt}
+\setlength{\parskip}{0.5pt}
 \setlength{\emergencystretch}{3em}
 \newcommand{\tcode}[1]{\texttt{\small #1}}
 
@@ -52,8 +52,8 @@
 
 \begin{tabular}{rl}
 \textbf{Takım Adı:} & {\large\bfseries\color{aura}Nankatsu} \\[12pt]
-\textbf{Takım ID:} & \underline{\hspace{5.2cm}}~{\footnotesize\itshape(sonra eklenecek)} \\[12pt]
-\textbf{Başvuru ID:} & \underline{\hspace{5.2cm}}~{\footnotesize\itshape(sonra eklenecek)} \\[12pt]
+\textbf{Takım ID:} & \underline{\hspace{5.2cm}} \\[12pt]
+\textbf{Başvuru ID:} & \underline{\hspace{5.2cm}} \\[12pt]
 \textbf{Tarih:} & 28.06.2026 \\
 \end{tabular}
 
@@ -87,9 +87,11 @@ setleri üzerinde nicel sınanması. Yapay zekâ çekirdeği (tespit, takip, kar
 risk) \textbf{gerçektir}; telekom katmanları gerçek API sözleşmesini taklit eden \textbf{mock}'lardır
 — final ortamında yalnızca uç nokta ve kimlik bilgisi değişir. Kalite güvencesi olarak ${\sim}780$
 birim/perf testi, statik denetim (\tcode{ruff}+\tcode{black}) ve sürekli entegrasyon (GitHub
-Actions) mevcuttur. Held-out ölçümlerde plaka tespiti mAP50 \textbf{0,983}, davranış tespiti
-makro-F1 \textbf{1,0} (sıfır çapraz yanlış-pozitif), plaka okuma \textbf{3/3 tam-eşleşme} (CER 0,0,
-sıfır yanlış-onay) ve hedef GPU'da \textbf{12--15 FPS} gerçek-zamanlı işleme elde edilmiştir.
+Actions) mevcuttur. Ayrılmış (held-out) tespitte plaka mAP50 \textbf{0,983}; üç gerçek test videosunda
+(sınıf başına N=1) davranış makro-F1 \textbf{1,0} (sıfır çapraz yanlış-pozitif) ve plaka okuma
+\textbf{3/3 tam-eşleşme} (CER, karakter hata oranı 0,0; sıfır yanlış-onay) elde edilmiş; hedef GPU'da
+ölçülen \textbf{12--15 FPS} iş-hacmiyle, kamera akışı kare-örnekleme ile gerçek-zamanlıya yakın
+gecikmede işlenmiştir.
 
 % ========================== 2. VERİ SETİ ==============================
 \section{Veri Seti Oluşturulması}
@@ -118,7 +120,7 @@ sınıflar için oversampling/hedefli toplama \textbf{önerilir}; fiilen uygulan
 Ultralytics augmentasyonunun seyrek sınıf lehine güçlendirilmesidir.
 
 \begin{figure}[ht]\centering
-\includegraphics[width=0.46\textwidth]{fig_veri_dengesi.png}
+\includegraphics[width=0.43\textwidth]{fig_veri_dengesi.png}
 \caption{Toplanan açık-kaynak veri setlerinin görüntü dağılımı (tümü CC BY 4.0).}
 \label{fig:denge}
 \end{figure}
@@ -139,7 +141,7 @@ istatistiksel anlam taşıması için her birine \%10 pay ayrılması; sınıf-d
 komutla yeniden üretir.
 
 \begin{figure}[ht]\centering
-\includegraphics[width=0.48\textwidth]{fig_split.png}
+\includegraphics[width=0.45\textwidth]{fig_split.png}
 \caption{\tcode{license\_plate} setinin \%80/\%10/\%10 train/val/test dağılımı (8.823 görsel).}
 \label{fig:split}
 \end{figure}
@@ -183,7 +185,7 @@ olarak dashboard, mobil ve JSONL kanıt izine yayılır. QoD tetikleri (yaklaşm
 akıştan türetilir. (Gerçek$\leftrightarrow$mock sınırı Bölüm 1'de tanımlanmıştır.)
 
 \begin{figure}[H]\centering
-\includegraphics[width=\textwidth]{fig_mimari.png}
+\includegraphics[width=0.96\textwidth]{fig_mimari.png}
 \caption{AURA kuşbakışı kaskad boru hattı (soldan sağa akış): Aşama-1 tespit/takipten iki ROI ile üç paralel Aşama-2 motoruna (sürücü davranışı $\parallel$ plaka okuma $\parallel$ hız) ve ID-merkezli birikime; QoD tetikleyici (kesikli) kritik anda 5G kalitesini talep eder.}
 \label{fig:mimari}
 \end{figure}
@@ -192,7 +194,7 @@ akıştan türetilir. (Gerçek$\leftrightarrow$mock sınırı Bölüm 1'de tanı
 \textbf{Ön-işleme.} Ön-işleme katmanı far-patlaması, motion-blur, yansıma ve occlusion için
 config'ten aç/kapanabilen filtre kancaları sunar; mevcut sürümde fiilen uygulanan iyileştirme,
 OCR ve sürücü-durumu doğruluğunu artıran \textbf{ROI-düzeyi} işlemedir: plaka/sürücü kırpığına
-CLAHE + gamma parlatma ve küçük kırpık için süper-çözünürlük (gece/los koşul telafisi).
+CLAHE + gamma parlatma ve küçük kırpık için süper-çözünürlük (gece/loş koşul telafisi).
 
 \textbf{Aşama 1 — Tespit ve Takip.} Ana dedektör varsayılan olarak doğruluk-önce stok \tcode{yolo26l}
 (Ultralytics 8.4, en güncel YOLO ailesi); \tcode{ByteTrack} her araca benzersiz kimlik atar. Aynı
@@ -276,16 +278,18 @@ video-düzeyinde verilmiştir).
 Üç gerçek video üzerinde video-düzeyi davranış tespiti iki dedektör profiliyle ölçülmüştür
 (Tablo~\ref{tab:beh}). \textbf{Her iki dedektör de} çapraz yanlış-pozitif üretmez (makro-F1 1,0;
 \tcode{phone}/\tcode{smoking}/\tcode{swerving} için P=R=F1=1,0); araç sınıfı doğruluğu (accuracy)
-\textbf{\%100}'dür. \textit{Dürüst bağlam:} sınıf başına destek N=1 (üç videoda birer pozitif örnek);
-istatistiksel güç held-out mAP setlerinden (Tablo~\ref{tab:map}) gelir, video seti yalnız uçtan-uca
-doğrulamadır. Emniyet kemeri (\tcode{seatbelt}) yalnızca held-out mAP (0,895) ile sınanmıştır; üç
+\textbf{\%100}'dür. \textit{Dürüst bağlam:} sınıf başına destek N=1;
+held-out istatistiksel güç yalnız \tcode{smoking}'i (mAP 0,856; Tablo~\ref{tab:map}) doğrudan
+destekler --- \tcode{phone} stok-COCO ``cell phone'' sınıfıyla, \tcode{swerving} kalibrasyonsuz
+geometriyle tespit edilir; bu ikisi için held-out sınıf metriği yoktur, video sonucu uçtan-uca
+varlık-kanıtıdır. Emniyet kemeri (\tcode{seatbelt}) yalnızca held-out mAP (0,895) ile sınanmıştır; üç
 videoda kemer-GT örneği bulunmadığından video-düzeyi P/R/F1 raporlanmamıştır.
 
 \begin{table}[H]\centering\small
-\caption{Davranış tespiti — üç gerçek test videosunda video-düzeyi P/R/F1 (her hücre P/R/F1).}\label{tab:beh}
+\caption{Davranış tespiti — üç gerçek test videosunda video-düzeyi P/R/F1 (her hücre P/R/F1). \textbf{Aşama-1 profili} yalnız ana dedektörü değiştirir; \tcode{phone}/\tcode{smoking} fine-tune gerektirmeyen Aşama-2a poz-geometrisiyle, \tcode{swerving} dedektörden bağımsız kinematikle üretilir (stok COCO'da bu sınıflar yoktur).}\label{tab:beh}
 \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X cccc}
 \toprule
-\textbf{Dedektör} & \textbf{phone} & \textbf{smoking} & \textbf{swerving} & \textbf{Makro F1} \\ \midrule
+\textbf{Aşama-1 profili} & \textbf{phone} & \textbf{smoking} & \textbf{swerving} & \textbf{Makro F1} \\ \midrule
 \tcode{yolo26l} (stok, varsayılan) & 1,0/1,0/1,0 & 1,0/1,0/1,0 & 1,0/1,0/1,0 & \textbf{1,00} \\
 \tcode{v4-finetune} (A/B kıyas tabanı) & 1,0/1,0/1,0 & 1,0/1,0/1,0 & 1,0/1,0/1,0 & \textbf{1,00} \\
 \bottomrule
@@ -312,7 +316,7 @@ Baseline (EasyOCR · stok/v4) & 2/3 (\%66,7) & 0,083 & 2 & 1 & \textbf{0} \\
 \end{table}
 
 \begin{figure}[ht]\centering
-\includegraphics[width=0.50\textwidth]{fig_plaka_ab.png}
+\includegraphics[width=0.45\textwidth]{fig_plaka_ab.png}
 \caption{Plaka exact-match A/B: baseline 2/3 (CER 0,083) $\rightarrow$ production 3/3 (CER 0,0).}
 \label{fig:plate}
 \end{figure}
@@ -328,16 +332,17 @@ QoD entegrasyonu, A/B harness ile \textbf{yeniden-üretilebilir} biçimde ölç�
 metrikleri kıyaslanır. \textbf{Dürüst not (kritik):} mevcut kontrollü koşuda OFF baseline'ı zaten
 yeterli kalitede olduğundan ölçülen delta $\approx$0'dır. Pozitif delta yalnızca OFF senaryosu
 bant/çözünürlük baskısı altındayken (küçük/uzak plaka ROI'si okunamaz piksele düştüğünde) ortaya
-çıkar ve daha agresif bir OFF parametresiyle yeniden üretilir (kontrollü senaryoda plaka okuma
-\textbf{+33 puana} kadar iyileşir). Dolayısıyla QoD'nin katkısı, sabit ölçülmüş tek bir sayı değil,
+çıkar ve aynı A/B harness'i daha agresif bir OFF parametresiyle bu yönlülüğü yeniden-üretilebilir
+biçimde sınamaya hazırdır; nicel delta henüz ölçülmediğinden bu raporda sayısal bir iyileşme iddia
+edilmez. Dolayısıyla QoD'nin katkısı, sabit ölçülmüş tek bir sayı değil,
 \textbf{mekanizmanın yönlülüğüdür}: \tcode{vehicle\_approach} tetiği şartnamenin ``TOGG yaklaşınca
 QoD'' senaryosunu birebir karşılayıp kritik anda 5G şebeke kalitesini talep eder.
 
 \subsection{İşleme Hızı (FPS)}
 İşleme hızı hem geliştirme ortamında (Apple Silicon/MPS, M4 Pro) hem de hedef sunucu donanımında
 (NVIDIA RTX 5070 Laptop GPU, \textbf{4.608 CUDA çekirdeği}) \textbf{gerçek ölçümle} değerlendirilmiştir
-(Tablo~\ref{tab:fps}, Şekil~\ref{fig:fps}; her profilde 100+ kare ölçümü, 26.06.2026). CUDA,
-MPS geliştirme alt-sınırının (\tcode{yolo26l} ${\sim}5,9$ FPS) \textbf{${\approx}2\times$}'i iş-hacmi sağlar.
+(Tablo~\ref{tab:fps}; her profilde 100+ kare ölçümü, 26.06.2026). CUDA,
+MPS geliştirme alt-sınırının (\tcode{yolo26l} $\sim$5,9 FPS) \textbf{${\approx}2\times$}'i iş-hacmi sağlar.
 
 \begin{table}[H]\centering\small
 \caption{İşleme hızı — RTX 5070 Laptop GPU üzerinde gerçek ölçüm (CUDA; 26.06.2026).}\label{tab:fps}
@@ -346,7 +351,7 @@ MPS geliştirme alt-sınırının (\tcode{yolo26l} ${\sim}5,9$ FPS) \textbf{${\a
 \textbf{Profil · dedektör · imgsz} & \textbf{Ortalama FPS} & \textbf{p50 (ms)} & \textbf{p95 (ms)} \\ \midrule
 \tcode{server} · \tcode{yolo26l} · 960 (CUDA) & \textbf{12,31} & 80 & 93 \\
 \tcode{laptop} · \tcode{yolo26s} · 640 (CUDA) & \textbf{14,72} & 65 & 88 \\
-\tcode{server} · \tcode{yolo26l} (MPS, M4 Pro) & ${\sim}5,9$ & -- & -- \\
+\tcode{server} · \tcode{yolo26l} (MPS, M4 Pro) & $\sim$5,9 & -- & -- \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -355,11 +360,6 @@ Kare-başına \textbf{gecikme} (p95=93 ms) ile \textbf{iş-hacmi} (${\sim}$12 FP
 sistem ${\sim}$12 FPS iş-hacmiyle 25--30 FPS'lik bir kamera akışını kare-örnekleme (her 2--3 karede bir)
 ile olay-tespiti amacıyla işler; p95 gecikme zarfı bu kullanım için yeterlidir.
 
-\begin{figure}[ht]\centering
-\includegraphics[width=0.48\textwidth]{fig_fps.png}
-\caption{İşleme hızı: MPS geliştirme alt-sınırı vs gerçek CUDA ölçümü (RTX 5070 Laptop GPU, 4.608 çekirdek, Compute 12.0).}
-\label{fig:fps}
-\end{figure}
 
 \subsection{Hız, Kanıt İzi ve Çözüme Neden Güveniyoruz}
 \textbf{Hız/swerving.} Mutlak hız bu raporda \textbf{nicel olarak sınanmamıştır} (MAE/MAPE harness'ı
@@ -370,22 +370,21 @@ edilmiş ve davranış makro-F1'ine dahildir (Bölüm 4.3).
 \textbf{Kanıt izi ve izlenebilirlik (şartname 4.5).} Rapordaki sayılar elle değil, otomatik bir
 ölçüm hattıyla üretilmiştir: sistem her işlemede (1) zaman-damgalı olay izi (JSONL), (2) annotated
 video ve (3) karar/oy dökümü çıkarır; bir metrik-raporlama aracı Bölüm~4 tablolarını bu çıktılardan
-toplar. Böylece her sayı izlenebilir bir ölçüme dayanır ve rapora elle girilmemiştir. Ayrıca otomatik
-test paketinin (${\sim}780$ test) bir bölümü CAMARA QoD/NV mock sözleşme uyumunu (sessiz doğrulama,
-oturum yaşam-döngüsü) doğrular.
+toplar. Böylece her sayı izlenebilir bir ölçüme dayanır, rapora elle girilmemiştir. Otomatik test
+paketinin (${\sim}780$ test) bir bölümü ayrıca CAMARA QoD/NV mock sözleşme uyumunu doğrular.
 
 \textbf{Çözüme neden güveniyoruz?} Güven, ölçülen sayıların ötesinde \textbf{yapısal} gerekçelere
 dayanır: tüm eşikler oran/boyut-temelli ve ölçek-bağımsızdır (videoya-özel sabit yok, K-004), dolayısıyla
 sonuçlar tek çekime aşırı-uyumlanmaz; belirsizlikte sistem yanlış üretmek yerine dürüstçe çekimser kalır
 (plakada \textbf{sıfır yanlış-onay}) ve bu güvenceler config-driven, gerçek videoda doğrulanmış zırhlara
-(Bölüm 3.3) dayanır. Sınama kümesinin sınırı (üç-videoluk küçük set; istatistiksel mAP held-out sette
-ayrıca ölçülmüştür, Tablo~\ref{tab:map}) açıkça belirtilmiş olup komite verisiyle güçlendirilecektir.
+(Bölüm 3.3) dayanır. Video setinin istatistiksel sınırı (N=1) Bölüm~4.3'te açıkça belirtilmiş olup
+komite verisiyle güçlendirilecektir.
 
 % ========================== 5. KAYNAKÇA ==============================
 \section{Kaynakça}
 {\footnotesize Aşağıda projede fiilen kullanılan başlıca yöntem, kütüphane ve açık-veri kaynakları (lisanslarıyla) listelenmiştir.\par}
 \footnotesize\sloppy
-\begin{enumerate}\setlength{\itemsep}{0.4pt}\setlength{\parskip}{0pt}
+\begin{enumerate}\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}
 \item Ultralytics, \textit{Ultralytics YOLO Documentation} (v8.4.66, YOLO26), 2026. \url{https://docs.ultralytics.com} (erişim 2026).
 \item Y. Zhang vd., \textit{ByteTrack: Multi-Object Tracking by Associating Every Detection Box}, ECCV, 2022. arXiv:2110.06864.
 \item T.-Y. Lin vd., \textit{Microsoft COCO: Common Objects in Context}, ECCV, 2014. arXiv:1405.0312. (CC BY 4.0)
@@ -399,8 +398,8 @@ ayrıca ölçülmüştür, Tablo~\ref{tab:map}) açıkça belirtilmiş olup komi
 \item \textit{CigDet — Cigarette Detection}, Mendeley Data, 2021. DOI:10.17632/6hyrr8typ7.1. (CC BY 4.0) --- \tcode{smoking} 557 görsel.
 \item anywaylabs, \textit{Synthetic Driver Monitoring}, Hugging Face, 2024. (CC BY 4.0) --- \tcode{phone} 659 görsel.
 \item M. Everingham vd., \textit{The PASCAL VOC Challenge} (mAP metodolojisi), IJCV, 2010.
-\item Yapay zekâ desteği: raporun yazım ve düzenlenmesinde büyük dil modeli tabanlı araçlardan yararlanılmıştır; tüm teknik içerik, mimari kararlar, ölçümler ve sayılar takım tarafından üretilmiş ve doğrulanmıştır.
 \end{enumerate}
+{\footnotesize\textit{Yapay zekâ desteği:} raporun yazım/düzenlenmesinde büyük dil modeli araçlarından yararlanılmıştır; tüm teknik içerik, ölçüm ve sayılar takımca üretilip doğrulanmıştır.\par}
 \normalsize
 
 \end{document}
