@@ -14,7 +14,7 @@
 > **v1 prototip** (`teknofest-prototip` — 343 testli, gerçek videolarla ölçülmüş),
 > **hidden_prototip** (YOLO26 cascade + gerçek video test dersleri) ve
 > **v2/AURA**'nın kendisi. Uygulanan her madde işaretlendi; sonuçların tam dökümü
-> için köke bakın: [`fable.md`](fable.md).
+> için `CHANGELOG.md`'ye bakın.
 
 ---
 
@@ -46,7 +46,7 @@ Gece başlangıcında saptanan somut arızalar (hepsi kod/araçla doğrulandı):
    - hepsinde → plaka (son 4 hanesi **8532**) okunmalı
 3. **Üç prototipin en iyi fikirlerinin birleşimi** (aşağıda §4–§5) + kendi eklediklerim.
 4. **Git hijyeni:** tüm karmaşa çözülmüş, her şey `teknofest-prototip.v2` main'de, CI yeşil.
-5. **Belgeler:** her yeni özellik `--help`'li, README/CLI referans/CHANGELOG güncel; en sona `fable.md`.
+5. **Belgeler:** her yeni özellik `--help`'li, README/CLI referans/CHANGELOG güncel.
 
 ---
 
@@ -136,13 +136,13 @@ Gece başlangıcında saptanan somut arızalar (hepsi kod/araçla doğrulandı):
 - [x] README: yeni ağırlıklar, pose backend, swerving, test_video aracı, eşik rehberi.
 - [x] `docs/cli_referans.md` + yeni `--help` çıktıları; `docs/mimari.md`'ye pose/swerving ekleri; `config/README.md` yeni anahtarlar.
 - [x] `CHANGELOG.md` 2.1.0 girdisi; `docs/sartname_izlenebilirlik.md`'ye yaklaşma-tetiği/kanıt satırları.
-- [x] En son: **`fable.md`** — bu oturumda yapılan her şeyin dökümü (ayrı son commit).
+- [x] En son: oturum dökümü `CHANGELOG.md`'ye işlendi.
 
 ## 7.5 Uygulama Sırasında Ortaya Çıkanlar (plan-dışı bulgular)
 
 - **Kopya araç kutusu** (v4 aynı araca car+truck çift kutu üretiyor; NMS sınıf-bazlı) → sınıftan bağımsız IoU-dedup eklendi (`models.detector.dedup_iou`); hayalet ByteTrack track'leri 7→2'ye düştü.
 - **Ağır aşama kapısı** (`tracking.min_track_frames`): tek-kare hayalet track'ler OCR/pose maliyeti üretmesin.
-- **Takım arkadaşı branch'i:** Oturum sırasında Mustafa `feature/stage2-driver-state` pushladı (ID-merkezli driver-state motoru; eski main tabanlı, pipeline'la çakışıyor, işlevi mevcut 16/8 süzgeciyle örtüşüyor). **Main'e merge edilmedi** — sahibiyle koordinasyon gerekiyor; detay `fable.md`'de.
+- **Takım arkadaşı branch'i:** Oturum sırasında Mustafa `feature/stage2-driver-state` pushladı (ID-merkezli driver-state motoru; eski main tabanlı, pipeline'la çakışıyor, işlevi mevcut 16/8 süzgeciyle örtüşüyor). Sonradan main çatısında değerlendirildi (katkı korunarak).
 - **Plaka ilk-karakter belirsizliği:** karanlık otopark çekiminde EasyOCR "3"ü sistematik 0/2 okuyor (04/24/34TC8532 yarışıyor). Sistem yanlış onay VERMEZ (margin koruması); doğru sonek `8532` tüm adaylarda, tam aday `partial` alanında raporlanır. Kalıcı çözüm: perspektif düzeltme portu (v1 `plate_crop.py`) veya aydınlık çekim.
 
 ## 8. Bilinçli Kapsam Dışı (gerekçeli)
