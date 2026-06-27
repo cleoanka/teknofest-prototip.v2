@@ -13,8 +13,8 @@
 > [!NOTE]
 > Bu dosya, **gönderilecek FTR'yi** (`FTR_GONDERILECEK.pdf`) açıklar: her bölümde şartnamenin
 > ne istediği, bizde **şu an ne olduğu** (hangi kanıt/figür/sayı) ve **ne eklenebileceği**.
-> FTR'nin kaynağı `FTR_GONDERILECEK.tex`'tir; "biz düzenleriz" derken onu (veya markdown taslağı
-> `ftr_rapor_taslak.md`'yi) düzenleyip PDF'i yeniden üretebilirsiniz (aşağıda komut).
+> FTR'nin kaynağı `FTR_GONDERILECEK.tex`'tir; "biz düzenleriz" derken onu düzenleyip PDF'i
+> yeniden üretebilirsiniz (aşağıda komut).
 
 ---
 
@@ -63,8 +63,7 @@
 |---|---|
 | **[`FTR_GONDERILECEK.pdf`](FTR_GONDERILECEK.pdf)** | **Gönderilecek FTR** (10 sayfa, format-uyumlu) |
 | [`FTR_GONDERILECEK.tex`](FTR_GONDERILECEK.tex) | PDF'in **düzenlenebilir** LaTeX kaynağı |
-| [`ftr_rapor_taslak.md`](ftr_rapor_taslak.md) | Markdown taslak (tex bundan türedi; kolay düzenleme için) |
-| [`tools/make_ftr_figures.py`](tools/make_ftr_figures.py) | 7 grafiği **gerçek ölçümlerden** üretir |
+| [`tools/make_ftr_figures.py`](tools/make_ftr_figures.py) | grafikleri **gerçek ölçümlerden** üretir |
 | [`docs/figures/`](docs/figures/) | Üretilen grafikler (`fig_*.png`) |
 | [`kaynakca.md`](kaynakca.md) | Tam kaynakça (FTR §5 havuzu) |
 | [`ftr.md`](ftr.md) | FTR doldurma rehberi + format notu |
