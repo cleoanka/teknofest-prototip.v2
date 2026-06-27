@@ -355,6 +355,9 @@ class StreamManager:
             return self._annot_jpeg if bbox else self._raw_jpeg
 
     def status(self) -> dict:
+        # TOCTOU: pipeline'i bir kez yerel değişkene al — eş-zamanlı stop() onu None
+        # yaparsa check-then-use arasında AttributeError (500) oluşmasın.
+        p = self.pipeline
         return {
             "running": self._running,
             "source": str(self.source) if self.source is not None else None,
@@ -363,8 +366,6 @@ class StreamManager:
             "frame_count": self.frame_count,
             "fps": self.fps_actual,
             "uptime_s": round(time.time() - self.started_at, 1) if self.started_at else 0.0,
-            "active_tracks": len(self.pipeline.acc.active_tracks()) if self.pipeline else 0,
-            "qod_active_sessions": (
-                len(self.pipeline.qod.active_sessions()) if self.pipeline else 0
-            ),
+            "active_tracks": len(p.acc.active_tracks()) if p else 0,
+            "qod_active_sessions": len(p.qod.active_sessions()) if p else 0,
         }

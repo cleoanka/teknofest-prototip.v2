@@ -208,15 +208,19 @@ def test_size_w_floor_clamp_for_small_plate():
     assert abs(eff - 14 / 40) < 1e-6
 
 
-def test_no_lp_weight_when_model_runs_but_no_detection():
-    # LP modeli çalışıyor ama plaka bulamadı → size_w = no_lp_weight (0.5 vars.)
+def test_no_lp_weight_capped_below_confirm_peak():
+    # LP modeli çalışıyor ama plaka bulamadı (no_lp). K-004 onur zırhı: bu düşük-güvenilirlik
+    # okuması TEK BAŞINA confirm ZEMİN koşulunu (confirm_peak_weight) sağlayamasın diye
+    # ağırlık min(no_lp_weight, confirm_peak_weight) ile sınırlanır → yanlış-onaya götüremez.
     r = PlateReader_with_ocr(ocr_value=("34TC8532", 1.0))
     _enable_lp(r, FakeLPEmpty())
     r.update(1, np.full((60, 120, 3), 90, np.uint8), _center_bbox(), FRAME_SHAPE)
     reads = r._pools[1].raw_reads
     assert reads
     _, eff = reads[-1]
-    assert abs(eff - r._no_lp_weight) < 1e-6
+    cap = min(r._no_lp_weight, float(r._pool_kwargs.get("confirm_peak_weight", 0.30)))
+    assert abs(eff - cap) < 1e-6
+    assert eff <= float(r._pool_kwargs.get("confirm_peak_weight", 0.30)) + 1e-9
 
 
 # --- FRAME-koordinat dönüşümü (hız oto-kalibrasyon ppm kaynağı) ---------- #

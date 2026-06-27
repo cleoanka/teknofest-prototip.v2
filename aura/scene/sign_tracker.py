@@ -45,8 +45,14 @@ class SignTracker:
     def active_limit(self) -> int | None:
         return self._limit
 
-    def update(self, signs, frame_idx: int) -> tuple[SceneContext, list[AuraEvent]]:
-        """Bu kareki tabelaları işle → (güncel SceneContext, üretilen event'ler)."""
+    def update(
+        self, signs, frame_idx: int, now: float | None = None
+    ) -> tuple[SceneContext, list[AuraEvent]]:
+        """Bu kareki tabelaları işle → (güncel SceneContext, üretilen event'ler).
+
+        `now` (frame-saati = idx/fps) verilirse SPEED_LIMIT_DETECTED ts'i deterministik
+        olur (accumulator/qod ile AYNI eksen). Verilmezse make_event wall-clock'a düşer.
+        """
         events: list[AuraEvent] = []
         if not self.enabled:
             return SceneContext(sign_count=len(signs)), events
@@ -76,6 +82,7 @@ class SignTracker:
                             "cls": best.cls,
                             "conf": best.bbox.conf,
                         },
+                        ts=now,  # deterministik frame-saati (wall-clock kayması yok)
                     )
                 )
         elif (

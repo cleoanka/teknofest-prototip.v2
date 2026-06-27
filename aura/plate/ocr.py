@@ -266,7 +266,14 @@ class _FastPlateAdapter:
         try:
             preds = self._rec.run(gray, return_confidence=True)
         except Exception as exc:  # noqa: BLE001 — motor hatası okuma boşa düşmeli, hattı kırmamalı
-            log.debug("fast-plate-ocr run hatası: %s", exc)
+            # Gözlemlenebilirlik: KALICI arıza (her karede hata) DEBUG'da görünmez kalıp
+            # 'plaka yok' gibi sessizce sürerdi. İlk hatayı bir kez WARNING'e yükselt
+            # (kök-neden görünsün), sonrakileri DEBUG'da tut (spam önle).
+            if not getattr(self, "_run_err_warned", False):
+                log.warning("fast-plate-ocr run hatası (motor arızası olabilir): %s", exc)
+                self._run_err_warned = True
+            else:
+                log.debug("fast-plate-ocr run hatası: %s", exc)
             return []
         if not preds:
             return []
@@ -344,7 +351,12 @@ def _easyocr_available() -> bool:
         import easyocr  # noqa: F401
 
         return True
-    except Exception:
+    except ImportError:
+        return False  # normal: bağımlılık kurulu değil
+    except Exception as exc:  # noqa: BLE001 — KURULU ama bozuk (yarım kurulum/çakışma)
+        # ai_mode=real iken sessizce MockOCR'a düşüp uydurma plaka üretmesini önlemek
+        # için kök-neden GÖRÜNÜR olsun (yoksa 'EasyOCR yok' diye yanlış atfedilirdi).
+        log.warning("EasyOCR kurulu ama import edilemiyor (bozuk kurulum?): %s", exc)
         return False
 
 

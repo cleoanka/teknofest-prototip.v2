@@ -131,6 +131,10 @@ def load_config(path: str | Path | None = None, profile: str | None = None) -> C
         )
     with open(cfg_path, encoding="utf-8") as f:
         data = yaml.safe_load(f) or {}
+    if not isinstance(data, dict):
+        # Üst-düzey girinti hatası tüm dosyayı liste/skalar yapabilir → aşağıdaki
+        # data.get/setdefault ham AttributeError ile çökerdi. Yönlendirici hata ver.
+        raise ValueError(f"Config kökü sözlük olmalı, {type(data).__name__} bulundu: {cfg_path}")
 
     # Profil çözümü: açık argüman > env > taban config'teki 'profile' anahtarı.
     chosen = profile or os.environ.get("AURA_PROFILE") or data.get("profile")
@@ -140,6 +144,10 @@ def load_config(path: str | Path | None = None, profile: str | None = None) -> C
         if prof_path.exists():
             with open(prof_path, encoding="utf-8") as f:
                 overlay = yaml.safe_load(f) or {}
+            if not isinstance(overlay, dict):
+                raise ValueError(
+                    f"Profil overlay kökü sözlük olmalı, {type(overlay).__name__} bulundu: {prof_path}"
+                )
             overlay.pop("profile", None)  # overlay kendini tekrar tetiklemesin
             data = _deep_merge(data, overlay)
             applied = Path(chosen).stem

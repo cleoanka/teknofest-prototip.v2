@@ -41,7 +41,10 @@ def track_history(track_id: int, request: Request):
     # Sözleşme aynı: history = son 200, count = toplam eşleşme.
     series: deque = deque(maxlen=200)
     count = 0
-    for a in sm.pipeline.emitter.annotations:
+    # CA-001: deque'i doğrudan iterlemek, worker thread eş-zamanlı emit_annotation
+    # (append) yaparken "deque mutated during iteration" → 500 verir. Kilitli snapshot
+    # üzerinde gez (tutarlı kopya; worker append'i yarışa girmez).
+    for a in sm.pipeline.emitter.snapshot_annotations():
         for t in a.tracks:
             if t["track_id"] == track_id:
                 series.append({"frame_id": a.frame_id, "ts": a.ts, **t})

@@ -449,9 +449,18 @@ class PlateReader:
                 return st  # PLAIN okuma kanıt değeri yok: çöp okuma havuza oy yazamaz
             size_w = max(self._size_floor, min(1.0, lp_h / max(self._size_full_px, 1.0)))
         elif self._lp_enabled and not self._lp_failed and self._lp_model is not None:
-            # LP dedektörü çalışıyor ama plakayı bulamadı → geniş-crop okuması
-            # düşük güvenilirlik sınıfıdır (kanıt tamamen atılmaz, ağırlığı kısılır).
-            size_w = self._no_lp_weight
+            # LP dedektörü çalışıyor ama plakayı bulamadı → geniş-crop okuması DÜŞÜK
+            # güvenilirlik (tam da uzak/küçük plaka = en tehlikeli rejim). K-004 onur zırhı:
+            # (1) lp_h-DOLU yoldaki QoD kalite tetiğinin no_lp'de de ateşlenmesi (plaka zor
+            #     okunuyor → yüksek kalite iste; eskiden bu dalda hiç tetiklenmiyordu);
+            # (2) bu no-LP okuması TEK BAŞINA confirm ZEMİN koşulunu (confirm_peak_weight)
+            #     SAĞLAYAMASIN diye ağırlık zemin eşiğinin altında tutulur — kanıt-izine
+            #     (best_partial/pending) girer ama yanlış-onaya götüremez. (Ölçülen 3/3,
+            #     lp_h-DOLU yoldan onaylar → bu dal o sonucu etkilemez.)
+            if self.qod:
+                self.qod.request_quality(track_id, reason="plate_no_lp")
+            _confirm_peak = float(self._pool_kwargs.get("confirm_peak_weight", 0.30))
+            size_w = min(self._no_lp_weight, _confirm_peak)
         # KESKİNLİK-FARKINDA kanıt ağırlığı (Aday-1): bulanık/uzak kare (düşük
         # Laplacian varyansı) size_w'yi [floor..1] çarpanla kısar → net/yakın kare
         # konsensüste baskın olur. Yalnız flag açıkken; keskinlik ham LP kırpığı

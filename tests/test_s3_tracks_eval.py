@@ -48,6 +48,9 @@ class _FakeEmitter:
     def __init__(self, annotations=None):
         self.annotations = annotations or []
 
+    def snapshot_annotations(self):
+        return list(self.annotations)
+
 
 class _FakePipeline:
     def __init__(self, records=None, annotations=None):

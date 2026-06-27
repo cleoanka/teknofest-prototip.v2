@@ -241,6 +241,9 @@ def test_track_history_populated_contract(client):
                 for i in range(250)
             ]
 
+        def snapshot_annotations(self):
+            return list(self.annotations)
+
     class _FakePipeline:
         acc = _FakeAcc()
         emitter = _FakeEmitter()
