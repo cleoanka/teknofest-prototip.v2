@@ -46,7 +46,15 @@ class YOLO26Detector(Detector):
         # ultralytics'in beklediği yaml adını bir kez kur (her karede string kurma yok).
         self.tracker_yaml = f"{self.tracker}.yaml"
         vc = cfg.get("models.detector.vehicle_classes", [])
-        self.vehicle_classes = set(vc) if vc else set()
+        # FAIL-CLOSED (Codex): boş liste 'süzgeç yok = her şey araç' anlamına gelip
+        # bilinmeyen sınıfların OCR/hız hattına sızmasına yol açıyordu. Boşsa COCO araç
+        # varsayılanlarına düş (fail-open değil), bilinmeyen sınıfı araç sayma.
+        _COCO_VEHICLES = {"car", "bus", "truck", "motorcycle", "minibus"}
+        self.vehicle_classes = set(vc) if vc else set(_COCO_VEHICLES)
+        if not vc:
+            log.warning(
+                "models.detector.vehicle_classes boş → COCO araç varsayılanları kullanılıyor"
+            )
         # Sürücü kilidi için kişi sınıfları (aynı ByteTrack geçişinde toplanır)
         pc = cfg.get("driver_lock.person_classes", ["person"])
         self.person_classes = set(pc) if pc else set()

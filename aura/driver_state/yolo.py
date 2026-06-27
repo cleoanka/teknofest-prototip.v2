@@ -37,6 +37,23 @@ class YOLO26lDriverClassifier(DriverClassifier):
         )
         self.device = resolve_device(cfg.get("runtime.device", "auto"))
         log.info("YOLO26l yüklendi: %s (imgsz=%d, device=%s)", self.path, self.imgsz, self.device)
+        # Sınıf-kapsama doğrulaması (Codex): backend=yolo iken STOK COCO yolo26l verilirse
+        # smoking/seatbelt/fatigue ÜRETİLEMEZ (yalnız phone ↔ COCO 'cell phone'). Sistem
+        # eksik davranışı sessizce algılamasın diye startup'ta uyarır.
+        try:
+            model_canon = {canonical(str(n)) for n in self.model.names.values()}
+            missing = [c for c in self.classes if c not in model_canon]
+            if missing:
+                producible = sorted(set(self.classes) & model_canon)
+                log.warning(
+                    "driver_state modeli (%s) şu davranış sınıflarını ÜRETEMEZ: %s — yalnız %s "
+                    "üretilir. Tüm sınıflar için fine-tune ağırlık ya da pose backend gerekir.",
+                    self.path,
+                    missing,
+                    producible or "(yok)",
+                )
+        except Exception:  # noqa: BLE001 — doğrulama best-effort, akışı bozmamalı
+            pass
 
     def infer(self, cabin_roi: np.ndarray | None, track_id: int | None = None) -> DriverState:
         ds = DriverState()
