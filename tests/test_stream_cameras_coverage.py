@@ -163,6 +163,34 @@ def test_safe_put_swallows_queue_full():
     assert q.qsize() == 1  # ikinci öğe düşürüldü
 
 
+# --- DoS guard: eş-zamanlı MJPEG + WS abone üst sınırı -------------------- #
+def test_mjpeg_connection_cap():
+    """Eş-zamanlı MJPEG slot sınırı: aşılınca try_acquire False (→ 429); bırakınca boşalır."""
+    cfg = load_config()
+    cfg.data.setdefault("stream", {})["max_clients"] = 2
+    sm = StreamManager(cfg)
+    assert sm.try_acquire_mjpeg() is True
+    assert sm.try_acquire_mjpeg() is True
+    assert sm.try_acquire_mjpeg() is False  # sınır aşıldı
+    sm.release_mjpeg()
+    assert sm.try_acquire_mjpeg() is True  # slot boşaldı → yeniden ayrılabilir
+
+
+def test_ws_subscriber_cap():
+    """WS abone seti üst sınırı: aşılınca subscribe None (→ handler 1013 ile kapatır)."""
+    cfg = load_config()
+    cfg.data.setdefault("stream", {})["max_clients"] = 1
+    sm = StreamManager(cfg)
+    q1 = sm.subscribe_annotations()
+    assert q1 is not None
+    assert sm.subscribe_annotations() is None  # sınır aşıldı
+    sm.unsubscribe_annotations(q1)
+    assert sm.subscribe_annotations() is not None  # boşaldı → yeniden abone olunabilir
+    # events seti annotations'tan AYRI sınır taşır
+    e1 = sm.subscribe_events()
+    assert e1 is not None and sm.subscribe_events() is None
+
+
 def test_push_full_queue_does_not_raise_in_loop():
     """Bug doğrulama: dolu kuyruk push'u event loop'ta yakalanmamış istisna üretmez.
 

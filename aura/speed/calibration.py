@@ -253,7 +253,19 @@ class MetricSpeedEstimator:
         """İki yer-temas noktası arası metrik yer değiştirme (m).
 
         Füzyon önceliği (§7.1): homografi varsa noktalar metrik yer düzlemine
-        izdüşürülüp Öklid mesafe alınır; yoksa yerel ppm(y) ortalamasıyla çevrilir.
+        izdüşürülüp Öklid mesafe alınır (RİGOROUS, boylamsal-doğru); yoksa yerel
+        ppm(y) ortalamasıyla çevrilir.
+
+        DÜRÜSTLÜK NOTU (perspektif foreshortening). ppm(y) YATAY genişliklerden
+        türetilmiş px/m'dir; fallback yol (homografi YOK) dikey/derinlik ekseni
+        piksel hareketini de bu yatay ölçekle metreye çevirir → kameraya doğru/
+        uzaklaşan (boylamsal) harekette SİSTEMATİK yanlılık (kamera eğimine bağlı).
+        Boylamsal ölçek yalnız homografi/IPM ile TANIMLIDIR — tek başına yatay
+        genişliklerden geri kazanılamaz (bilinmeyen kamera yüksekliği/odak sabiti).
+        Rigorous yol: optional/homography_ipm.py + speed.mode=ipm. Bu yüzden
+        fallback mutlak hız bir TAHMİNDİR; sistem mutlak hızı homografi olmadan
+        kanıt olarak sunmaz (FTR §4.7: mutlak hız nicel sınanmamıştır; nicel
+        sınanan yetenek kalibrasyonsuz swerving'dir).
         """
         (x0, y0), (x1, y1) = f0, f1
         if self.homography is not None:

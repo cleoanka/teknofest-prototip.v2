@@ -48,12 +48,34 @@ class StreamManager:
         # bloklamasın. 0/None → ayarlama (geriye uyum; bazı backend desteklemez).
         self._open_timeout_ms = int(self.cfg.get("stream.open_timeout_ms", 5000))
         self._read_timeout_ms = int(self.cfg.get("stream.read_timeout_ms", 5000))
+        # DoS guard: eş-zamanlı MJPEG bağlantısı ve her WS abone seti için üst sınır.
+        # MJPEG sync jeneratör bir threadpool worker tutar → sınırsız bağlantı tüm
+        # worker'ları bloklayıp tüm senkron uçları (status/config/tracks) DoS eder.
+        # Aşılırsa MJPEG 429, WS 1013 (try-again-later) döner. Config'ten ayarlanır.
+        self._max_clients = max(1, int(self.cfg.get("stream.max_clients", 16)))
+        self._mjpeg_active = 0
+
+    # --- DoS guard: eş-zamanlı MJPEG bağlantı sayacı ----------------------- #
+    def try_acquire_mjpeg(self) -> bool:
+        """Yeni MJPEG bağlantısı için slot ayır; sınır aşılırsa False (→ 429)."""
+        with self._lock:
+            if self._mjpeg_active >= self._max_clients:
+                return False
+            self._mjpeg_active += 1
+            return True
+
+    def release_mjpeg(self) -> None:
+        with self._lock:
+            self._mjpeg_active = max(0, self._mjpeg_active - 1)
 
     def attach_loop(self, loop: asyncio.AbstractEventLoop) -> None:
         self.loop = loop
 
     # --- WS abonelikleri --------------------------------------------------- #
-    def subscribe_events(self) -> asyncio.Queue:
+    def subscribe_events(self) -> asyncio.Queue | None:
+        # DoS guard: abone seti üst sınırı aşılırsa None → handler WS'i 1013 ile kapatır.
+        if len(self._event_queues) >= self._max_clients:
+            return None
         q: asyncio.Queue = asyncio.Queue(maxsize=200)
         self._event_queues.add(q)
         return q
@@ -61,7 +83,9 @@ class StreamManager:
     def unsubscribe_events(self, q) -> None:
         self._event_queues.discard(q)
 
-    def subscribe_annotations(self) -> asyncio.Queue:
+    def subscribe_annotations(self) -> asyncio.Queue | None:
+        if len(self._annot_queues) >= self._max_clients:
+            return None
         q: asyncio.Queue = asyncio.Queue(maxsize=200)
         self._annot_queues.add(q)
         return q

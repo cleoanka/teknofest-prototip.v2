@@ -35,6 +35,13 @@ def with_token(monkeypatch):
     monkeypatch.setenv("AURA_API_TOKEN", _TOKEN)
 
 
+@pytest.fixture
+def with_protect_reads(monkeypatch):
+    """OPT-IN PII okuma korumasi: token + AURA_API_PROTECT_READS birlikte set."""
+    monkeypatch.setenv("AURA_API_TOKEN", _TOKEN)
+    monkeypatch.setenv("AURA_API_PROTECT_READS", "1")
+
+
 # --- SEC-001: token auth (ENV-GATED) ------------------------------------- #
 def test_mutation_open_when_token_unset(client, monkeypatch):
     """Token UNSET → mutasyon uclari acik (yerel demo bozulmaz)."""
@@ -69,6 +76,32 @@ def test_read_endpoints_unauthenticated_ok(client, with_token):
     """Okuma uclari token SET olsa bile acik kalir (sozlesme korunur)."""
     assert client.get("/config").status_code == 200
     assert client.get("/stream/status").status_code == 200
+
+
+def test_pii_reads_open_by_default_even_with_token(client, with_token):
+    """Geriye uyum: PROTECT_READS YOK iken token set olsa bile PII okuma uclari (tracks/
+    info) ACIK (co-located dashboard sozlesmesi). Yalniz opt-in bayrak bunu kapatir."""
+    assert client.get("/tracks").status_code == 200
+    assert client.get("/info").status_code == 200
+
+
+def test_protect_reads_optin_blocks_pii(client, with_protect_reads):
+    """OPT-IN (AURA_API_PROTECT_READS=1): token'siz PII okuma -> 401; header VEYA
+    ?token= query-param (MJPEG <img> baslik gonderemez) ile -> gecer."""
+    # token YOK -> 401 (PII sizdirilmaz)
+    assert client.get("/tracks").status_code == 401
+    assert client.get("/tracks/1").status_code == 401
+    assert client.get("/info").status_code == 401
+    assert client.get("/stream/video").status_code == 401
+    # header token -> gecer
+    h = {"X-AURA-Token": _TOKEN}
+    assert client.get("/tracks", headers=h).status_code == 200
+    assert client.get("/info", headers=h).status_code == 200
+    # MJPEG: query-param token -> gecer (200), yanlis -> 401
+    assert client.get("/stream/video", params={"token": _TOKEN}).status_code == 200
+    assert client.get("/stream/video", params={"token": "nope"}).status_code == 401
+    # mutasyon ucu hala header token ister (degismedi)
+    assert client.patch("/config", json={"conf_threshold": 0.4}, headers=h).status_code == 200
 
 
 def test_cors_not_wildcard():

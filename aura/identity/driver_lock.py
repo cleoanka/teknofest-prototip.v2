@@ -100,6 +100,10 @@ class DriverLock:
         self._last_driver: dict[int, int] = {}
         # vehicle_id -> en son görüldüğü kare (prune için)
         self._last_seen: dict[int, int] = {}
+        # person_id -> yolcu-havuzunda en son görüldüğü kare (KİLİTLENMEMİŞ streak budama).
+        # Uzun yaşayan aracın bbox'ından geçen her benzersiz kişi pstreak'te kalıcı giriş
+        # bırakıyordu (MEM sızıntısı); bu harita ile giden kişilerin sayacı düşürülür.
+        self._person_seen: dict[int, int] = {}
 
     # --- yardımcılar ------------------------------------------------------- #
     def persons_in_vehicle(self, vehicle: BBox, persons: list[Person]) -> list[Person]:
@@ -164,6 +168,8 @@ class DriverLock:
         """
         plock = self._passenger_locked.setdefault(vehicle_id, set())
         pstreak = self._passenger_streak.setdefault(vehicle_id, {})
+        for _p in pool:  # bu kişiler bu karede görüldü → streak budama için işaretle
+            self._person_seen[_p.track_id] = frame_idx
 
         # 1) Sürücü = kilitli-yolcu OLMAYAN kişiler arasında sağ-en-alt (pozisyonel).
         eligible = [p for p in pool if p.track_id not in plock]
@@ -308,3 +314,19 @@ class DriverLock:
             self._established.discard(vid)
             self._last_driver.pop(vid, None)
             self._last_seen.pop(vid, None)
+        # Yolcu-streak sızıntısı (MEM): YAŞAYAN aracın bbox'ından geçip giden KİLİTLENMEMİŞ
+        # kişilerin sayaçlarını düş — kilitli yolcu/owner 'yapışkan' semantiği KORUNUR
+        # (locked pid'lere ve _passenger_owner'a dokunulmaz; davranış değişmez).
+        for vid, pst in self._passenger_streak.items():
+            locked = self._passenger_locked.get(vid, set())
+            stale = [
+                pid
+                for pid in pst
+                if pid not in locked
+                and frame_idx - self._person_seen.get(pid, frame_idx) > self.max_age
+            ]
+            for pid in stale:
+                pst.pop(pid, None)
+        # _person_seen yalnız son-görülme cache'i — eski girişleri düş (sınırlı tut).
+        for pid in [p for p, s in self._person_seen.items() if frame_idx - s > self.max_age]:
+            self._person_seen.pop(pid, None)

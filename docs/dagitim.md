@@ -135,6 +135,34 @@ Register-ScheduledTask -TaskName "AURA Inference" -Action $action -Trigger $trig
 
 ---
 
+## 🔒 3.5. Güvenlik (üretim kimlik doğrulama)
+
+Tüm sertleştirmeler **ENV-GATED**'dir: hiçbir değişken set edilmezse davranış yerel demoyla
+birebir aynıdır (`security.py` — DEMO-KORUMA ilkesi). Üretimde/sahada ilgili değişkenler set
+edilince koruma devreye girer.
+
+| Ortam değişkeni | Varsayılan | Etki |
+|---|---|---|
+| `AURA_API_TOKEN` | (yok) | Set ise **mutasyon** uçları (`/stream/start\|stop`, `/config`, `/eval/run`) `X-AURA-Token` başlığı ister; yanlış/eksik → 401. |
+| `AURA_API_PROTECT_READS` | (yok) | `AURA_API_TOKEN` **ile birlikte** set ise **PII okuma** uçlarını da korur: `/tracks*`, `/info` (`X-AURA-Token` başlığı) ve `/stream/video` MJPEG (`?token=` query-param — `<img>` başlık gönderemez). Set değilse okuma uçları açık kalır (co-located dashboard sözleşmesi). |
+| `AURA_ALLOW_NET_SOURCE` | (yok) | Set değilse `http://`/`file://`/serbest şema kaynaklar reddedilir (SSRF guard); yalnız kamera index / `rtsp://` / kök-altı dosya. |
+| `AURA_CORS_ORIGINS` | `localhost:8080` | CORS allowlist (virgülle ayrık genişletme; asla wildcard değil). |
+
+```ini
+# systemd üretim örneği — token + PII okuma koruması açık
+Environment=AURA_API_TOKEN=degistir-bunu-uzun-rastgele
+Environment=AURA_API_PROTECT_READS=1
+Environment=AURA_CORS_ORIGINS=https://panel.kurum.gov.tr
+```
+
+> [!IMPORTANT]
+> `AURA_API_PROTECT_READS` açıkken tarayıcı dashboard'u canlı plaka/görüntüyü görebilmek için
+> token'ı taşımalıdır (fetch çağrılarında `X-AURA-Token`, MJPEG `<img>`'de `?token=`). Bu opt-in
+> kapalıyken (varsayılan) dashboard değişiklik gerektirmez. Mutlak PII güvencesi için ayrıca
+> ters-proxy / ağ ACL / VPN katmanı önerilir.
+
+---
+
 ## 🔄 4. Final ortamı: mock → gerçek
 
 QoD ve Number Verification mock'ları gerçek CAMARA sözleşmesini taklit eder. Finalde yalnız
