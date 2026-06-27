@@ -1,6 +1,6 @@
 # GÖZLEM — TEKNOFEST 2026 "AURA" Projesi (Kapsamlı İnceleme)
 
-> Salt-gözlem belgesi · 18.06.2026 · Hazırlayan: Claude (Opus 4.8)
+> Salt-gözlem belgesi · 18.06.2026 · Hazırlayan: yapay zekâ
 > Kapsam: 4 repo / 277 commit + tüm plan + mimari + bizim katkımız + **internetteki en iyi çözüm yolları (SOTA) ile karşılaştırma**.
 > Bu belge yalnızca GÖZLEMDİR — projede hiçbir değişiklik yapılmamıştır.
 

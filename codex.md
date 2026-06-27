@@ -3,7 +3,7 @@
 > 🔴 **GÜNCEL DURUM (18.06.2026) — DÜRÜST NOT:** Codex CLI bu oturumlarda **çalışmadı**:
 > salt-okunur danışma çağrıları **0-çıktı ile takıldı / yanıt vermedi** (bkz. `gozlem.md` §7,
 > `plan1.md` §6). Aşağıdaki rehber kurulum/kullanım için **referans** olarak korunur, ancak
-> şu an **fiilen kullanılamıyor**; bu projedeki kararlar ve incelemeler Claude (Opus) tarafından
+> şu an **fiilen kullanılamıyor**; bu projedeki kararlar ve incelemeler yapay zekâ tarafından
 > yapıldı. Codex tekrar yanıt verir hale gelirse rehber olduğu gibi geçerlidir.
 >
 > **Bu belge ne?** Bu repoda **Codex CLI**'yi (OpenAI/ChatGPT kod ajanı) ne zaman ve nasıl
@@ -59,5 +59,5 @@ codex exec -s read-only "@aura/plate/normalize.py plaka oy-mantığını incele;
 codex exec -s workspace-write "X testini kıran Y'yi düzelt; başka davranışı değiştirme."
 ```
 **Her zaman:** Codex'in önerisini/düzeltmesini `pytest -m "not integration"` + `ruff`/`black` +
-`git diff` ile doğrula. Birincil değişiklikleri ben (Claude) yönetirim; Codex bağımsız
+`git diff` ile doğrula. Birincil değişiklikleri ben (yapay zekâ) yönetirim; Codex bağımsız
 ikinci-görüş/inceleme + gerektiğinde headless kod yardımı içindir.

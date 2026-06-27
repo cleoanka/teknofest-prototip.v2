@@ -18,7 +18,7 @@
 > geçmek ve finale kadar **her cephede** (öncelik YZ; sonra QoD, mobil, rapor, altyapı)
 > en üst seviyeye çıkarmak için **uçtan uca, gerçeğe oturmuş** bir yol haritası.
 > **Özelliği:** her iş kalemi bir **Codex CLI iş emri** olarak yazılmıştır — kopyala,
-> çalıştır, Codex yazar; Claude/aura inceler; testler doğrular.
+> çalıştır, Codex yazar; yapay zekâ/aura inceler; testler doğrular.
 
 > [!IMPORTANT]
 > **Bağlam tarihleri (bağlayıcı):** Plan tarihi **17.06.2026**. **FTR son teslim 28.06.2026**
@@ -38,7 +38,7 @@
 
 > [!WARNING]
 > **Not (araç durumu):** Codex **ölü** (0-çıktı); Gemini **kısmi** (pro `403`, `gemini-2.5-flash`
-> çalıştı). Bu planın iş emirleri Codex içindi; fiilen çalışmalar Claude (Opus) tarafından yürütüldü.
+> çalıştı). Bu planın iş emirleri Codex içindi; fiilen çalışmalar yapay zekâ tarafından yürütüldü.
 
 ---
 
@@ -49,7 +49,7 @@ Her iş emri (WP-x) aşağıdaki kalıpla çalıştırılır.
 <div align="center">
 
 ![Eller](https://img.shields.io/badge/Codex-Eller%20(kod%20yazar)-orange?style=flat-square)
-![Beyin](https://img.shields.io/badge/Claude%2Faura-Beyin%20(inceler)-blue?style=flat-square)
+![Beyin](https://img.shields.io/badge/yapay-zeka%2Faura-Beyin%20(inceler)-blue?style=flat-square)
 ![Kütüphaneci](https://img.shields.io/badge/Gemini-Kütüphaneci%20(araştırır)-9cf?style=flat-square)
 
 </div>
@@ -57,7 +57,7 @@ Her iş emri (WP-x) aşağıdaki kalıpla çalıştırılır.
 ```mermaid
 flowchart LR
     G["📚 Gemini<br/>araştırır"] --> C["🛠️ Codex<br/>kod yazar"]
-    C --> R["🧠 Claude/aura<br/>inceler"]
+    C --> R["🧠 yapay zekâ/aura<br/>inceler"]
     R --> T["✅ Testler<br/>doğrular"]
     T -->|"yeşil + temiz"| M["🔀 PR / main"]
     T -->|"kırmızı"| C
@@ -81,7 +81,7 @@ aura ship --deep --research "..."  # en güçlü modeller + gemini araştırma a
 ```
 > [!NOTE]
 > İş emirlerinin uzun/kesin promptu **A kalıbı** içindir. Kısa görev cümleleri **B kalıbı**
-> (`aura ship`) içindir; aura zaten Codex'i çağırır ve Claude review ekler. İkisi de **commit etmez**.
+> (`aura ship`) içindir; aura zaten Codex'i çağırır ve yapay zekâ review ekler. İkisi de **commit etmez**.
 
 **C) Her iş eminden SONRA zorunlu doğrulama kapısı (DoD ortak çekirdeği):**
 ```bash
@@ -90,7 +90,7 @@ cd ~/teknofest-prototip.v2 && \
 .venv/bin/ruff check . && .venv/bin/black --check . && \
 git --no-pager diff --stat
 ```
-Sonra **bağımsız inceleme**: `codex exec review` **veya** `aura review` (Claude diff'i eleştirir).
+Sonra **bağımsız inceleme**: `codex exec review` **veya** `aura review` (yapay zekâ diff'i eleştirir).
 Yeşil + inceleme temiz değilse → düzeltme iş emri, birleştirme yok.
 
 **D) Sıralama ilkesi:** Bölüm 5'teki bağımlılık grafiğine uy. YZ kanıtı (WP-A) ile FTR
@@ -425,6 +425,6 @@ aura ship --deep "ftr.md + eval_results kanıtlarıyla ftr_rapor_taslak.md tam F
 <div align="center">
 
 *Bu plan, repo kodu + şartname + FTR şablonu + config + CHANGELOG okunarak (17.06.2026) hazırlandı.*
-*Sayılar ve dosya yolları gerçektir. Yürütme: Codex CLI (eller) + aura/Claude (inceleme) + Gemini (araştırma).*
+*Sayılar ve dosya yolları gerçektir. Yürütme: Codex CLI (eller) + aura/yapay zekâ (inceleme) + Gemini (araştırma).*
 
 </div>

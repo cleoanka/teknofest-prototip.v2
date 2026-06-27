@@ -56,7 +56,7 @@ gemini -y -p "..."                        # YOLO: tüm onayları atla (DİKKAT �
 gemini -s -p "..."                        # shell araçlarını sandbox'ta çalıştır
 ```
 > AURA'da araştırma için **`--approval-mode plan`** (salt-okunur) tercih edilir; Gemini'nin
-> repoda değişiklik yapmasını istemiyoruz (değişiklikleri biz Claude tarafında yönetiyoruz).
+> repoda değişiklik yapmasını istemiyoruz (değişiklikleri biz yapay zekâ tarafında yönetiyoruz).
 
 ### Oturum / worktree / alt-komutlar
 ```bash

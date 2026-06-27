@@ -336,7 +336,7 @@ problem tanımı, FTR formatı, değerlendirme kriterleri, açık-veri kullanım
 ---
 
 > **Yapay zekâ desteği:** Bu rapor ve depo dokümantasyonunun yazım/düzenlenmesinde büyük dil
-> modelinden (Anthropic Claude) destek alınmıştır. Tüm teknik içerik, mimari kararlar, ölçümler ve
+> modelinden (büyük dil modeli) destek alınmıştır. Tüm teknik içerik, mimari kararlar, ölçümler ve
 > sayılar takım tarafından üretilmiş; depo artefaktlarından (`eval_results/`, `weights/custom_*_s.metrics.json`)
 > doğrulanmıştır (K-004). Yapay zekâ yalnızca yazım/derleme/düzen aracı olarak kullanılmıştır.
 

@@ -320,3 +320,7 @@ CI iskeleti: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — ruff + b
 ## 📄 Lisans
 
 MIT — bkz. [`LICENSE`](LICENSE).
+
+---
+
+> Bu proje geliştirilirken yapay zekâdan yararlanılmıştır.

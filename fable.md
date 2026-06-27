@@ -9,7 +9,7 @@
 > (license_plate ara `mAP50≈0.97`, nihai değil). Güncel durum: `gozlem.md` · `CHANGELOG.md` ·
 > `ultraplan.md`. Bu günlük tarihsel doğruluğu korumak için olduğu gibi bırakılmıştır.
 >
-> Bu belge, Claude tarafından otonom yürütülen bakım + yenileme oturumlarının
+> Bu belge, yapay zekâ tarafından otonom yürütülen bakım + yenileme oturumlarının
 > **tam dökümüdür**. Plan: [`plan.md`](plan.md).
 > Sürüm: **2.1.0**. Her madde gerçekten yapıldı ve doğrulandı; hiçbir sonuç
 > tek videoya özel sabitle (hile ile) üretilmedi — K-004 ilkesi: tüm eşikler

@@ -13,7 +13,7 @@
 </div>
 
 > [!NOTE]
-> **Hedef kitle:** Bu dosyayı işleyecek otonom kodlama agent'ı (Claude Code).
+> **Hedef kitle:** Bu dosyayı işleyecek otonom kodlama agent'ı (yapay zekâ kodlama aracı).
 > **Kaynak doğruluk:** TEKNOFEST 2026 "5G & Yapay Zekâ ile Akıllı Yol Güvenliği" Teknik Şartnamesi + `AURA_YZ_Mimarisi_v1.1.md`.
 > **Görev:** Şartnamenin gerektirdiği tüm sistemi — mobil + 5G API + YZ çekirdeği + profesyonel dashboard — GitHub'a yüklenmeye hazır, tek komutla ayağa kalkan, Windows/macOS uyumlu bir monorepo olarak üret.
 
