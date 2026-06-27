@@ -439,14 +439,35 @@ def build_agreement_ocr(cfg, primary: OCREngine | None = None) -> OCREngine | No
     return None
 
 
+def _any_real_ocr_available(cfg) -> bool:
+    """Yapılandırılmış motor VEYA herhangi bir gerçek OCR motoru kullanılabilir mi.
+
+    Eski sürüm yalnız EasyOCR'a bakıyordu → varsayılan \tcode{fastplate} kurulu ama EasyOCR
+    yokken sistem sessizce MockOCR'a (sahte plaka) düşüyordu. Artık config motoru
+    (fastplate/paddleocr) ve evrensel fallback (easyocr) ayrı ayrı denetlenir.
+    """
+    engine = str(cfg.get("plate.ocr_engine", "easyocr")).lower()
+    if engine == "fastplate" and _fastplate_available():
+        return True
+    if engine == "paddleocr" and _paddleocr_available():
+        return True
+    return _easyocr_available() or _fastplate_available() or _paddleocr_available()
+
+
 def build_ocr(cfg) -> OCREngine:
     mode = str(cfg.get("runtime.ai_mode", "auto")).lower()
     # auto + gömülü sentetik örnek → mock OCR (renk→plaka, hızlı ve deterministik;
     # detector/driver de bu kaynakta mock'a düştüğü için tüm hat tutarlı kalır)
     if mode == "auto" and is_synthetic_source(cfg):
         return MockOCR(cfg)
-    if mode != "mock" and _easyocr_available():
+    if mode != "mock" and _any_real_ocr_available(cfg):
         return _build_real_ocr(cfg)
-    if mode == "real" and not _easyocr_available():
-        log.warning("ai_mode=real ama EasyOCR yok → mock OCR'a düşülüyor")
+    if mode == "real":
+        # K-004: real modda gerçek OCR yoksa MockOCR SAHTE plaka üretir → açık hata ver,
+        # sessizce uydurma çıktıya düşme.
+        raise RuntimeError(
+            "ai_mode=real ama hiçbir gerçek OCR motoru (fastplate/easyocr/paddleocr) "
+            "kullanılamıyor; mock OCR sahte plaka üretmesin diye durduruldu "
+            "(pip install fast-plate-ocr veya easyocr)."
+        )
     return MockOCR(cfg)
