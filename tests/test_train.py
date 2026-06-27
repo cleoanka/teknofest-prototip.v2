@@ -207,3 +207,30 @@ def test_fetch_dry_run_no_network(capsys):
 def test_fetch_unknown_class_returns_error(capsys):
     args = types.SimpleNamespace(manifest=None, klass="yok", output=None, run=False)
     assert fetch(args) == 1
+
+
+def test_oversample_replicates_sparse_class(tmp_path):
+    """FTR §2.3 oversampling KANITI: dengesizlik oranı > 3 olan seyrek sınıf TRAIN
+    bölümünde çoğaltılır; val/test'e DOKUNULMAZ (değerlendirme sızıntısı yok)."""
+    from train.prepare_dataset import oversample_train_split
+
+    root = tmp_path / "ds"
+    # train: sınıf 0 ×12 (dense), sınıf 1 ×1 (seyrek → oran 12); val/test: 3'er
+    for split, n0, n1 in [("train", 12, 1), ("val", 2, 1), ("test", 2, 1)]:
+        (root / split / "images").mkdir(parents=True)
+        (root / split / "labels").mkdir(parents=True)
+        for i in range(n0):
+            (root / split / "images" / f"d{i}.jpg").write_bytes(b"x")
+            (root / split / "labels" / f"d{i}.txt").write_text("0 0.5 0.5 0.2 0.2\n")
+        for i in range(n1):
+            (root / split / "images" / f"s{i}.jpg").write_bytes(b"x")
+            (root / split / "labels" / f"s{i}.txt").write_text("1 0.5 0.5 0.2 0.2\n")
+
+    added = oversample_train_split(root, names=["dense", "sparse"])
+    # seyrek sınıf çoğaltıldı (dense dokunulmadı)
+    assert added.get("sparse", 0) > 0 and "dense" not in added
+    # TRAIN'de oversampling kopyaları üretildi
+    assert len(list((root / "train" / "labels").glob("*__os*.txt"))) == added["sparse"]
+    # val/test DEĞİŞMEDİ (sızıntı yok)
+    assert len(list((root / "val" / "images").glob("*"))) == 3
+    assert len(list((root / "test" / "images").glob("*"))) == 3

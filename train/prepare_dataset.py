@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 import random
 import shutil
+from collections import Counter, defaultdict
 from pathlib import Path
 
 from train.utils import dataset_stats, print_dataset_report
@@ -17,6 +18,58 @@ from train.utils import dataset_stats, print_dataset_report
 log = logging.getLogger("roadguard.train.dataset")
 IMG_EXT = {".jpg", ".jpeg", ".png", ".bmp"}
 DEFAULT_CLASSES = ["car", "truck", "bus", "minibus"]
+
+
+def oversample_train_split(
+    out: Path, names: list[str] | None, max_ratio: float = 3.0
+) -> dict[str, int]:
+    """TRAIN split'inde seyrek sınıfları içeren görüntüleri çoğaltarak (image+label kopyası)
+    sınıf dengesini artırır — FTR §2.3 'oversampling' adımının fiili uygulaması.
+
+    Dengesizlik oranı (en kalabalık/sınıf) ``max_ratio``'yu aşan her seyrek sınıf için, o
+    sınıfı içeren görüntüler hedef (= en kalabalık/``max_ratio``) sayıya yaklaşana dek
+    çoğaltılır; çoğaltma faktörü üst sınırı 8×'tir (aşırı şişme yok). val/test'e DOKUNULMAZ
+    (değerlendirme sızıntısı olmaz). Döndürür: {sınıf: eklenen kopya}.
+    """
+    img_dir, lbl_dir = out / "train" / "images", out / "train" / "labels"
+    if not lbl_dir.is_dir():
+        return {}
+    counts: Counter = Counter()
+    imgs_of: dict[int, list] = defaultdict(list)
+    for lbl in sorted(lbl_dir.glob("*.txt")):
+        present: set[int] = set()
+        for line in lbl.read_text(encoding="utf-8").splitlines():
+            p = line.split()
+            if p:
+                ci = int(float(p[0]))
+                counts[ci] += 1
+                present.add(ci)
+        img = next(
+            (img_dir / f"{lbl.stem}{e}" for e in IMG_EXT if (img_dir / f"{lbl.stem}{e}").exists()),
+            None,
+        )
+        if img:
+            for ci in present:
+                imgs_of[ci].append((img, lbl))
+    if not counts:
+        return {}
+    target = max(counts.values())
+    goal = target / max_ratio  # hedef: seyrek sınıfı bu sayıya çıkar (oran ≤ max_ratio)
+    added: dict[str, int] = {}
+    for ci in sorted(counts):
+        cnt = counts[ci]
+        if cnt == 0 or target / cnt <= max_ratio:
+            continue  # zaten dengeli
+        factor = min(max(1, round(goal / cnt)), 8)  # çoğaltma faktörü (üst sınır 8×)
+        n = 0
+        for r in range(1, factor):  # factor-1 EK kopya
+            for img, lbl in imgs_of[ci]:
+                shutil.copy(img, img_dir / f"{img.stem}__os{ci}_{r}{img.suffix}")
+                shutil.copy(lbl, lbl_dir / f"{lbl.stem}__os{ci}_{r}.txt")
+                n += 1
+        if n:
+            added[names[ci] if names and ci < len(names) else str(ci)] = n
+    return added
 
 
 def _find_images(inp: Path) -> list[Path]:
@@ -111,6 +164,10 @@ def prepare_dataset(args) -> int:
         classes,
         yaml_path,
     )
-    # FTR §2 "data balancing": split başına sınıf-örnek dağılımını bas.
+    # FTR §2.3 "data balancing — oversampling": seyrek sınıfları TRAIN'de çoğalt (opsiyonel).
+    if getattr(args, "oversample", False):
+        added = oversample_train_split(out, classes)
+        log.info("Oversampling (train): %s", added or "gerekmedi (oran ≤ 3)")
+    # FTR §2 "data balancing": split başına sınıf-örnek dağılımını bas (oversampling sonrası).
     print_dataset_report(dataset_stats(out, names=classes))
     return 0

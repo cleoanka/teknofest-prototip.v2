@@ -92,6 +92,11 @@ def build_parser() -> argparse.ArgumentParser:
     dt.add_argument("--classes", default=None, help="Virgülle sınıf listesi (örn. car,truck)")
     dt.add_argument("--seed", type=int, default=42)
     dt.add_argument(
+        "--oversample",
+        action="store_true",
+        help="Seyrek sınıfları (dengesizlik oranı > 3) TRAIN bölümünde çoğalt (val/test'e dokunmaz)",
+    )
+    dt.add_argument(
         "--report",
         action="store_true",
         help="Sadece veri-dengeleme raporu bas (mevcut --output/--input YOLO setini analiz et)",
