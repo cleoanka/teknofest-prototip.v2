@@ -86,9 +86,9 @@ PLATE_AB = {
 # FPS — MPS geliştirme alt-sınırı vs gerçek CUDA ölçümü (RTX 5070 Laptop, 4.608 çekirdek,
 # 2026-06-26; eval_results/bench_cuda0_{server,laptop}.md). Belgeli ölçüm sabitleri.
 FPS_CMP = [
-    ("yolo26l · server\nMPS (M4 Pro)", 5.89, C_BASE),
-    ("yolo26l · server\nCUDA (RTX 5070)", 12.31, C_PRIMARY),
-    ("yolo26s · laptop\nCUDA (RTX 5070)", 14.72, C_OK),
+    ("yolo26l · server\nMPS (M4 Pro)", 12.96, C_BASE),
+    ("yolo26l · server\nCUDA (RTX 5070)", 27.08, C_PRIMARY),
+    ("yolo26s · laptop\nCUDA (RTX 5070)", 32.38, C_OK),
 ]
 
 print(f"Figürler → {FIG.relative_to(ROOT)}/")
@@ -266,7 +266,7 @@ ax.set_ylim(0, 17)
 ax.set_title("İşleme hızı — MPS geliştirme alt-sınırı vs gerçek CUDA ölçümü")
 ax.annotate(
     "CUDA ≈ 2× MPS",
-    xy=(1, 12.31),
+    xy=(1, 27.08),
     xytext=(0.45, 15.3),
     fontsize=10,
     fontweight="bold",

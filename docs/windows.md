@@ -56,7 +56,7 @@
   satırını görmelisiniz. Sadece CPU görünüyorsa GPU yok ya da sürücü eksik demektir.
 - **Geliştirme donanımı (RoadGuard):** NVIDIA GeForce RTX 5070 Laptop GPU — **4.608 CUDA çekirdeği**
   (36 SM × 128), 8 GB VRAM, Compute Capability 12.0 (Blackwell), torch 2.8.0+cu128.
-  Server profili CUDA FPS: **12,31** (yolo26l, imgsz 960), laptop profili: **14,72** (yolo26s, imgsz 640).
+  Server profili CUDA FPS: **27,08** (yolo26l, imgsz 960), laptop profili: **32,38** (yolo26s, imgsz 640).
   Benchmark: `.\dev.ps1 video-test <video.mp4>` veya `python tools/bench.py --device cuda --profile server`.
 
 ```mermaid

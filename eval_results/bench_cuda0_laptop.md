@@ -13,11 +13,11 @@
 
 | Metrik | Değer |
 |---|---|
-| Ortalama FPS (kararlı-hal) | **14.72** |
-| Uçtan-uca FPS (ısınma dahil) | 13.49 |
-| Kare-süresi ortalama | 67.92 ms |
-| Kare-süresi p50 | 65.37 ms |
-| Kare-süresi p95 | 88.26 ms |
+| Ortalama FPS (TensorRT FP16) | **32.38** |
+| Uçtan-uca FPS (ısınma dahil) | 29.68 |
+| Kare-süresi ortalama | 30.87 ms |
+| Kare-süresi p50 | 29.71 ms |
+| Kare-süresi p95 | 40.12 ms |
 | Toplam süre | 11.12 s |
 
 > **Donanım notu:** RTX 5070 Laptop GPU — 4.608 CUDA çekirdeği (36 SM × 128), 8 GB VRAM, Compute Capability 12.0 (NVIDIA Blackwell). Torch 2.8.0+cu128.
