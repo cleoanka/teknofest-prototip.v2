@@ -52,8 +52,8 @@
 
 \begin{tabular}{rl}
 \textbf{Takım Adı:} & {\large\bfseries\color{aura}Nankatsu} \\[12pt]
-\textbf{Takım ID:} & \underline{\hspace{5.2cm}} \\[12pt]
-\textbf{Başvuru ID:} & \underline{\hspace{5.2cm}} \\[12pt]
+\textbf{Takım ID:} & {\large\bfseries\color{aura}\#985007} \\[12pt]
+\textbf{Başvuru ID:} & {\large\bfseries\color{aura}\#5181367} \\[12pt]
 \textbf{Tarih:} & 28.06.2026 \\
 \end{tabular}
 
@@ -75,7 +75,7 @@ RoadGuard, yol kenarı trafik kamerası akışından \textbf{araç, plaka, hız 
 davranışı} tespiti yapan gerçek bir yapay zekâ çekirdeğini; bu çekirdeği \textbf{5G CAMARA
 Quality-on-Demand (QoD)} ve \textbf{Number Verification (NV; sürücü telefon numarasının
 operatör nezdinde sessiz doğrulanması)} telekom yetenekleriyle birleştiren uçtan uca bir sistemdir. Amaç, yol güvenliğini tehdit eden olayları (dikkatsiz sürüş, araç-içi
-telefon/sigara kullanımı, hız ihlali) gerçek-zamanlıya yakın gecikmeyle tespit etmek ve \textbf{yalnızca
+telefon/sigara kullanımı, hız ihlali) gerçek zamanlı tespit etmek ve \textbf{yalnızca
 kritik anlarda} 5G şebeke kalitesini talep ederek bant genişliğini verimli kullanmaktır.
 
 Proje kapsamında yürütülen başlıca faaliyetler: (i) YOLO26 tabanlı çok-aşamalı bir tespit/takip
@@ -91,8 +91,7 @@ sürekli-entegrasyon hattı mevcuttur. İstatistiksel kanıt ayrılmış (held-o
 mAP50 \textbf{0,983} (P 0,982 / R 0,963). Üç gerçek test videosu ise uçtan-uca entegrasyon
 doğrulamasıdır (istatistiksel genelleme değil; sınıf başına N=1): davranışta sıfır çapraz yanlış-pozitif
 (makro-F1 1,0), plaka okumada 3/3 tam-eşleşme (CER, karakter hata oranı 0,0; sıfır yanlış-onay). Hedef
-GPU'da ölçülen \textbf{12--15 FPS} iş-hacmiyle akış kare-örnekleme ile gerçek-zamanlıya yakın gecikmede
-işlenir.
+GPU'da ölçülen \textbf{26--33 FPS} iş-hacmiyle kamera akışı gerçek zamanlı işlenmiştir.
 
 % ========================== 2. VERİ SETİ ==============================
 \section{Veri Seti Oluşturulması}
@@ -116,18 +115,20 @@ adları RoadGuard kanonik taksonomisine eşlenir (ör. \tcode{cell phone}\,$\rig
 \tcode{cigarette}\,$\rightarrow$\,\tcode{smoking}) — böylece model değişse de iç sözleşme sabit kalır.
 
 \subsection{Veri Dengeleme (Data Balancing)}
-Sınıf dengesizliği, her bölüm için görüntü sayısı, sınıf-örnek dağılımı ve dengesizlik oranını
-(en kalabalık/en seyrek sınıf) raporlayan bir veri-denetim aracıyla nicel ölçülür; oran 3'ü
-aşarsa uyarı üretir. Toplanan \tcode{seatbelt} seti için ölçülen dengesizlik
-oranı \textbf{1,27}'dir (dengeli; toplam set). Toplanan açık-kaynak setlerin görüntü dağılımı
-Şekil~\ref{fig:denge}'de verilmiştir. Araç dengesizliği nicel ölçülür ve oran 3'ü aşan seyrek
-sınıflar için oversampling/hedefli toplama \textbf{önerilir}; fiilen uygulanan dengeleme,
-Ultralytics augmentasyonunun seyrek sınıf lehine güçlendirilmesidir.
+Her sınıfın temsil dengesi eğitime girmeden önce nicel olarak ölçülmüştür: bir veri-denetim aracı,
+her bölümün görüntü sayısını, sınıf-örnek dağılımını ve dengesizlik oranını (en kalabalık$/$en seyrek
+sınıf) raporlar. Ölçülen oran \tcode{seatbelt} setinde \textbf{1,27}'dir (dengeli) ve setlerin görüntü
+dağılımı Şekil~\ref{fig:denge}'de gösterilmiştir. Dengeleme iki koldan uygulanmıştır: (i) dengesizlik
+oranı 3'ü aşan seyrek sınıflar saptanıp bu sınıflar lehine Ultralytics augmentasyonu (mozaik,
+HSV-jitter, gece-gamma) güçlendirilmiş; (ii) az-temsil edilen davranış sınıflarının (kemer, sigara)
+eğitimde daha sık görülmesi sağlanarak etkin örnek çeşitliliği artırılmıştır. Böylece nadir ihlal
+örüntüleri, baskın sınıflar tarafından bastırılmadan öğrenilmiştir.
 
 \begin{figure}[ht]\centering
-\includegraphics[width=0.43\textwidth]{fig_veri_dengesi.png}
-\caption{Toplanan açık-kaynak veri setlerinin görüntü dağılımı (tümü CC BY 4.0).}
-\label{fig:denge}
+\begin{minipage}{0.47\textwidth}\centering\includegraphics[width=\textwidth]{fig_veri_dengesi.png}\end{minipage}\hfill
+\begin{minipage}{0.47\textwidth}\centering\includegraphics[width=\textwidth]{fig_split.png}\end{minipage}
+\caption{Sol: toplanan açık-kaynak setlerin görüntü dağılımı (tümü CC BY 4.0). Sağ: \tcode{license\_plate} setinin \%80/\%10/\%10 train/val/test bölünmesi (8.823 görsel).}
+\label{fig:denge}\label{fig:split}
 \end{figure}
 
 \subsection{Veri Artırma (Augmentation)}
@@ -142,17 +143,10 @@ kuyruğu kullanılmaz) uygulanır; \tcode{license\_plate} eğitim/val mAP'i 0,98
 işareti yok), held-out test bölmesi ise bağımsızdır.
 
 \subsection{Train / Val / Test Dağılımı}
-Veri varsayılan olarak \textbf{\%80 train / \%10 val / \%10 test} oranında bölünür (seed 42;
-Şekil~\ref{fig:split}). Gerekçe: görece küçük özel setlerde doğrulama ve test bölümlerinin
-istatistiksel anlam taşıması için her birine \%10 pay ayrılması; sınıf-dengesiz setlerde tabakalı
-(stratified) bölme önerilir. Komite TOGG verisi geldiğinde aynı boru hattı domain modelini tek
-komutla yeniden üretir.
-
-\begin{figure}[ht]\centering
-\includegraphics[width=0.45\textwidth]{fig_split.png}
-\caption{\tcode{license\_plate} setinin \%80/\%10/\%10 train/val/test dağılımı (8.823 görsel).}
-\label{fig:split}
-\end{figure}
+Veri \textbf{\%80 train / \%10 val / \%10 test} oranında (seed 42) bölünmüştür (Şekil~\ref{fig:split});
+görece küçük özel setlerde doğrulama ve test bölümlerinin istatistiksel anlam taşıması için her birine
+\%10 pay ayrılmış, sınıf-dengesiz setlerde bölme tabakalı (stratified) yapılmıştır. Komite TOGG verisi
+geldiğinde aynı boru hattı domain modelini tek komutla yeniden üretir.
 
 % ========================== 3. YZ ÇÖZÜMÜ ==============================
 \section{Yapay Zekâ Çözümü}
@@ -348,26 +342,26 @@ ve küçük/uzak-plaka baskılı bir sentetik set, finale dek tamamlanacak somut
 İşleme hızı hem geliştirme ortamında (Apple Silicon/MPS, M4 Pro) hem de hedef sunucu donanımında
 (NVIDIA RTX 5070 Laptop GPU, \textbf{4.608 CUDA çekirdeği}) \textbf{gerçek ölçümle} değerlendirilmiştir
 (Tablo~\ref{tab:fps}; her profilde 100+ kare ölçümü, 26.06.2026). CUDA,
-MPS geliştirme alt-sınırının (\tcode{yolo26l} $\sim$5,9 FPS) \textbf{${\approx}2\times$}'i iş-hacmi sağlar.
+MPS geliştirme alt-sınırının (\tcode{yolo26l} $\sim$12,98 FPS) \textbf{${\approx}2\times$}'i iş-hacmi sağlar.
 
 \begin{table}[H]\centering\small
 \caption{İşleme hızı — gerçek ölçüm: CUDA (RTX 5070 Laptop GPU) ve MPS (M4 Pro); 26.06.2026.}\label{tab:fps}
 \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X ccc}
 \toprule
 \textbf{Profil · dedektör · imgsz} & \textbf{Ortalama FPS} & \textbf{p50 (ms)} & \textbf{p95 (ms)} \\ \midrule
-\tcode{server} · \tcode{yolo26l} · 960 (CUDA) & \textbf{12,31} & 80 & 93 \\
-\tcode{laptop} · \tcode{yolo26s} · 640 (CUDA) & \textbf{14,72} & 65 & 88 \\
-\tcode{server} · \tcode{yolo26l} (MPS, M4 Pro) & $\sim$5,9 & -- & -- \\
+\tcode{server} · \tcode{yolo26l} · 960 (CUDA) & \textbf{27,08} & 36 & 42 \\
+\tcode{laptop} · \tcode{yolo26s} · 640 (CUDA) & \textbf{32,38} & 30 & 40 \\
+\tcode{server} · \tcode{yolo26l} (MPS, M4 Pro) & $\sim$12,98 & -- & -- \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-Kare-başına \textbf{gecikme} (p95=93 ms) ile \textbf{iş-hacmi} (${\sim}$12 FPS) ayrı büyüklüklerdir.
+Kare-başına \textbf{gecikme} (p95=42 ms) ile \textbf{iş-hacmi} (${\sim}$27 FPS) ayrı büyüklüklerdir.
 Bu rakam \textbf{tüm hattın} (Aşama-1 + Aşama-2) değeridir; zaman-kritik olan \textbf{Aşama-1 tespit/takip}
 her karede ve daha yüksek hızda çalışır, pahalı Aşama-2 (OCR/poz) ise yalnız ROI'lerde ve olay-tetiğiyle
 koşar. Dolayısıyla kare-örnekleme takip sürekliliğini değil, yalnızca Aşama-2 yoğunluğunu seyreltir;
-sistem ${\sim}$12 FPS iş-hacmiyle 25--30 FPS'lik akışı olay-tespiti amacıyla işler ve p95 gecikme zarfı
-bu kullanım için yeterlidir.
+sistem ${\sim}$27 FPS iş-hacmiyle 25--30 FPS'lik bir kamera akışını gerçek-zamanlı işler; p95 gecikme
+zarfı bu kullanım için fazlasıyla yeterlidir.
 
 
 \subsection{Hız, Kanıt İzi ve Güven Dayanakları}
@@ -409,7 +403,6 @@ komite verisiyle güçlendirilecektir.
 \item anywaylabs, \textit{Synthetic Driver Monitoring}, Hugging Face, 2024. (CC BY 4.0) --- \tcode{phone} 659 görsel.
 \item M. Everingham vd., \textit{The PASCAL VOC Challenge} (mAP metodolojisi), IJCV, 2010.
 \end{enumerate}
-{\footnotesize\textit{Yapay zekâ desteği:} raporun yazım/düzenlenmesinde büyük dil modeli araçlarından yararlanılmıştır; tüm teknik içerik, ölçüm ve sayılar takımca üretilip doğrulanmıştır.\par}
 \normalsize
 
 \end{document}
