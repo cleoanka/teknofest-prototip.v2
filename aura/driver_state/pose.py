@@ -328,6 +328,14 @@ class PoseDriverClassifier(DriverClassifier):
                     ds.confidence.get("smoking", 0.0), float(b.conf.item())
                 )
 
+    def forget(self, track_id: int | None) -> None:
+        """ID'ye bağlı pose durumunu (sürücü-kırpık önbelleği + sigara-bastırma latch'i)
+        temizle. Track ID recycle olunca yeni araç eski kırpık/latch ile işlenmesin ve
+        uzun akışta bu sözlükler sınırsız büyümesin (engine.prune/forget buradan çağırır)."""
+        key = -1 if track_id is None else track_id
+        self._crop_cache.pop(key, None)
+        self._smoke_suppress.pop(key, None)
+
     # --- ana giriş ----------------------------------------------------------- #
     def infer(self, cabin_roi: np.ndarray | None, track_id: int | None = None) -> DriverState:
         ds = DriverState()

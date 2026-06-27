@@ -187,10 +187,21 @@ class PlateVotePool:
         kalitesidir (plaka kırpık yüksekliğinden türetilir, reader hesaplar);
         yakın/net okuma uzak/bulanık okumayı hem güvenle hem ağırlıkla ezer.
         """
-        if text and len(self.raw_reads) < self.max_reads:
-            eff = max(0.0, min(1.0, float(conf))) * max(0.0, min(1.0, float(weight)))
+        if not text:
+            return
+        eff = max(0.0, min(1.0, float(conf))) * max(0.0, min(1.0, float(weight)))
+        if len(self.raw_reads) < self.max_reads:
             self.raw_reads.append((text, eff))
             self._norm.append(normalize_tr(text))  # PERF: bir kez normalize, cache'le
+            return
+        # Havuz dolu: yeni okuma en düşük-ağırlıklı mevcut okumadan DAHA kaliteliyse onu
+        # değiştir. Aksi halde yavaş yaklaşan araçta erken biriken uzak/bulanık okumalar
+        # havuzu kilitleyip sonradan gelen yakın/net okumanın konsensüsü düzeltmesini
+        # engellerdi (Codex bulgusu). Kalite-ağırlıklı replacement bu kilidi açar.
+        min_i = min(range(len(self.raw_reads)), key=lambda i: self.raw_reads[i][1])
+        if eff > self.raw_reads[min_i][1]:
+            self.raw_reads[min_i] = (text, eff)
+            self._norm[min_i] = normalize_tr(text)
 
     # --- iç hesap ----------------------------------------------------------- #
     def _weights(self) -> dict[str, float]:

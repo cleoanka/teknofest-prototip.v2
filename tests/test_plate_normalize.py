@@ -60,6 +60,19 @@ def test_pool_confirms_dominant_raw_valid_read():
     assert conf > 0.6
 
 
+def test_pool_full_high_quality_displaces_low_quality():
+    """Codex bulgusu: havuz (max_reads) dolduğunda, yakın/net yüksek-ağırlık okuma,
+    erken biriken uzak/bulanık düşük-ağırlık YANLIŞ okumayı değiştirip konsensüsü
+    düzeltebilmeli (eski sürüm dolu havuzda yeni okumayı tamamen düşürüyordu)."""
+    p = PlateVotePool(min_weight=2.0, margin_weight=1.5, ratio=0.6, max_reads=4)
+    for _ in range(4):
+        p.add("06AA1111", conf=0.2, weight=0.2)  # havuzu düşük-ağırlıkla doldur (yanlış)
+    for _ in range(4):
+        p.add("34TC8532", conf=0.95, weight=0.95)  # yakın/net doğru → düşükleri ezer
+    value, _ = p.consensus()
+    assert value == "34TC8532"
+
+
 def test_pool_does_not_confirm_competing_valid_reads():
     p = _pool()
     for _ in range(4):

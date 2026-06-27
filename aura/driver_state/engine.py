@@ -113,10 +113,20 @@ class DriverStateEngine:
         dead = [tid for tid, v in self.voters.items() if frame_idx - v.last_frame > self.max_age]
         for tid in dead:
             del self.voters[tid]
+            self._forget_model(tid)
 
     def forget(self, track_id: int) -> None:
         """Tek bir ID'nin tamponunu unut (araç kesin sahneden çıktıysa)."""
         self.voters.pop(track_id, None)
+        self._forget_model(track_id)
+
+    def _forget_model(self, track_id: int) -> None:
+        """Katman A modelinin ID'ye bağlı durumunu (pose kırpık-cache + sigara latch'i)
+        varsa temizle. Eski voter prune'u model cache'ini bırakıyordu (Codex bulgusu):
+        track recycle'da yanlış kırpık/latch + uzun akışta bellek büyümesi."""
+        fn = getattr(self.model, "forget", None)
+        if callable(fn):
+            fn(track_id)
 
 
 def build_driver_engine(cfg) -> DriverStateEngine:

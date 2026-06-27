@@ -230,10 +230,23 @@ def test_build_ocr_auto_synthetic_source_uses_mock(monkeypatch, cfg):
     assert isinstance(build_ocr(cfg), MockOCR)
 
 
-def test_build_ocr_real_mode_no_easyocr_falls_back_to_mock(monkeypatch, cfg):
+def test_any_real_ocr_available_counts_fastplate(monkeypatch, cfg):
+    """Düzeltme: yapılandırılan motor (fastplate) varsa EasyOCR yok bile gerçek-OCR
+    mevcut sayılır → sessizce MockOCR'a (sahte plaka) DÜŞMEZ."""
+    monkeypatch.setitem(cfg.data.setdefault("plate", {}), "ocr_engine", "fastplate")
+    monkeypatch.setattr(ocr_mod, "_easyocr_available", lambda: False)
+    monkeypatch.setattr(ocr_mod, "_fastplate_available", lambda: True)
+    assert ocr_mod._any_real_ocr_available(cfg) is True
+
+
+def test_build_ocr_real_mode_no_real_ocr_raises(monkeypatch, cfg):
+    """K-004: ai_mode=real iken HİÇBİR gerçek OCR yoksa açık hata (mock sahte plaka üretmesin)."""
     monkeypatch.setitem(cfg.data["runtime"], "ai_mode", "real")
     monkeypatch.setattr(ocr_mod, "_easyocr_available", lambda: False)
-    assert isinstance(build_ocr(cfg), MockOCR)
+    monkeypatch.setattr(ocr_mod, "_fastplate_available", lambda: False)
+    monkeypatch.setattr(ocr_mod, "_paddleocr_available", lambda: False)
+    with pytest.raises(RuntimeError):
+        build_ocr(cfg)
 
 
 if __name__ == "__main__":

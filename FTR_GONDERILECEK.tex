@@ -136,7 +136,10 @@ Augmentasyon, Ultralytics eğitim hattının yerleşik teknikleriyle uygulanır:
 jitter} (ışık/renk sıcaklığı), \textbf{karartma/gamma} (gece ve far-patlaması senaryoları) ve
 \textbf{motion blur} (yüksek hızlı araç bulanıklığı). Ablasyon için \tcode{--no-augment} ile
 kapatılabilir. Ek olarak, karanlık kabin görüntülerinde sürücü ROI'sine çalışma anında CLAHE+gamma
-parlatma uygulanır.
+parlatma uygulanır. \textbf{Overfitting kontrolü:} küçük özel setlerde aşırı-uyumu sınırlamak için
+patience-tabanlı erken-durdurma, ağırlık-çürümesi ve \textbf{en-iyi-val checkpoint} dağıtımı (overfit
+kuyruğu kullanılmaz) uygulanır; \tcode{license\_plate} eğitim/val mAP'i 0,989'da stabildir (aşırı-uyum
+işareti yok), held-out test bölmesi ise bağımsızdır.
 
 \subsection{Train / Val / Test Dağılımı}
 Veri varsayılan olarak \textbf{\%80 train / \%10 val / \%10 test} oranında bölünür (seed 42;
@@ -227,7 +230,8 @@ mutlak bir marjla geçmek zorundadır, aksi halde karar \tcode{pending}'e çevri
 (\tcode{confirm\_min\_char\_margin=2.0}): pozisyon belirsizse plaka onaylanmaz, \tcode{pending} denir.
 (ii) Takip/phantom çıktı kapısı (\tcode{track\_id=-1}, \tcode{min\_output\_frames}): kimliğe bağlanmamış
 hayalet tespitler olay üretmez. (iii) ROI alan tavanı (\tcode{max\_roi\_area\_ratio=0.10}): anormal
-büyük ROI'ler kırpılır. Hiçbir eşik videoya-özel sabit içermez (oran-bazlı, ölçek-bağımsız).
+büyük ROI'ler kırpılır. Karar eşikleri \textbf{videoya-özel sabit içermez} ve oran-bazlıdır; kalite
+kapıları (asgari plaka/ROI yüksekliği) çözünürlük-ölçekli piksel minimumları kullanır.
 
 \textbf{Hız ve Swerving.} Hız kalibrasyon-bağımlıdır (tripwire/ipm/metric, Kalman+EMA); kalibrasyon
 yoksa sistem mutlak hız iddia etmez, yalnız göreli-hız bayrağı üretir. Swerving, aracın merkez-x
@@ -380,7 +384,7 @@ toplar. Böylece her sayı izlenebilir bir ölçüme dayanır, rapora elle giril
 paketinin (${\sim}780$ test) bir bölümü ayrıca CAMARA QoD/NV mock sözleşme uyumunu doğrular.
 
 \textbf{Güven dayanakları.} Güven, ölçülen sayıların ötesinde \textbf{yapısal} gerekçelere
-dayanır: tüm eşikler oran/boyut-temelli ve ölçek-bağımsızdır (videoya-özel sabit yok, K-004), dolayısıyla
+dayanır: karar eşikleri oran/boyut-temellidir ve \textbf{videoya-özel sabit içermez} (K-004; kalite kapıları çözünürlük-ölçeklidir), dolayısıyla
 sonuçlar tek çekime aşırı-uyumlanmaz; belirsizlikte sistem yanlış üretmek yerine çekimser kalır
 (plakada \textbf{sıfır yanlış-onay}) ve bu güvenceler config-driven, gerçek videoda doğrulanmış zırhlara
 (Bölüm 3.3) dayanır. Video setinin istatistiksel sınırı (N=1) Bölüm~4.3'te açıkça belirtilmiş olup
