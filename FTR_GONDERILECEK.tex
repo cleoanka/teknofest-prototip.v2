@@ -118,7 +118,7 @@ sınıflar için oversampling/hedefli toplama \textbf{önerilir}; fiilen uygulan
 Ultralytics augmentasyonunun seyrek sınıf lehine güçlendirilmesidir.
 
 \begin{figure}[ht]\centering
-\includegraphics[width=0.40\textwidth]{fig_veri_dengesi.png}
+\includegraphics[width=0.46\textwidth]{fig_veri_dengesi.png}
 \caption{Toplanan açık-kaynak veri setlerinin görüntü dağılımı (tümü CC BY 4.0).}
 \label{fig:denge}
 \end{figure}
@@ -139,7 +139,7 @@ istatistiksel anlam taşıması için her birine \%10 pay ayrılması; sınıf-d
 komutla yeniden üretir.
 
 \begin{figure}[ht]\centering
-\includegraphics[width=0.44\textwidth]{fig_split.png}
+\includegraphics[width=0.48\textwidth]{fig_split.png}
 \caption{\tcode{license\_plate} setinin \%80/\%10/\%10 train/val/test dağılımı (8.823 görsel).}
 \label{fig:split}
 \end{figure}
@@ -182,9 +182,9 @@ Hız/swerving kestirimi ID-merkezli birikim katmanını besler; nihai çıktı o
 olarak dashboard, mobil ve JSONL kanıt izine yayılır. QoD tetikleri (yaklaşma, kalite, anomali) bu
 akıştan türetilir. (Gerçek$\leftrightarrow$mock sınırı Bölüm 1'de tanımlanmıştır.)
 
-\begin{figure}[ht]\centering
-\includegraphics[width=0.45\textwidth]{fig_mimari.png}
-\caption{AURA kuşbakışı kaskad boru hattı: Aşama-1 tespit/takipten iki ROI ile paralel Aşama-2 motorlarına (sürücü davranışı $\parallel$ plaka okuma) ve ID-merkezli birikime; QoD tetikleri olay akışından türetilir.}
+\begin{figure}[H]\centering
+\includegraphics[width=\textwidth]{fig_mimari.png}
+\caption{AURA kuşbakışı kaskad boru hattı (soldan sağa akış): Aşama-1 tespit/takipten iki ROI ile üç paralel Aşama-2 motoruna (sürücü davranışı $\parallel$ plaka okuma $\parallel$ hız) ve ID-merkezli birikime; QoD tetikleyici (kesikli) kritik anda 5G kalitesini talep eder.}
 \label{fig:mimari}
 \end{figure}
 
@@ -312,7 +312,7 @@ Baseline (EasyOCR · stok/v4) & 2/3 (\%66,7) & 0,083 & 2 & 1 & \textbf{0} \\
 \end{table}
 
 \begin{figure}[ht]\centering
-\includegraphics[width=0.42\textwidth]{fig_plaka_ab.png}
+\includegraphics[width=0.50\textwidth]{fig_plaka_ab.png}
 \caption{Plaka exact-match A/B: baseline 2/3 (CER 0,083) $\rightarrow$ production 3/3 (CER 0,0).}
 \label{fig:plate}
 \end{figure}
@@ -356,7 +356,7 @@ sistem ${\sim}$12 FPS iş-hacmiyle 25--30 FPS'lik bir kamera akışını kare-ö
 ile olay-tespiti amacıyla işler; p95 gecikme zarfı bu kullanım için yeterlidir.
 
 \begin{figure}[ht]\centering
-\includegraphics[width=0.40\textwidth]{fig_fps.png}
+\includegraphics[width=0.48\textwidth]{fig_fps.png}
 \caption{İşleme hızı: MPS geliştirme alt-sınırı vs gerçek CUDA ölçümü (RTX 5070 Laptop GPU, 4.608 çekirdek, Compute 12.0).}
 \label{fig:fps}
 \end{figure}

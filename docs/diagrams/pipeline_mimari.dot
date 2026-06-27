@@ -1,35 +1,35 @@
-// AURA — FTR §3.2 kuşbakışı mimari (graphviz). Render:
+// AURA — FTR §3.2 kuşbakışı mimari (graphviz, YATAY/LR pipeline). Render:
 //   dot -Tpng -Gdpi=200 docs/diagrams/pipeline_mimari.dot -o docs/figures/fig_mimari.png
 digraph AURA {
-  rankdir=TB; bgcolor="white"; splines=spline; compound=true; pad=0.3;
-  graph [fontname="Helvetica", fontsize=12, ranksep=0.6, nodesep=0.6];
-  node  [fontname="Helvetica", fontsize=11.5, shape=box, style="rounded,filled",
-         penwidth=1.5, margin="0.22,0.13", color="#1b5e20", fillcolor="#e8f5e9", height=0.6];
-  edge  [fontname="Helvetica", fontsize=9.5, color="#37474f", penwidth=1.4, arrowsize=0.9];
+  rankdir=LR; bgcolor="white"; splines=spline; compound=true; pad=0.35;
+  graph [fontname="Helvetica", fontsize=12, ranksep=0.75, nodesep=0.32];
+  node  [fontname="Helvetica", fontsize=11, shape=box, style="rounded,filled",
+         penwidth=1.5, margin="0.20,0.12", color="#1b5e20", fillcolor="#e8f5e9", height=0.5];
+  edge  [fontname="Helvetica", fontsize=9, color="#37474f", penwidth=1.4, arrowsize=0.85];
 
-  CAM [label="Kamera / Video / RTSP", fillcolor="#e3f2fd", color="#0d47a1"];
-  PRE [label="Ön-İşleme   ·   far-glare · blur · occlusion"];
-  DET [label="YOLO26l + ByteTrack   ·   alan-ağırlıklı sınıf-oyu"];
+  CAM [label="Kamera /\nVideo / RTSP", fillcolor="#e3f2fd", color="#0d47a1"];
+  PRE [label="Ön-İşleme\nROI CLAHE+gamma"];
+  DET [label="Aşama 1\nYOLO26l + ByteTrack\nalan-ağırlıklı sınıf-oyu"];
 
   subgraph cluster_drv {
-    label="Aşama 2a · Sürücü davranışı"; labeljust="l"; fontsize=11; fontcolor="#1b5e20";
-    style="rounded,dashed"; color="#2e7d32"; bgcolor="#f1f9f2"; margin=14;
+    label="Aşama 2a · Sürücü davranışı"; labeljust="l"; fontsize=10.5; fontcolor="#1b5e20";
+    style="rounded,dashed"; color="#2e7d32"; bgcolor="#f1f9f2"; margin=12;
     LA [label="Katman A\npose-hibrit / YOLO26\n(landmark kütüphanesi YOK)"];
     LB [label="Katman B\nper-ID 16/8 zaman-oylaması"];
     LA -> LB;
   }
   subgraph cluster_plt {
-    label="Aşama 2b · Plaka okuma (konsensüs)"; labeljust="l"; fontsize=11; fontcolor="#1b5e20";
-    style="rounded,dashed"; color="#2e7d32"; bgcolor="#f1f9f2"; margin=14;
+    label="Aşama 2b · Plaka okuma (konsensüs)"; labeljust="l"; fontsize=10.5; fontcolor="#1b5e20";
+    style="rounded,dashed"; color="#2e7d32"; bgcolor="#f1f9f2"; margin=12;
     LP  [label="custom YOLO26s LP\n(sıkı kırpma)"];
     OCR [label="oy havuzu + fast-plate-ocr\npozisyon-veto · zemin koşulu"];
     LP -> OCR;
   }
-  SPD [label="Aşama 2c · Hız + Swerving\nKalman + EMA · ZigZag yörünge"];
+  SPD [label="Aşama 2c\nHız + Swerving\nKalman+EMA · ZigZag"];
 
-  ACC  [label="ID-merkezli Accumulator   ·   risk kuralları", fillcolor="#dcedc8", color="#1b5e20"];
-  OUT  [label="Event / Annotation akışı", fillcolor="#f3e5f5", color="#4a148c"];
-  SINK [label="Dashboard        ·        Mobil        ·        JSONL kanıt", fillcolor="#f3e5f5", color="#4a148c"];
+  ACC  [label="ID-merkezli\nAccumulator\nrisk kuralları", fillcolor="#dcedc8", color="#1b5e20"];
+  OUT  [label="Event /\nAnnotation\nakışı", fillcolor="#f3e5f5", color="#4a148c"];
+  SINK [label="Dashboard\nMobil\nJSONL kanıt", fillcolor="#f3e5f5", color="#4a148c"];
   QOD  [label="QoD tetikleyici — 5G\nyaklaşma · kalite · anomali\n→ CAMARA Quality-on-Demand", fillcolor="#fff3e0", color="#e65100"];
 
   CAM -> PRE -> DET;
@@ -44,6 +44,4 @@ digraph AURA {
   OCR -> QOD [style=dashed, color="#e65100", penwidth=1.6, ltail=cluster_plt, constraint=false];
   SPD -> QOD [style=dashed, color="#e65100", penwidth=1.6, constraint=false];
   QOD -> ACC [style=dashed, color="#e65100", penwidth=1.6, constraint=false, label="optimize"];
-
-  { rank=same; ACC; QOD; }
 }
