@@ -1,6 +1,6 @@
 // AURA — FTR §3.2 kuşbakışı mimari (graphviz, YATAY/LR pipeline). Render:
 //   dot -Tpng -Gdpi=200 docs/diagrams/pipeline_mimari.dot -o docs/figures/fig_mimari.png
-digraph AURA {
+digraph RoadGuard {
   rankdir=LR; bgcolor="white"; splines=spline; compound=true; pad=0.35;
   graph [fontname="Helvetica", fontsize=12, ranksep=0.75, nodesep=0.32];
   node  [fontname="Helvetica", fontsize=11, shape=box, style="rounded,filled",
