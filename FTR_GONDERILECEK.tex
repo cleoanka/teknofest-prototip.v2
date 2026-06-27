@@ -73,8 +73,8 @@ setleri üzerinde otomatik ölçüm hattıyla elde edilmiştir; yöntem ve sonu�
 \section{Proje Özeti}
 AURA, yol kenarı trafik kamerası akışından \textbf{araç, plaka, hız ve riskli sürücü
 davranışı} tespiti yapan gerçek bir yapay zekâ çekirdeğini; bu çekirdeği \textbf{5G CAMARA
-Quality-on-Demand (QoD)} ve \textbf{Number Verification (NV)} telekom yetenekleriyle birleştiren
-uçtan uca bir sistemdir. Amaç, yol güvenliğini tehdit eden olayları (dikkatsiz sürüş, araç-içi
+Quality-on-Demand (QoD)} ve \textbf{Number Verification (NV; sürücü telefon numarasının
+operatör nezdinde sessiz doğrulanması)} telekom yetenekleriyle birleştiren uçtan uca bir sistemdir. Amaç, yol güvenliğini tehdit eden olayları (dikkatsiz sürüş, araç-içi
 telefon/sigara kullanımı, hız ihlali) gerçek zamanlı tespit etmek ve \textbf{yalnızca kritik
 anlarda} 5G şebeke kalitesini talep ederek bant genişliğini verimli kullanmaktır.
 
@@ -85,9 +85,9 @@ zırhlarıyla donatılmış bir plaka okuma konsensüs döngüsü; (iv) CAMARA Q
 birebir taklit eden mock servisler; (v) çözümün üç gerçek test videosu ve held-out doğrulama
 setleri üzerinde nicel sınanması. Yapay zekâ çekirdeği (tespit, takip, kararlılık, OCR, hız,
 risk) \textbf{gerçektir}; telekom katmanları gerçek API sözleşmesini taklit eden \textbf{mock}'lardır
-— final ortamında yalnızca uç nokta ve kimlik bilgisi değişir. Kalite güvencesi olarak ${\sim}780$
-birim/perf testi, statik denetim (\tcode{ruff}+\tcode{black}) ve sürekli entegrasyon (GitHub
-Actions) mevcuttur. Ayrılmış (held-out) tespitte plaka mAP50 \textbf{0,983}; üç gerçek test videosunda
+— gerçek operatöre geçişte uç nokta/kimlik değişir, ayrıca saha doğrulaması gerekir. Kalite güvencesi
+olarak ${\sim}780$ birim/perf testi, statik denetim (\tcode{ruff}+\tcode{black}) ve otomatik
+sürekli-entegrasyon hattı mevcuttur. Ayrılmış (held-out) tespitte plaka mAP50 \textbf{0,983}; üç gerçek test videosunda
 (sınıf başına N=1) davranış makro-F1 \textbf{1,0} (sıfır çapraz yanlış-pozitif) ve plaka okuma
 \textbf{3/3 tam-eşleşme} (CER, karakter hata oranı 0,0; sıfır yanlış-onay) elde edilmiş; hedef GPU'da
 ölçülen \textbf{12--15 FPS} iş-hacmiyle, kamera akışı kare-örnekleme ile gerçek-zamanlıya yakın
@@ -100,9 +100,9 @@ gecikmede işlenmiştir.
 Veri seti, açık-kaynak veri kullanımının serbest olduğu kural çerçevesinde katmanlı bir köprü
 stratejisiyle oluşturulmuştur. Genel araç/kişi sınıfları (\tcode{car, bus, truck, motorcycle,
 person}) COCO veri setinden temin edilir. Araç-içi davranış ve plaka sınıfları için
-kimlik-doğrulaması gerektirmeyen \textbf{dört gerçek açık-kaynak bbox seti} indirilip toplanmış ve
-PIL ile doğrulanmıştır (hepsi CC BY 4.0): \tcode{license\_plate} (8.823 görsel), \tcode{seatbelt}
-(3.104), \tcode{smoking} (557) ve \tcode{phone} (659, sentetik render). Her setin kaynağı, lisansı ve
+kimlik-doğrulaması gerektirmeyen \textbf{dört açık-kaynak bbox seti} (üçü gerçek, biri sentetik)
+indirilip toplanmış ve PIL ile doğrulanmıştır (hepsi CC BY 4.0): \tcode{license\_plate} (8.823 görsel),
+\tcode{seatbelt} (3.104), \tcode{smoking} (557) ve \tcode{phone} (659, sentetik render). Her setin kaynağı, lisansı ve
 görüntü sayısı Bölüm~5 kaynakçasında listelenmiştir; tümü izin gerektirmeyen açık-erişim verilerdir.
 
 \subsection{Etiketleme ve Sınıf Şeması}
@@ -215,8 +215,8 @@ kırpar. Plakaya-özel hafif ONNX motoru \textbf{fast-plate-ocr} (varsayılan; k
 ile ağırlıklanıp track ömrü boyunca \textbf{kalıcı oy havuzunda} biriktirilir. Türk plaka formatına
 (\tcode{\^{}\textbackslash d\{2\}[A-Z]\{1,3\}\textbackslash d\{2,4\}\$}) normalize edilen okumalar
 pozisyon-hizalı karakter füzyonuyla birleştirilir; onay için her pozisyonda kazanan karakter ikinciyi
-mutlak bir marjla geçmek zorundadır, aksi halde karar dürüstçe \tcode{pending}'e çevrilir — \textbf{yanlış
-plaka asla kesinleştirilmez}.
+mutlak bir marjla geçmek zorundadır, aksi halde karar dürüstçe \tcode{pending}'e çevrilir — sistem
+\textbf{belirsiz okumayı tasarım gereği onaylamaz}.
 
 \textbf{Stabilite/Doğruluk Zırhları (K-004, config-driven).} (i) Kayan-karakter onay marjı
 (\tcode{confirm\_min\_char\_margin=2.0}): pozisyon belirsizse plaka onaylanmaz, \tcode{pending} denir.
@@ -255,7 +255,7 @@ sınıfıyla yapılır; ayrı özel held-out ölçümü yoktur (davranış doğr
 video-düzeyinde verilmiştir).
 
 \begin{table}[H]\centering\small
-\caption{Held-out tespit doğruluğu (özel modeller ayrılmış test bölmesinde; stok \tcode{yolo26l} COCO val2017'de). $^{\dagger}$\,\tcode{license\_plate} üretimde varsayılan LP dedektörüdür; \tcode{seatbelt}/\tcode{smoking} fine-tune held-out sonuçlarıdır (üretim hattında opsiyonel/devre-dışı).}\label{tab:map}
+\caption{Held-out tespit doğruluğu (özel modeller ayrılmış test bölmesinde; stok \tcode{yolo26l} COCO val2017'de). \tcode{license\_plate} üretimde varsayılan LP dedektörüdür. $^{\dagger}$\,\tcode{seatbelt}/\tcode{smoking}: fine-tune held-out sonuçları (üretim hattında opsiyonel/devre-dışı).}\label{tab:map}
 \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X cccccc}
 \toprule
 \textbf{Model / set} & \textbf{mAP50} & \textbf{mAP50-95} & \textbf{Precision} & \textbf{Recall} & \textbf{F1} \\ \midrule
@@ -286,7 +286,7 @@ varlık-kanıtıdır. Emniyet kemeri (\tcode{seatbelt}) yalnızca held-out mAP (
 videoda kemer-GT örneği bulunmadığından video-düzeyi P/R/F1 raporlanmamıştır.
 
 \begin{table}[H]\centering\small
-\caption{Davranış tespiti — üç gerçek test videosunda video-düzeyi P/R/F1 (her hücre P/R/F1). \textbf{Aşama-1 profili} yalnız ana dedektörü değiştirir; \tcode{phone}/\tcode{smoking} fine-tune gerektirmeyen Aşama-2a poz-geometrisiyle, \tcode{swerving} dedektörden bağımsız kinematikle üretilir (stok COCO'da bu sınıflar yoktur).}\label{tab:beh}
+\caption{Davranış tespiti — üç gerçek test videosunda video-senaryo düzeyi sonuç (her hücre P/R/F1). \textbf{Aşama-1 profili} yalnız ana dedektörü değiştirir; \tcode{phone} stok COCO ``cell phone'' nesne-kanıtıyla, \tcode{smoking} hand-to-mouth poz-geometrisiyle (COCO'da sigara sınıfı yoktur; \tcode{v4} satırında özel model de etkin), \tcode{swerving} dedektörden bağımsız kinematikle üretilir.}\label{tab:beh}
 \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X cccc}
 \toprule
 \textbf{Aşama-1 profili} & \textbf{phone} & \textbf{smoking} & \textbf{swerving} & \textbf{Makro F1} \\ \midrule
@@ -297,12 +297,11 @@ videoda kemer-GT örneği bulunmadığından video-düzeyi P/R/F1 raporlanmamı�
 \end{table}
 
 \subsection{Plaka Okuma — A/B}
-Plaka okuma, footage'ın zorlu (karanlık otopark) koşulları nedeniyle en kritik dürüstlük sınamasıdır.
-Baseline OCR (EasyOCR) ile production hattı (özel YOLO26s LP + fast-plate-ocr) arasındaki A/B
-Tablo~\ref{tab:plate} ve Şekil~\ref{fig:plate}'te verilmiştir. fast-plate-ocr, baseline'ın
-\tcode{video\_3}'teki sistematik il-kodu misread'ini (\tcode{24IC8532}) düzelterek sonucu
-\textbf{3/3 exact-match, CER 0,0}'a çekmiş ve \tcode{video\_1}/\tcode{video\_2}'yi korumuştur; her iki
-hatta da \textbf{yanlış-onay sıfırdır}.
+Karanlık otopark koşulları, plaka okumayı en kritik dürüstlük sınaması yapar. Baseline OCR (EasyOCR)
+ile üretim hattının (özel YOLO26s LP + fast-plate-ocr) A/B'si Tablo~\ref{tab:plate}'tedir:
+fast-plate-ocr, baseline'ın \tcode{video\_3}'teki sistematik il-kodu
+misread'ini (\tcode{24IC8532}) düzelterek sonucu \textbf{3/3 tam-eşleşme, CER 0,0}'a çekmiş,
+\tcode{video\_1}/\tcode{video\_2}'yi korumuştur; her iki hatta da \textbf{yanlış-onay sıfırdır}.
 
 \begin{table}[H]\centering\small
 \caption{Plaka okuma A/B — 3 gerçek test videosu, gerçek-değer (GT) plaka \tcode{34TC8532}.}\label{tab:plate}
@@ -315,15 +314,10 @@ Baseline (EasyOCR · stok/v4) & 2/3 (\%66,7) & 0,083 & 2 & 1 & \textbf{0} \\
 \end{tabularx}
 \end{table}
 
-\begin{figure}[ht]\centering
-\includegraphics[width=0.45\textwidth]{fig_plaka_ab.png}
-\caption{Plaka exact-match A/B: baseline 2/3 (CER 0,083) $\rightarrow$ production 3/3 (CER 0,0).}
-\label{fig:plate}
-\end{figure}
 
-En kritik tasarım garantisi: sistem belirsiz/uzak/bulanık bir okumayı \textbf{asla yanlış plaka olarak
-kesinleştirmez}; yakın-net video doğru plakayı CONFIRMED verirken belirsiz okuma onurlu bir
-\tcode{pending}'tir. Bu davranış Bölüm 3.3'teki onay marjı, pozisyon-veto ve zemin koşulu zırhlarının
+En kritik tasarım garantisi: sistem belirsiz/uzak/bulanık bir okumayı \textbf{kesinleştirmemek üzere
+tasarlanmıştır} (üç videoda yanlış-onay görülmemiştir); yakın-net video doğru plakayı CONFIRMED
+verirken belirsiz okuma \tcode{pending}'te kalır. Bu davranış Bölüm 3.3'teki onay marjı, pozisyon-veto ve zemin koşulu zırhlarının
 ölçülen sonucudur.
 
 \subsection{QoD Başarım Katkısı (A/B)}
@@ -345,7 +339,7 @@ QoD'' senaryosunu birebir karşılayıp kritik anda 5G şebeke kalitesini talep 
 MPS geliştirme alt-sınırının (\tcode{yolo26l} $\sim$5,9 FPS) \textbf{${\approx}2\times$}'i iş-hacmi sağlar.
 
 \begin{table}[H]\centering\small
-\caption{İşleme hızı — RTX 5070 Laptop GPU üzerinde gerçek ölçüm (CUDA; 26.06.2026).}\label{tab:fps}
+\caption{İşleme hızı — gerçek ölçüm: CUDA (RTX 5070 Laptop GPU) ve MPS (M4 Pro); 26.06.2026.}\label{tab:fps}
 \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X ccc}
 \toprule
 \textbf{Profil · dedektör · imgsz} & \textbf{Ortalama FPS} & \textbf{p50 (ms)} & \textbf{p95 (ms)} \\ \midrule
