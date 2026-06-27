@@ -70,7 +70,7 @@ python -m aura.eval --metrics-report --summaries eval_results/ab   # → eval_re
 
   | Sınıf | mAP50 | mAP50-95 | Veri (CC BY 4.0) |
   |---|---|---|---|
-  | `license_plate` | **0.983** | **0.707** | 9123 görsel (keremberke/HF) |
+  | `license_plate` | **0.983** | **0.706** | 9123 görsel (keremberke/HF) |
   | `smoking` | **0.856** | **0.457** | 557 görsel (CigDet/Mendeley) |
   | `seatbelt` | **0.895** | **0.546** | 3104 görsel (Roboflow/HF) |
 

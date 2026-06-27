@@ -198,7 +198,7 @@ ve held-out doğrulama (val2017, 5000 görsel).
 **[35]** keremberke, "License Plate Object Detection Dataset" (Roboflow "Vehicle Registration Plates v1"
 → COCO→YOLO), Hugging Face, 2023. https://huggingface.co/datasets/keremberke/license-plate-object-detection
 (erişim 23.06.2026). Lisans: CC BY 4.0. — *Kullanılan:* `license_plate`, **8.823 görsel**; YOLO26s
-fine-tune → held-out **mAP50 0.983 / mAP50-95 0.707**; `custom_license_plate` = varsayılan LP dedektör.
+fine-tune → held-out **mAP50 0.983 / mAP50-95 0.706**; `custom_license_plate` = varsayılan LP dedektör.
 
 **[36]** ramankamran (Roboflow `oohmp/seatbelt-detection` v2), "Seatbelt Detection (YOLOv11) Dataset,"
 Hugging Face, 2024. https://huggingface.co/datasets/ramankamran/seatbelt-detection-v2i-yolov11-lt

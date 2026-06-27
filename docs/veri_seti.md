@@ -59,7 +59,7 @@ YOLO26s tabanlı fine-tune **TAMAMLANDI (19 Haz 2026)** (`weights/yolo26s.pt` ta
 
 | Sınıf | mAP50 | mAP50-95 | Veri |
 |---|---|---|---|
-| `license_plate` | **0.983** | **0.707** | 9123 görsel (keremberke/HF) |
+| `license_plate` | **0.983** | **0.706** | 9123 görsel (keremberke/HF) |
 | `smoking` | **0.856** | **0.457** | 557 görsel (CigDet/Mendeley) |
 | `seatbelt` | **0.895** | **0.546** | 3104 görsel (Roboflow/HF) |
 
@@ -148,7 +148,7 @@ sınıf-eşlemesi** tutar. Eşleme `aura/taxonomy.py` ile tutarlıdır (ör. `ci
 
 | Hedef sınıf (AURA) | Kaynak(lar) | ~Görüntü | Lisans | Durum |
 |---|---|---|---|---|
-| `license_plate` | `keremberke/license-plate-object-detection` (HF; Roboflow v1 → COCO→YOLO) | **8823** | CC BY 4.0 | **indirildi + işlendi**; YOLO26s fine-tune **TAMAMLANDI** (held-out mAP50 **0.983** / mAP50-95 **0.707**); `custom_license_plate` → **varsayılan LP dedektör** |
+| `license_plate` | `keremberke/license-plate-object-detection` (HF; Roboflow v1 → COCO→YOLO) | **8823** | CC BY 4.0 | **indirildi + işlendi**; YOLO26s fine-tune **TAMAMLANDI** (held-out mAP50 **0.983** / mAP50-95 **0.706**); `custom_license_plate` → **varsayılan LP dedektör** |
 | `seatbelt → no_seatbelt_evidence` | Roboflow `oohmp/seatbelt-detection` v2 (HF `ramankamran`) | **3104** | CC BY 4.0 | **indirildi + işlendi**; fine-tune **TAMAMLANDI** (held-out mAP50 **0.895** / mAP50-95 **0.546**); opsiyonel (dış-kamera görüş açısı) |
 | `cigarette → smoking` | CigDet (Cigarette Detection), Mendeley DOI `10.17632/6hyrr8typ7.1` | **557** | CC BY 4.0 | **indirildi + işlendi**; fine-tune **TAMAMLANDI** (held-out mAP50 **0.856** / mAP50-95 **0.457**); `pose.py` ikinci-model (phone-kanıtını korur). Büyük setler (Roboflow `driver-smoking-detecor` 1066, `Smoker YOLO.v4` 4221) API/Roboflow erişimi gerektirir |
 | `phone` | HF `anywaylabs/synthetic-driver-monitoring` | **659** | CC BY 4.0 | **indirildi + işlendi**; **SENTETİK render** → domain-uyum riski |
@@ -164,7 +164,7 @@ sınıf-eşlemesi** tutar. Eşleme `aura/taxonomy.py` ile tutarlıdır (ör. `ci
 > `10.17632/6hyrr8typ7.1`) ve `phone` 659 görsel (HF synthetic, **sentetik render** →
 > domain-uyum riski). Bu veriyle YOLO26s fine-tune'lar **TAMAMLANDI (19 Haz 2026)**; gerçek
 > held-out mAP (`weights/custom_*.metrics.json`, Ultralytics `model.val` ayrılmış test bölmesi):
-> `license_plate` mAP50 **0.983** / mAP50-95 **0.707**, `smoking` **0.856** / **0.457**,
+> `license_plate` mAP50 **0.983** / mAP50-95 **0.706**, `smoking` **0.856** / **0.457**,
 > `seatbelt` **0.895** / **0.546**. `custom_license_plate` 3-video A/B'de regresyon göstermedi →
 > **varsayılan LP dedektör**; `custom_smoking` `pose.py`'da ikinci-model (phone-kanıtını korur);
 > `seatbelt` opsiyonel (dış-kamera görüş açısı). Bunlar küçük domain held-out'larıdır
