@@ -33,7 +33,7 @@
 
 ### 1. Proje Özeti `(5p)`
 - **Beklenen:** yürütülen faaliyetlerin özeti.
-- **Bizde var:** FTR §1 — 5 ana faaliyet + gerçek/mock sınırı + kalite güvencesi (~780 test, CI).
+- **Bizde var:** FTR §1 — 5 ana faaliyet + gerçek/mock sınırı + kalite güvencesi (815 geçen / 1 atlanan test, CI).
 - **Eklenebilir:** takım adı/ID, bir-cümlelik "yenilikçi yan" vurgusu (poz-hibrit + dürüstlük zırhı).
 
 ### 2. Veri Seti Oluşturulması `(20p)`

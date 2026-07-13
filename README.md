@@ -11,7 +11,7 @@
 ![PyTorch](https://img.shields.io/badge/PyTorch-2.12-ee4c2c?style=flat-square&logo=pytorch&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)
 
-![tests](https://img.shields.io/badge/tests-780+-success?style=flat-square)
+[![CI](https://github.com/cleoanka/teknofest-prototip.v2/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/cleoanka/teknofest-prototip.v2/actions/workflows/ci.yml)
 ![plaka](https://img.shields.io/badge/plaka-3%2F3%20exact-success?style=flat-square)
 ![CER](https://img.shields.io/badge/CER-0.0-success?style=flat-square)
 ![makro--F1](https://img.shields.io/badge/makro--F1-1.0-success?style=flat-square)
@@ -32,6 +32,23 @@ gerçek bir YZ çekirdeği ile, bu çekirdeği **5G QoD** (CAMARA Quality-on-Dem
 > **Gerçek / Mock sınırı:** YZ çekirdeğinin tamamı (CV/tracking/state-machine/OCR/speed/eval)
 > **gerçektir**. Ağ/telekom/mobil katmanları (QoD gateway, NV API, 5G şebekesi) gerçek API
 > sözleşmesini birebir taklit eden **mock**'lardır — final ortamında yalnızca endpoint/credential değişir.
+
+<details>
+<summary><b>🇬🇧 English abstract</b></summary>
+
+**RoadGuard** is a single-command Python monorepo for the TEKNOFEST 2026 "5G & AI for
+Smart Road Safety" competition. From a traffic-camera feed it detects **vehicles, license
+plates, driver behaviour (phone / smoking / swerving) and speed** with a real YOLO26 +
+ByteTrack computer-vision core, then fuses that core with **CAMARA 5G telecom capabilities**
+(Quality-on-Demand and Number Verification). The CV/tracking/state-machine/OCR/speed/eval
+stack is fully real and runs end-to-end even without model weights (deterministic mock mode);
+the network/telecom/mobile layers are contract-faithful mocks where only the
+endpoint/credential changes in production. Measured held-out results: license-plate OCR
+**3/3 exact-match (CER 0.0)**, behaviour macro-F1 **1.0** across 3 videos, vehicle-class
+accuracy **100%**. The suite ships **815 passing / 1 skipped** unit tests (mock mode) with
+ruff + black and GitHub Actions CI. Reproduce: `pytest -m "not integration"`.
+
+</details>
 
 ---
 
@@ -73,8 +90,9 @@ gerçek bir YZ çekirdeği ile, bu çekirdeği **5G QoD** (CAMARA Quality-on-Dem
   şartnamenin "TOGG yaklaşınca QoD" senaryosunu birebir karşılar — %40 QoD puanı için kanıt.
 - **Denetim izi + sağlık:** `tools/test_video.py` annotated mp4 + JSON kanıt; `--save-events`
   JSONL iz (şartname 4.5); `python tools/doctor.py` tek-bakış ortam/hazırlık kontrolü.
-- **Kalite:** 780+ unit test (mock modda; `tests/` + `services/`), `ruff` + `black`
-  temiz (sürüm-pinli), GitHub Actions CI.
+- **Kalite:** 815 geçen / 1 atlanan unit test (mock modda; `tests/` + `services/` —
+  `pytest -m "not integration"`), `ruff` + `black` temiz (sürüm-pinli), GitHub Actions CI
+  (yukarıdaki canlı rozet).
 - **FTR rehberi:** [`ftr.md`](ftr.md) — Final Tasarım Raporu'nu bu kanıtlarla doldurma kılavuzu.
 
 ---
@@ -308,7 +326,7 @@ Her dizin kendi `README.md`'sini taşır.
 ## 🧪 Test & Kalite
 
 ```bash
-pytest -m "not integration"        # 780+ unit test (mock modda, ağırlık gerektirmez)
+pytest -m "not integration"        # 815 geçen / 1 atlanan (mock modda, ağırlık gerektirmez)
 ruff check . && black --check .    # lint + format
 ```
 Model gerektiren testler `@pytest.mark.integration` ile işaretli (CI'da skip edilir).

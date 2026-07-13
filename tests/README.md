@@ -4,10 +4,10 @@
 
 # 🧪 `tests/` — Test Paketi
 
-![Tests](https://img.shields.io/badge/unit_test-780%2B-brightgreen?style=flat-square)
+![Tests](https://img.shields.io/badge/unit_test-815_geçen_·_1_atlanan-brightgreen?style=flat-square)
 ![Python](https://img.shields.io/badge/python-%3E%3D3.10-blue?style=flat-square)
 ![pytest](https://img.shields.io/badge/runner-pytest-0A9EDC?style=flat-square)
-![CI](https://img.shields.io/badge/CI-uyumlu-success?style=flat-square)
+[![CI](https://github.com/cleoanka/teknofest-prototip.v2/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/cleoanka/teknofest-prototip.v2/actions/workflows/ci.yml)
 ![Integration](https://img.shields.io/badge/integration-mark.integration-yellow?style=flat-square)
 
 </div>
