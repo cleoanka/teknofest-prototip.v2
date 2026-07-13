@@ -63,10 +63,10 @@
 |---|---|
 | **[`FTR_GONDERILECEK.pdf`](FTR_GONDERILECEK.pdf)** | **Gönderilecek FTR** (10 sayfa, format-uyumlu) |
 | [`FTR_GONDERILECEK.tex`](FTR_GONDERILECEK.tex) | PDF'in **düzenlenebilir** LaTeX kaynağı |
-| [`tools/make_ftr_figures.py`](tools/make_ftr_figures.py) | grafikleri **gerçek ölçümlerden** üretir |
-| [`docs/figures/`](docs/figures/) | Üretilen grafikler (`fig_*.png`) |
+| [`tools/make_ftr_figures.py`](../../tools/make_ftr_figures.py) | grafikleri **gerçek ölçümlerden** üretir |
+| [`docs/figures/`](../figures/) | Üretilen grafikler (`fig_*.png`) |
 | [`kaynakca.md`](kaynakca.md) | Tam kaynakça (FTR §5 havuzu) |
-| [`ftr.md`](ftr.md) | FTR doldurma rehberi + format notu |
+| [`ftr.md`](../../ftr.md) | FTR doldurma rehberi + format notu |
 
 ---
 
