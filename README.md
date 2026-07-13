@@ -18,6 +18,10 @@
 ![platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey?style=flat-square)
 ![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
 
+![RoadGuard dashboard](docs/dashboard.png)
+
+<sub>Canlı tespit hattı — pakete gömülü <b>sentetik örnek video</b> üzerinde mock modda (araç · plaka · sürücü sigara-riski · hız · QoD). Ağırlık gerektirmez; <code>./run.sh</code> ile aynen üretilir.</sub>
+
 </div>
 
 > [!NOTE]
