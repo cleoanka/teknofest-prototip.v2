@@ -3,10 +3,10 @@
 > ⚠️ **ARŞİV / LEGACY (v2.1, 12.06.2026).** Bu plan v2.1 yenileme oturumunundur ve
 > **tarihsel kayıt** olarak korunur (tüm maddeleri o gün uygulandı). İçeriği o güne aittir:
 > OCR motoru o sırada **EasyOCR**'dı (artık **fast-plate-ocr**, plaka 3/3 exact / CER 0),
-> dedektör varsayılanı sonradan **yolo26l** oldu, test sayısı 99/118 idi (güncelde **~600**;
-> servis testleri sürüyor) ve FTR son teslimi 14.06 yazıyor (**28.06'ya ertelendi**).
-> **Aktif/güncel planlar:** `plan1.md` (teknik yol haritası) · `plan2.md` (görev dağılımı) ·
-> `ultraplan.md` (W1 yürütme). Güncel durum: `gozlem.md` · `CHANGELOG.md`.
+> dedektör varsayılanı sonradan **yolo26l** oldu, test sayısı o gün 99/118 idi (güncelde
+> **815 geçen / 1 atlanan** — `pytest -m "not integration"`) ve FTR son teslimi 14.06 yazıyor
+> (**28.06'ya ertelendi**).
+> **Güncel durum ve tam döküm:** [`CHANGELOG.md`](../../CHANGELOG.md).
 >
 > **Bu belge ne?** 12 Haziran 2026 gecesi yapılan otonom bakım/geliştirme oturumunun
 > ana planı. Repo'nun önceki inşa planı `docs/plan_insa_v2.md`'ye arşivlendi
